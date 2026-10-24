@@ -1,4 +1,6 @@
-# Quiet Compass on the iPhone in 10 minutes
+# QC Walk Map on the iPhone in 10 minutes
+
+This is the standalone walk-map app in `ios-walk/` (shown as **QC Walk Map** on the home screen). It needs no server. The team app in `ios/` is a different app (shown as **Quiet Compass**) and needs a server connection before "Start measuring" works.
 
 You need a Mac with **Xcode 26** and an **iPhone 16 Pro or newer** (spatial audio + LiDAR) with a USB-C cable.
 
