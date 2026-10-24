@@ -23,6 +23,7 @@ from .city import CityDataError, CityNoiseLayer
 from .contracts import Feedback, Goal, Observation, Place, Session, format_utc
 from .db import Store, utc_now
 from .settings import Settings
+from .sf_layers import ALL_LAYERS, REFERENCE_LEVELS, REFERENCE_NOTE, LayerName, SfLayers
 
 ResponseFormat = Literal["concise", "detailed"]
 RECENT_WINDOW = timedelta(seconds=30)
@@ -177,6 +178,45 @@ class CityResult(Lean):
     by_subtype: dict[str, int]
     newest_report_min_ago: float | None = None
     caveat: str
+
+
+class LayerPointOut(Lean):
+    layer: str
+    kind: str
+    label: str
+    lat: float
+    lon: float
+    evidence: Literal["unmeasured_candidate", "proxy", "measured"]
+    caveat: str
+    dataset: str
+    source: str | None = None
+    detail: str | None = None
+    cnel_db: float | None = None
+    observed_on: str | None = None
+    distance_m: int | None = None
+
+
+class ReferenceOut(Lean):
+    id: str
+    area: str
+    location: str
+    level_dba_ldn: int
+    duration: str
+    measured_on: str
+    source: str
+    source_url: str
+    evidence: str
+
+
+class SfLayersResult(Lean):
+    lat: float
+    lon: float
+    radius_m: int
+    layers: dict[str, list[LayerPointOut]]
+    unavailable: dict[str, str] | None = None
+    references: list[ReferenceOut] | None = None
+    reference_note: str | None = None
+    note: str
 
 
 # --- service ----------------------------------------------------------------------------
@@ -495,7 +535,9 @@ class Service:
 # --- MCP wiring -------------------------------------------------------------------------
 
 
-def build_mcp(service: Service, city: CityNoiseLayer | None = None) -> MCPServer:
+def build_mcp(
+    service: Service, city: CityNoiseLayer | None = None, layers: SfLayers | None = None
+) -> MCPServer:
     mcp = MCPServer("quiet-compass", instructions=INSTRUCTIONS)
 
     @mcp.tool(annotations=ToolAnnotations(title="Sound context", readOnlyHint=True, openWorldHint=False))
@@ -588,6 +630,49 @@ def build_mcp(service: Service, city: CityNoiseLayer | None = None) -> MCPServer
             return CityResult(
                 lat=s.lat, lon=s.lon, radius_m=s.radius_m, hours=s.hours, total_reports=s.total,
                 by_subtype=s.by_subtype, newest_report_min_ago=s.newest_age_min, caveat=s.caveat,
+            )
+
+    if layers is not None:
+
+        @mcp.tool(
+            annotations=ToolAnnotations(title="SF sound context layers", readOnlyHint=True, openWorldHint=True)
+        )
+        def quiet_sf_layers(
+            lat: float,
+            lon: float,
+            radius_m: int = 600,
+            include: list[LayerName] | None = None,
+            include_references: bool = False,
+        ) -> SfLayersResult:
+            """Real San Francisco layers near a point (DataSF), each labelled by evidence.
+
+            quiet_candidates: POPOS and public libraries, evidence=unmeasured_candidate,
+            source=seed. Nobody measured their sound; never call them quiet, mention
+            hours must be checked. entertainment_permits, night_noise_permits (today or
+            tomorrow) and street_closures (in effect now): evidence=proxy, they hint that
+            something may be loud, they are not levels. sfo_cnel: the nearest SFO
+            community noise monitors, evidence=measured, daily CNEL in A-weighted dB at the
+            monitor (not at the point, not live; see observed_on and distance_m).
+            include_references=true adds published Central SoMa Ldn dBA measurements
+            (evidence=reference_measured, with source_url; 2014, area-specific).
+            Never compare these dB values with the phone's relative dBFS levels.
+            radius_m 50-2000. A layer that cannot be fetched is listed in `unavailable`.
+            """
+            if not (37.6 <= lat <= 37.85 and -122.55 <= lon <= -122.3):
+                raise ToolError("lat/lon must be inside San Francisco.")
+            if not 50 <= radius_m <= 2000:
+                raise ToolError("Use radius_m between 50 and 2000.")
+            chosen = list(dict.fromkeys(include)) if include else list(ALL_LAYERS)
+            s = layers.around(lat, lon, radius_m, chosen)
+            return SfLayersResult(
+                lat=s.lat, lon=s.lon, radius_m=s.radius_m,
+                layers={
+                    name: [LayerPointOut(**p.__dict__) for p in pts] for name, pts in s.points.items()
+                },
+                unavailable=s.unavailable or None,
+                references=[ReferenceOut(**r.__dict__) for r in REFERENCE_LEVELS] if include_references else None,
+                reference_note=REFERENCE_NOTE if include_references else None,
+                note="Only sfo_cnel is a sensor measurement. Missing data is unknown, not quiet.",
             )
 
     return mcp

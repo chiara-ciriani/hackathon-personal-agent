@@ -227,6 +227,64 @@
         "accepted": { "type": "integer", "minimum": 0 },
         "duplicates": { "type": "integer", "minimum": 0 }
       }
+    },
+    "EvidenceLabel": {
+      "type": "string",
+      "enum": ["measured", "reference_measured", "proxy", "unmeasured_candidate"],
+      "description": "What a city-layer record is. measured = sensor measurement (SFO CNEL monitors only); reference_measured = published measurement with a citation; proxy = permit or closure that hints at possible noise; unmeasured_candidate = place from a city inventory that nobody has measured. Synthetic demo scores exist only in the web demo and are never served."
+    },
+    "LayerPoint": {
+      "type": "object",
+      "description": "One record of the SF city layers (MCP quiet_sf_layers). Never a phone reading: dB values here are CNEL from SFO monitors and are not comparable with level_dbfs_rel.",
+      "required": ["layer", "kind", "label", "lat", "lon", "evidence", "caveat", "dataset"],
+      "additionalProperties": false,
+      "properties": {
+        "layer": { "type": "string", "enum": ["quiet_candidates", "entertainment_permits", "night_noise_permits", "street_closures", "sfo_cnel"] },
+        "kind": { "type": "string", "examples": ["popos", "library", "entertainment_permit", "sfo_monitor"] },
+        "label": { "type": "string" },
+        "lat": { "type": "number" },
+        "lon": { "type": "number" },
+        "evidence": { "enum": ["measured", "proxy", "unmeasured_candidate"] },
+        "caveat": { "type": "string" },
+        "dataset": { "type": "string", "description": "DataSF dataset id", "examples": ["65ik-7wqd"] },
+        "source": { "const": "seed", "description": "Present only on unmeasured candidates, mirroring Place.source = seed" },
+        "detail": { "type": "string" },
+        "cnel_db": { "type": "number", "description": "Daily CNEL (A-weighted dB, 24 h) at the monitor. Only on evidence = measured" },
+        "observed_on": { "type": "string", "format": "date" },
+        "distance_m": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "ReferenceLevel": {
+      "type": "object",
+      "description": "A published measured level with its citation. Context only: old, area-specific, not comparable to phone dBFS.",
+      "required": ["id", "area", "location", "level_dba_ldn", "duration", "measured_on", "source", "source_url", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "area": { "type": "string" },
+        "location": { "type": "string" },
+        "level_dba_ldn": { "type": "integer" },
+        "duration": { "type": "string" },
+        "measured_on": { "type": "string", "format": "date" },
+        "source": { "type": "string" },
+        "source_url": { "type": "string", "format": "uri" },
+        "evidence": { "const": "reference_measured" }
+      }
+    },
+    "SfLayersResult": {
+      "type": "object",
+      "required": ["lat", "lon", "radius_m", "layers", "note"],
+      "additionalProperties": false,
+      "properties": {
+        "lat": { "type": "number" },
+        "lon": { "type": "number" },
+        "radius_m": { "type": "integer", "minimum": 50, "maximum": 2000 },
+        "layers": { "type": "object", "additionalProperties": { "type": "array", "items": { "$ref": "#/$defs/LayerPoint" } } },
+        "unavailable": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Layers whose dataset could not be fetched; treat as unknown" },
+        "references": { "type": "array", "items": { "$ref": "#/$defs/ReferenceLevel" } },
+        "reference_note": { "type": "string" },
+        "note": { "type": "string" }
+      }
     }
   }
 }

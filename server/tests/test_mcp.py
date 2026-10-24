@@ -144,7 +144,7 @@ def test_record_feedback_is_visible_in_context(client: TestClient, venue: dict[s
 def test_path_secret_mode(tmp_path: Any, secret_path_ok: bool) -> None:
     secret = "a" * 24
     settings = Settings(api_token=TOKEN, db_path=tmp_path / "s.db", mcp_path_secret=secret)
-    with TestClient(create_app(settings)) as c:
+    with TestClient(create_app(settings), base_url="http://localhost") as c:
         no_auth = {k: v for k, v in HEADERS.items() if k != "Authorization"}
         assert rpc(c, "tools/list", headers=no_auth, path=f"/mcp/{secret}").status_code == 200
         assert rpc(c, "tools/list", headers=HEADERS, path="/mcp").status_code == 404
@@ -152,6 +152,6 @@ def test_path_secret_mode(tmp_path: Any, secret_path_ok: bool) -> None:
 
 def test_city_tool_registered_only_when_enabled(tmp_path: Any) -> None:
     settings = Settings(api_token=TOKEN, db_path=tmp_path / "c.db", city_layer_enabled=True)
-    with TestClient(create_app(settings)) as c:
+    with TestClient(create_app(settings), base_url="http://localhost") as c:
         names = {t["name"] for t in rpc(c, "tools/list").json()["result"]["tools"]}
-    assert names == TOOLS | {"quiet_city_noise_reports"}
+    assert names == TOOLS | {"quiet_city_noise_reports", "quiet_sf_layers"}
