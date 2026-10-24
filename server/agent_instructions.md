@@ -89,7 +89,7 @@ separate from the person's private session memory.
   candidate's age, `uncertainty` sentence and the walk estimate (straight-line,
   not navigation). Areas without a released aggregate are unknown, not quiet.
 - Compare levels only within one `capture_profile`. Say clearly when a result
-  includes `synthetic_demo` data.
+  includes `simulated` data.
 - Call `submit_observation` only with a summary the person explicitly agreed to
   share. Submit only the `SharedContribution` fields: never preferences, ratings,
   routes, calendar, health or wearable data, audio or transcripts. `withheld`

@@ -29,12 +29,12 @@ Last updated: October 24, 2026, 15:35 PT. Update this file whenever you start or
 2. **Connect the agent.** Add `https://<host>/mcp` as a custom connector in the Claude app. Check whether it can send `Authorization: Bearer`; if not, set `QC_MCP_PATH_SECRET` and use `/mcp/<secret>`. Paste `server/agent_instructions.md` into the project instructions and connect a calendar.
 3. **Point the web map at real data.** Read `GET /v1/map/aggregates` instead of synthetic scores. Update the MCP panel in `apps/quiet-compass/app/page.tsx` to the implemented tool inputs listed in `contracts/README.md` (it still shows the brief's earlier draft parameters such as `bounds`, `zone_id` and `acoustic_summary`).
 4. **First iOS build on a Mac.** `cd ios && xcodegen generate`, fix compile errors, run in the Simulator, then run the hour-0 spike tests on the iPhone 16 Pro and record the chosen capture mode here.
-5. **End-to-end demo run.** "I need ten minutes of quiet and to be back before the demos." Label any seeded or synthetic data as such.
+5. **End-to-end run.** "I need ten minutes of quiet and to be back before the presentations." Label any seeded or synthetic data as such.
 
 ## Decisions so far
 
 - Levels are relative dBFS from one capture profile; never label them dBA, and never merge capture profiles.
-- The shared layer releases a cohort only after `QC_RELEASE_MIN_CONTRIBUTIONS` contributions (2 by default; set it to 1 for the demo).
+- The shared layer releases a cohort only after `QC_RELEASE_MIN_CONTRIBUTIONS` contributions (2 by default; set it to 1 for this setup).
 - The map read endpoint is public because it serves only released aggregates; set `QC_MAP_ALLOWED_ORIGINS` to the map's URL in production.
 - Background capture is levels-only and owned by Ana; the AR route still needs the phone held camera-forward.
 - Work lands on `main` via small commits; pull and rebase before pushing, and never force-push.

@@ -19,7 +19,7 @@ AREA_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9:._,-]{0,119}$"
 
 AreaId = Annotated[str, StringConstraints(pattern=AREA_ID_PATTERN)]
 AreaKind = Literal["indoor_zone", "outdoor_cell"]
-ContributionSource = Literal["device", "synthetic_demo"]
+ContributionSource = Literal["device", "simulated"]
 ContributionStatus = Literal["accepted", "withheld", "rejected"]
 Latitude = Annotated[float, Field(ge=-90, le=90)]
 Longitude = Annotated[float, Field(ge=-180, le=180)]
@@ -107,7 +107,7 @@ class AreaAggregate(Contract):
     clipped_count: int = Field(ge=0)
     age_minutes: float = Field(ge=0)
     has_synthetic: bool
-    source: Literal["device", "synthetic_demo", "mixed"]
+    source: Literal["device", "simulated", "mixed"]
     coverage: str
 
 

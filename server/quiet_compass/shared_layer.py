@@ -92,18 +92,18 @@ def implausible(c: SharedContribution) -> str | None:
     return None
 
 
-def _source_label(sources: set[str]) -> Literal["device", "synthetic_demo", "mixed"]:
+def _source_label(sources: set[str]) -> Literal["device", "simulated", "mixed"]:
     if sources == {"device"}:
         return "device"
-    if sources == {"synthetic_demo"}:
-        return "synthetic_demo"
+    if sources == {"simulated"}:
+        return "simulated"
     return "mixed"
 
 
 def _coverage(area: Area, n: int, has_synthetic: bool) -> str:
     unit = "~100 m outdoor cell" if area.kind == "outdoor_cell" else "designated indoor zone"
     note = f"{n} contribution(s) from one capture profile in one 5-minute bucket; {unit}."
-    return note + (" Includes synthetic demo data, not real measurements." if has_synthetic else "")
+    return note + (" Includes simulated data, not real measurements." if has_synthetic else "")
 
 
 # --- candidate search ---------------------------------------------------------------------
@@ -193,7 +193,7 @@ def uncertainty(c: Candidate) -> str:
     else:
         parts.append(f"Quietness is ranked against {c.cohort_areas - 1} other area(s) in the same cohort only.")
     if agg.has_synthetic:
-        parts.append("Includes synthetic demo data, not a real reading.")
+        parts.append("Includes simulated data, not a real reading.")
     if agg.clipped_count:
         parts.append(f"{agg.clipped_count} contribution(s) reported clipping.")
     return " ".join(parts)
@@ -330,7 +330,7 @@ class SharedLayer:
         area, dist = placed
         sources = {r.source for r in rows}
         peaks = [r.peaks_per_min for r in rows if r.peaks_per_min is not None]
-        has_synthetic = "synthetic_demo" in sources
+        has_synthetic = "simulated" in sources
         bucket = rows[0].time_bucket
         return AreaAggregate(
             area_id=area.id, area_name=area.name, lat=area.lat, lon=area.lon, area_kind=area.kind,

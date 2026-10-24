@@ -29,7 +29,7 @@ LAT, LON = 37.7701, -122.4201  # rounds to the cell 37.770,-122.420
 def contribution(
     rms: float = -40.0,
     *,
-    area_id: str = "demo-courtyard",
+    area_id: str = "sample-courtyard",
     lat: float | None = LAT,
     lon: float | None = LON,
     minutes_ago: float = 1,
@@ -174,10 +174,10 @@ def test_cohorts_with_different_profiles_never_merge(layer: SharedLayer) -> None
 
 
 def test_synthetic_source_is_labelled(layer: SharedLayer) -> None:
-    submit(layer, source="synthetic_demo")
+    submit(layer, source="simulated")
     submit(layer)
     [agg] = layer.aggregates(LAT, LON, 500, 60)
-    assert agg.has_synthetic and agg.source == "mixed" and "synthetic" in agg.coverage
+    assert agg.has_synthetic and agg.source == "mixed" and "simulated" in agg.coverage
 
 
 def test_retention_purges_old_contributions_on_write(layer: SharedLayer, clock: Clock) -> None:
@@ -190,8 +190,8 @@ def test_retention_purges_old_contributions_on_write(layer: SharedLayer, clock: 
 
 
 def test_release_threshold_is_configurable(tmp_path: Path, clock: Clock) -> None:
-    demo = make_layer(tmp_path, clock, release_min_contributions=1)
-    assert submit(demo).status == "accepted"
+    single = make_layer(tmp_path, clock, release_min_contributions=1)
+    assert submit(single).status == "accepted"
     with pytest.raises(SettingsError):
         Settings(api_token=TOKEN, release_min_contributions=0)
 

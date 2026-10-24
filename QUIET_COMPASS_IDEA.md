@@ -47,7 +47,7 @@ The following is a proposed scenario; locations and observations are illustrativ
 1. You arrive at an event near downtown San Francisco and enable a short measurement session.
 2. Your phone samples an authorized area and records relative sound levels. You mark one space as comfortable.
 3. Another participant opts to contribute a summary from a different area.
-4. You tell your agent: “I need ten minutes to focus before the demos.”
+4. You tell your agent: “I need ten minutes to focus before the presentations.”
 5. The agent queries nearby observations, checks their age, and considers your time limit and previously stated preferences.
 6. It suggests a candidate with an explanation: “The courtyard had fewer abrupt changes in the latest observation. That was six minutes ago. We can check again when you arrive.”
 7. At the destination, your phone takes another sample. The agent revises its recommendation if conditions have changed.
@@ -101,7 +101,7 @@ A future agent skill should instruct the agent to:
 
 - Check freshness and measurement compatibility before comparing places.
 - Treat missing data as unknown.
-- Separate measured observations from predictions and synthetic demos.
+- Separate measured observations from predictions and simulated data.
 - Ask for sensor consent through the collector before any capture.
 - Explain why a candidate may fit the user's current goal.
 - Recheck at arrival when the user permits it.
@@ -112,7 +112,7 @@ Example contribution shape, with invented demonstration values:
 ~~~json
 {
   "schema_version": "0.1",
-  "area_id": "demo-venue-courtyard",
+  "area_id": "sample-venue-courtyard",
   "time_bucket": "2026-10-24T17:00:00Z",
   "duration_seconds": 30,
   "measurement": {
@@ -122,10 +122,10 @@ Example contribution shape, with invented demonstration values:
     "calibrated": false
   },
   "quality": {
-    "capture_profile": "demo-profile-v1",
+    "capture_profile": "sample-profile-v1",
     "clipping_detected": false
   },
-  "source": "synthetic_demo"
+  "source": "simulated"
 }
 ~~~
 
@@ -208,16 +208,16 @@ The interface should make the map the main object:
 - Small pulses for new released contributions.
 - Selectable points revealing measurement type, age, and uncertainty.
 - A compact MCP control and optional instructions.
-- A visible demo label whenever the data is synthetic.
+- A visible simulated-data label whenever the data is synthetic.
 - Reduced-motion support and accessible text alternatives.
 
 Color must not simultaneously encode noise level, confidence, and personal suitability. Keep those meanings separate.
 
-## Build the smallest convincing demo
+## Build the smallest convincing prototype
 
 Start with one event and three authorized zones. Keep San Francisco as the map context.
 
-The target demo:
+The target scenario:
 
 1. Take a real short sample in one zone.
 2. Show the local summary and explicit sharing choice.
@@ -289,6 +289,6 @@ References were checked on October 24, 2026. They support technical background, 
 4. [SONYC-UST-V2, version 2.3 — Dataset record](https://zenodo.org/records/3966543).
 5. [TensorFlow — Sound classification with YAMNet](https://www.tensorflow.org/hub/tutorials/yamnet).
 
-Project demo: https://quiet-compass-oura-martin.martin-puli.chatgpt.site/  
+Project link: https://quiet-compass-oura-martin.martin-puli.chatgpt.site/  
 Team repository: https://github.com/chiara-ciriani/hackathon-personal-agent
 

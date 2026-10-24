@@ -29,7 +29,7 @@ from .shared_contracts import (
 )
 from .shared_layer import WALK_SOURCE, Candidate, SharedLayer, has_synthetic, uncertainty
 
-SYNTHETIC_NOTE = "Some results include synthetic demo data (source synthetic_demo); say so to the user."
+SYNTHETIC_NOTE = "Some results include simulated data (source simulated); say so to the user."
 
 
 class Supporting(Lean):
@@ -143,7 +143,7 @@ def register_shared_tools(mcp: MCPServer, layer: SharedLayer) -> None:
 
         Each aggregate is one (area, 5-minute time bucket, capture_profile) cohort with n
         contributions: median relative level (rms_dbfs, uncalibrated, never dBA), spread,
-        peaks per minute, age_minutes, source (device, synthetic_demo or mixed), coverage
+        peaks per minute, age_minutes, source (device, simulated or mixed), coverage
         and clipping count. Only compare levels that share a capture_profile. Areas not
         listed are unknown, not quiet; sparse cohorts are withheld by policy.
         """
@@ -202,7 +202,7 @@ def register_shared_tools(mcp: MCPServer, layer: SharedLayer) -> None:
         health, calendar data, audio or transcripts. The server rounds lat/lon to ~100 m
         and floors time to 5 minutes. Result status: accepted (its aggregate is released),
         withheld (stored, waiting for more contributions) or rejected (with reason).
-        Resending the same id is harmless. Use source synthetic_demo for anything not
+        Resending the same id is harmless. Use source simulated for anything not
         measured by a real device.
         """
         contribution = _contribution(

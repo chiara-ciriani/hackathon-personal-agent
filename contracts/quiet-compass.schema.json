@@ -231,7 +231,7 @@
     "EvidenceLabel": {
       "type": "string",
       "enum": ["measured", "measured_crowdsourced", "reference_measured", "proxy", "unmeasured_candidate"],
-      "description": "What a city-layer record is. measured = sensor measurement (SFO monitors only: CNEL and aircraft exceedance events); measured_crowdsourced = uncalibrated phone measurements from NoiseCapture volunteers (ODbL), aggregated into ~100 m cells; reference_measured = published measurement with a citation; proxy = permit, closure or complaint/dispatch count that hints at possible noise; unmeasured_candidate = place from a city inventory that nobody has measured. Synthetic demo scores exist only in the web demo and are never served."
+      "description": "What a city-layer record is. measured = sensor measurement (SFO monitors only: CNEL and aircraft exceedance events); measured_crowdsourced = uncalibrated phone measurements from NoiseCapture volunteers (ODbL), aggregated into ~100 m cells; reference_measured = published measurement with a citation; proxy = permit, closure or complaint/dispatch count that hints at possible noise; unmeasured_candidate = place from a city inventory that nobody has measured. Synthetic walkthrough scores exist only in the web walkthrough and are never served."
     },
     "LayerPoint": {
       "type": "object",
@@ -294,8 +294,8 @@
     "AreaId": {
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9:._,-]{0,119}$",
-      "description": "Coarse place id: an organizer's indoor zone (e.g. demo-venue-courtyard) or an outdoor cell `cell:<lat>,<lon>` with 3 decimals (~100 m).",
-      "examples": ["demo-venue-courtyard", "cell:37.770,-122.420"]
+      "description": "Coarse place id: an organizer's indoor zone (e.g. sample-venue-courtyard) or an outdoor cell `cell:<lat>,<lon>` with 3 decimals (~100 m).",
+      "examples": ["sample-venue-courtyard", "cell:37.770,-122.420"]
     },
     "AreaKind": { "type": "string", "enum": ["indoor_zone", "outdoor_cell"] },
     "SharedContribution": {
@@ -333,7 +333,7 @@
             "clipping_detected": { "type": "boolean" }
           }
         },
-        "source": { "type": "string", "enum": ["device", "synthetic_demo"] }
+        "source": { "type": "string", "enum": ["device", "simulated"] }
       }
     },
     "ContributionUpload": {
@@ -403,7 +403,7 @@
         "clipped_count": { "type": "integer", "minimum": 0 },
         "age_minutes": { "type": "number", "minimum": 0 },
         "has_synthetic": { "type": "boolean" },
-        "source": { "type": "string", "enum": ["device", "synthetic_demo", "mixed"] },
+        "source": { "type": "string", "enum": ["device", "simulated", "mixed"] },
         "coverage": { "type": "string" }
       }
     },

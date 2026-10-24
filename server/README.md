@@ -31,7 +31,7 @@ The HTTP payloads and tool parameters are in [the contract](../contracts/README.
 No observations are created automatically. An empty service reports that there
 is no recording session. Fixtures in `tests/` are synthetic test data.
 
-## Host the demo on Render
+## Host on Render
 
 The root [render.yaml](../render.yaml) prepares one Python web service in Oregon,
 one worker process, a generated API token and a 1 GB persistent disk. The database
@@ -48,7 +48,7 @@ creating the service. No cloud resources are created by committing this file.
 4. Retrieve the generated `QC_API_TOKEN` from the service's environment settings.
    Configure it in the phone and the agent connector, never in Git or a chat.
 5. Register a recording session from the phone. Set `QC_ACTIVE_SESSION_ID` to that
-   session's UUID for the demo. Without it, tools select the last updated session.
+   session's UUID for this setup. Without it, tools select the last updated session.
 6. Confirm that a valid connector can list tools, an unauthorized call fails,
    and saved observations are still present after a restart.
 
@@ -59,7 +59,7 @@ does not fit this SQLite setup. The disk survives restarts; deletion of the
 service/disk is a separate operation. Before destructive operations, export a
 consistent SQLite backup using the SQLite backup API and verify restoration.
 
-This is a **single-user demo backend**. Its shared token can access every session
+This is a **single-user backend**. Its shared token can access every session
 in its database. An active-session setting selects context; it does not enforce
 user isolation. Do not connect unrelated participants to the same instance as
 though it provided private accounts. Multi-user hosting needs authenticated
@@ -127,7 +127,7 @@ Policy, enforced on the server:
   and counted in `clipped_count`. Resending an `id` is idempotent.
 - An (area, bucket, capture profile) aggregate is released only once it has
   `QC_RELEASE_MIN_CONTRIBUTIONS` distinct contributions (default 2; a one-phone
-  demo can set 1). Until then the result is `withheld`. Capture profiles are never
+  walkthrough can set 1). Until then the result is `withheld`. Capture profiles are never
   merged, and `find_suitable_places` ranks quietness only within one profile.
 - Contributions older than `QC_CONTRIBUTION_RETENTION_HOURS` (default 24) are
   deleted on every write. Aggregates are computed on read, so they expire too.
@@ -141,4 +141,4 @@ session data. Every write still requires the bearer token.
 
 These are design defaults, not an anonymity guarantee: coarse place-time data can
 still reveal patterns, and the shared token means any holder can contribute.
-Label seeded or replayed data with `source: "synthetic_demo"`.
+Label seeded or replayed data with `source: "simulated"`.

@@ -61,7 +61,7 @@ Construimos una memoria acústica y espacial consultable por agentes personales.
 1. El usuario activa una sesión de acompañamiento y autoriza los sensores necesarios.
 2. Recorre el evento. La app registra sonido, posición relativa, orientación, hora y calidad de seguimiento.
 3. Puede marcar un lugar como cómodo para descansar, conversar o trabajar.
-4. Pide: «Necesito diez minutos de tranquilidad y volver antes de las demos».
+4. Pide: «Necesito diez minutos de tranquilidad y volver antes de las presentaciones».
 5. El agente busca entre espacios conocidos y accesibles, considera la antigüedad de los datos y propone una alternativa.
 6. La app muestra el recorrido registrado de vuelta, sujeto a que siga siendo transitable.
 7. Al llegar vuelve a medir, informa cambios y permite confirmar si el lugar sirve.
@@ -177,7 +177,7 @@ Captura autorizada, extracción local de características, seguimiento espacial,
 
 ### Servicio de memoria
 
-Guarda observaciones y preferencias permitidas. Para una demo puede empezar local; un servicio remoto permite compartir información seleccionada con agentes externos.
+Guarda observaciones y preferencias permitidas. Para una simulación puede empezar local; un servicio remoto permite compartir información seleccionada con agentes externos.
 
 ### API y servidor MCP propuestos
 
@@ -211,7 +211,7 @@ Combinar compatibilidad acústica personal, antigüedad de datos, confianza, dis
 
 ## 13. MVP para Puentes
 
-Contexto tomado de la descripción del evento aportada por el usuario: personal agents para mejorar la vida en San Francisco, sprint de un día y demos presenciales. No se identificaron tracks de sponsors confirmados en ese texto; no prometer premios específicos.
+Contexto tomado de la descripción del evento aportada por el usuario: personal agents para mejorar la vida en San Francisco, sprint de un día y presentaciones presenciales. No se identificaron tracks de sponsors confirmados en ese texto; no prometer premios específicos.
 
 ### Alcance esencial
 
@@ -219,7 +219,7 @@ Un teléfono, un evento, una sesión y unos pocos espacios. Registrar ruido rela
 
 ### Capacidad experimental
 
-Dirección de llegada con FOA. Solo entra en la demo como función operativa si las pruebas la sostienen; de lo contrario se muestra claramente como investigación pendiente.
+Dirección de llegada con FOA. Solo entra en la simulación como función operativa si las pruebas la sostienen; de lo contrario se muestra claramente como investigación pendiente.
 
 ### Fuera de alcance inicial
 
@@ -240,21 +240,21 @@ Dirección de llegada con FOA. Solo entra en la demo como función operativa si 
 | Horas 3–5 | Memoria, preferencias y recomendación de puntos conocidos |
 | Horas 5–6 | Herramienta API/MCP y consulta de un agente |
 | Horas 6–8 | Pruebas acústicas y recorridos; eliminar funciones poco fiables |
-| Horas 8–10 | Demo reproducible, documentación de límites y presentación |
+| Horas 8–10 | Simulación reproducible, documentación de límites y presentación |
 
 La planificación es estimativa; no garantiza implementar audio espacial y ARKit simultáneos en ese plazo.
 
-## 14. Demo propuesta de tres minutos
+## 14. Simulación propuesta de tres minutos
 
 1. Mostrar una sesión vacía y explicar qué se está midiendo.
 2. Recorrer tres puntos con condiciones acústicas diferentes y guardar la memoria real.
 3. Marcar uno como cómodo.
-4. Pedir al agente una pausa antes de una actividad del calendario de demo.
+4. Pedir al agente una pausa antes de una actividad del calendario de ejemplo.
 5. Mostrar por qué eligió un punto: medición, hora, feedback y recorrido.
 6. Volver y comprobar condiciones.
 7. Cambiar el ruido de ese punto y mostrar que la nueva medición actualiza la recomendación.
 
-No simular mediciones como si fueran reales. Si el calendario, la disponibilidad o una fuente de ruido son preparados para la demo, decirlo. El cambio de una zona solo se conoce cuando se vuelve a medir o alguien autorizado aporta una medición.
+No simular mediciones como si fueran reales. Si el calendario, la disponibilidad o una fuente de ruido son preparados para la simulación, decirlo. El cambio de una zona solo se conoce cuando se vuelve a medir o alguien autorizado aporta una medición.
 
 ## 15. Pruebas y criterios de decisión
 
@@ -323,7 +323,7 @@ Las fuentes sustentan capacidades concretas o antecedentes. Ninguna demuestra po
 ## 20. Próximos pasos
 
 1. Confirmar qué iPhone y versión de sistema están disponibles.
-2. Probar captura FOA y seguimiento simultáneo antes de comprometer la demo.
+2. Probar captura FOA y seguimiento simultáneo antes de comprometer la simulación.
 3. Registrar tres puntos y recuperar una ruta de vuelta.
 4. Conectar una herramienta real al agente personal.
 5. Probar utilidad con participantes voluntarios y comparar con la alternativa simple.

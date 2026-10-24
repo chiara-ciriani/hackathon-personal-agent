@@ -15,14 +15,14 @@ def test_render_hostname_preserves_explicit_hosts_and_auth(tmp_path: Path) -> No
         "QC_API_TOKEN": TOKEN,
         "QC_DB_PATH": str(tmp_path / "render.db"),
         "QC_ALLOWED_HOSTS": "api.example.com",
-        "RENDER_EXTERNAL_HOSTNAME": "quiet-demo.onrender.com",
+        "RENDER_EXTERNAL_HOSTNAME": "quiet-sample.onrender.com",
     })
     assert settings.mcp_origins[-2:] == [
-        "https://api.example.com", "https://quiet-demo.onrender.com",
+        "https://api.example.com", "https://quiet-sample.onrender.com",
     ]
     assert not settings.any_host_allowed
     with TestClient(create_app(settings)) as client:
-        for host in ("quiet-demo.onrender.com", "api.example.com"):
+        for host in ("quiet-sample.onrender.com", "api.example.com"):
             headers = {**HEADERS, "Host": host}
             assert rpc(client, "tools/list", headers=headers).status_code == 200
             headers.pop("Authorization")
@@ -33,7 +33,7 @@ def test_render_hostname_preserves_explicit_hosts_and_auth(tmp_path: Path) -> No
 def test_render_hostname_is_optional_and_fly_is_preserved() -> None:
     settings = Settings.from_env({
         "QC_API_TOKEN": TOKEN,
-        "FLY_APP_NAME": "existing-demo",
+        "FLY_APP_NAME": "existing-app",
         "RENDER_EXTERNAL_HOSTNAME": " ",
     })
-    assert settings.allowed_hosts == ("existing-demo.fly.dev",)
+    assert settings.allowed_hosts == ("existing-app.fly.dev",)

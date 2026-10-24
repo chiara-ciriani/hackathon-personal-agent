@@ -1,4 +1,4 @@
-# Import this Blueprint in Render to create the private demo backend.
+# Import this Blueprint in Render to create the private backend.
 # This selects paid compute plus a persistent disk; committing it creates no resources.
 services:
   - type: web

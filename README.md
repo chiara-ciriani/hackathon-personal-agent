@@ -11,7 +11,7 @@ It was built for an SF hackathon on personal agents for everyday life. The first
 3. **The agent decides.** The Claude app, connected through a custom MCP connector, reads your calendar and the sound memory, suggests a place, and asks the phone to guide you back along the path you walked.
 
 ```
-apps/quiet-compass/  Next.js web app: SF noise map (live 311 reports plus labelled DataSF layers; violet demo scores are synthetic) and Oura integration
+apps/quiet-compass/  Next.js web app: SF noise map (live 311 reports plus labelled DataSF layers; violet simulated scores are synthetic) and Oura integration
 ios/                 SwiftUI app (QuietCompass) + QuietCore Swift package (DSP, route logic, contracts)
 server/              Starlette ingest API + MCP Python SDK + scoring + optional SF 311 city layer
 contracts/           JSON Schema shared by phone and server, plus the HTTP API and MCP tool reference
@@ -53,7 +53,7 @@ Setup and remaining validation: [wearable integration](docs/WEARABLES_AND_PHONE.
 **Agent.** Deploy the server (see `server/README.md`), add `https://<your-app>/mcp` as a custom connector in the Claude app, and paste `server/agent_instructions.md` into the project instructions.
 
 **Hosting.** The [Render Blueprint](render.yaml) prepares the Python API/MCP with
-a persistent SQLite disk for a single-user demo. The web map stays on Sites and
+a persistent SQLite disk for a single-user. The web map stays on Sites and
 audio processing stays on the iPhone. Importing the Blueprint provisions paid
 resources; this repository configuration is not evidence of a live deployment.
 See [the deployment guide](server/README.md) and
@@ -63,7 +63,7 @@ See [the deployment guide](server/README.md) and
 
 - Work on short-lived branches and open PRs into `main`. CI runs the server lint and tests and the QuietCore tests.
 - Contracts change only by agreement across tracks. Update the schema and both model files in the same PR.
-- See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for the hour-by-hour plan, the cut line and the demo script.
+- See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for the hour-by-hour plan, the cut line and the walkthrough script.
 
 ## Principles
 

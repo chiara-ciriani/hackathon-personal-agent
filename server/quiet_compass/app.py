@@ -45,7 +45,7 @@ class ExactMount:
 
 
 def mcp_path(settings: Settings) -> str:
-    """`/mcp`, or `/mcp/<secret>` when QC_MCP_PATH_SECRET is set (demo-only fallback for
+    """`/mcp`, or `/mcp/<secret>` when QC_MCP_PATH_SECRET is set (development-only fallback for
     clients that cannot send an Authorization header)."""
     return f"/mcp/{settings.mcp_path_secret}" if settings.mcp_path_secret else "/mcp"
 

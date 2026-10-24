@@ -84,15 +84,15 @@ def test_mcp_lists_shared_tools_with_annotations(client: TestClient) -> None:
 
 def test_mcp_submit_query_and_find(client: TestClient) -> None:
     for rms in (-50, -48):
-        body = contribution(rms=rms, source="synthetic_demo")
+        body = contribution(rms=rms, source="simulated")
         out = call(client, "submit_observation", **body)["structuredContent"]
     assert out["status"] == "accepted"
     sound_map = call(client, "query_sound_map", lat=LAT, lon=LON)["structuredContent"]
     [agg] = sound_map["aggregates"]
-    assert agg["source"] == "synthetic_demo" and agg["has_synthetic"] is True
+    assert agg["source"] == "simulated" and agg["has_synthetic"] is True
     found = call(client, "find_suitable_places", goal="rest", lat=LAT, lon=LON)["structuredContent"]
     assert found["no_fit"] is False
-    assert "synthetic" in found["note"]
+    assert "simulated" in found["note"]
     assert found["candidates"][0]["walk"]["source"].startswith("estimate")
 
 

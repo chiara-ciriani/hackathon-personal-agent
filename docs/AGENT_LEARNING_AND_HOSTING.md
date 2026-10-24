@@ -11,7 +11,7 @@ código recibido de `main` de lo que todavía debemos conectar y validar.
 | Recorrido y guía | iPhone, ARKit y memoria local | Integración nativa compilada; validación en dispositivo pendiente |
 | Mapa web e integración Oura existente | Sitio actual en Sites | Mantener su alojamiento; este cambio no publica el sitio |
 | API de ingestión y servidor MCP | Un servicio Python en Render | Código presente; Blueprint preparado, despliegue pendiente |
-| Observaciones, feedback y destino de guía | SQLite en disco persistente del servicio | Implementado para una instancia de demo |
+| Observaciones, feedback y destino de guía | SQLite en disco persistente del servicio | Implementado para una instancia de prueba |
 | Conversación y elección de herramientas | Agente personal conectado, inicialmente Claude | Requiere configurar el conector y probar el flujo |
 | Acciones proactivas | Futuro proceso de eventos y ejecución del agente | Pendiente; conectar MCP no activa vigilancia |
 
@@ -109,7 +109,7 @@ peticiones o cambios relevantes. Este ejecutor no está implementado.
 ## Límite de la primera instalación
 
 El backend actual usa un token compartido y selecciona una sesión activa. Es una
-instalación para una persona de demo; no hay aislamiento entre cuentas. Para
+instalación para una persona de prueba; no hay aislamiento entre cuentas. Para
 varias personas hacen falta propiedad y permisos en cada consulta, además del
 perfil persistente. El mapa web tampoco debe publicar las filas privadas de este
 servicio como si fueran agregados anónimos.

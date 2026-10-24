@@ -28,7 +28,7 @@ Pruebas: `node --test tests/*.test.mjs`. Typecheck: `npx tsc --noEmit`. OAuth re
 
 Fuentes: https://cloud.ouraring.com/docs/authentication y https://cloud.ouraring.com/v2/docs
 
-## Demo visual del agente — actualización
+## Simulación visual del agente — actualización
 
 La ruta `/` ahora es una historia interactiva centrada en el agente personal: conversación preparada, mapa SVG ficticio, cuatro etapas del recorrido y una capa colectiva simulada. `/connections` conserva la integración Oura real. No existe todavía un servidor de contribuciones, un modelo conectado, sensores activos ni garantías de anonimato. El botón de tres contribuciones modifica únicamente estado React local.
 
@@ -40,7 +40,7 @@ Primera versión: acceso restringido al evento, zonas predefinidas identificadas
 
 Contribuciones: medir localmente durante una sesión autorizada, producir resúmenes acotados, limitar aportes por participante/ventana y rechazar duplicados. La cuenta puede servir para cuotas en una capa de admisión separada; conservar tokens por evento implica seudonimización, no anonimato. Evitar perfiles de sensores tan detallados que vuelvan identificable al participante. Validar compatibilidad/calibración antes de combinar niveles absolutos; las métricas relativas de teléfonos diferentes no son automáticamente comparables.
 
-Para mostrar un agregado, exigir un mínimo configurable de participantes diferentes, usar ventanas fijas, suprimir grupos pequeños, redondear recuentos y evitar consultas arbitrarias que permitan restar agregados. El umbral de tres de la demo es ilustrativo, no una garantía de privacidad. Privacidad diferencial y agregación segura son opciones posteriores que requieren modelo de amenazas, límites de contribución y presupuesto de privacidad; no basta con añadir ruido al azar. Con poca participación, aceptar que algunas zonas no tengan datos.
+Para mostrar un agregado, exigir un mínimo configurable de participantes diferentes, usar ventanas fijas, suprimir grupos pequeños, redondear recuentos y evitar consultas arbitrarias que permitan restar agregados. El umbral de tres de la simulación es ilustrativo, no una garantía de privacidad. Privacidad diferencial y agregación segura son opciones posteriores que requieren modelo de amenazas, límites de contribución y presupuesto de privacidad; no basta con añadir ruido al azar. Con poca participación, aceptar que algunas zonas no tengan datos.
 
 Presupuesto ilustrativo externo, no precio de Sites: 50 usuarios durante 4 horas, una subida cada 2 minutos y una consulta por minuto = 6.000 subidas + 12.000 consultas = 18.000 solicitudes API antes de extras. Un resumen de 500 bytes supone 3 MB de payload de subida, sin headers/TLS. Suponiendo tres filas escritas por aporte: 18.000 escrituras base, más índices y otros registros. Consultas indexadas y agregados cacheados evitan escanear toda la tabla. No hay necesidad de mandar cada muestra a un LLM: estadísticas en el teléfono, agregación SQL, modelo solo al conversar o decidir.
 
@@ -56,9 +56,9 @@ Referencias consultadas el 24/10/2026:
 - Costos D1: https://developers.cloudflare.com/d1/platform/pricing/
 - Costos Workers: https://developers.cloudflare.com/workers/platform/pricing/
 
-## Mapa de San Francisco — demo visual
+## Mapa de San Francisco — simulación visual
 
-La portada muestra un plano esquemático de SF en blanco, negro y violeta. Los nombres de lugares son reales, pero ubicaciones aproximadas, métricas, contribuciones y antigüedad son de ejemplo. Se puede buscar, filtrar, seleccionar lugares, evaluar por reglas, guardar preferencias en memoria de sesión y simular lotes de contribuciones. La ruta `/event` conserva la demo del evento. La ruta `/connections` conserva Oura.
+La portada muestra un plano esquemático de SF en blanco, negro y violeta. Los nombres de lugares son reales, pero ubicaciones aproximadas, métricas, contribuciones y antigüedad son de ejemplo. Se puede buscar, filtrar, seleccionar lugares, evaluar por reglas, guardar preferencias en memoria de sesión y simular lotes de contribuciones. La ruta `/event` conserva la simulación del evento. La ruta `/connections` conserva Oura.
 
 ### Contrato para agentes (propuesta, no servidor MCP desplegado)
 
@@ -76,7 +76,7 @@ Instrucciones que debería contener una skill del agente:
 6. Conservar memoria personal aparte; el mapa recibe únicamente los campos del contrato permitido.
 7. Si no hay evidencia suficiente, abstenerse o sugerir verificar al llegar.
 
-La demo no realiza estas llamadas: ilustra el contrato. Una futura implementación necesita API/MCP autenticado, validación de sensores, protección de ubicación y pruebas de utilidad.
+La simulación no realiza estas llamadas: ilustra el contrato. Una futura implementación necesita API/MCP autenticado, validación de sensores, protección de ubicación y pruebas de utilidad.
 
 
 ## Mapa mínimo (actualización visual)
