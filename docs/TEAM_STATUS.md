@@ -28,7 +28,7 @@ Last updated: October 24, 2026, 16:00 PT. Update this file whenever you start or
 | Service | URL | Notes |
 | --- | --- | --- |
 | Server (REST + MCP) | https://quiet-compass-server.onrender.com (`/healthz`, `/mcp`, `/v1/...`) | Render free plan, auto-deploys from `main`. Sleeps when idle (first request is slow; open `/healthz` before demoing). Data is wiped on restart/redeploy. `QC_API_TOKEN` is in the Render dashboard; ask Chiara, never commit it. |
-| Map | (Vercel, pending) | Import the repo in Vercel with Root Directory `apps/quiet-compass`; then set `QC_MAP_ALLOWED_ORIGINS` on the server to its URL |
+| Map | https://quiet-compass-navy.vercel.app | Vercel (Chiara's account), auto-deploys from `main`. Built with `next build` via `apps/quiet-compass/vercel.json`; the Cloudflare/Sites build is unchanged. The server's `QC_MAP_ALLOWED_ORIGINS` allows this URL plus localhost:5173/3000 |
 
 ## Next up (unclaimed — put your name here before starting)
 
