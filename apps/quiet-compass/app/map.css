@@ -162,3 +162,6 @@
 .quiet-venue-btn{position:absolute;top:28px;right:160px;width:36px;height:36px;background:#fff;border:1px solid var(--map-border);border-radius:6px;z-index:800;color:#171717}
 a.quiet-icon{text-decoration:none}
 @media(max-width:600px){.quiet-venue-btn{top:20px;right:190px}}
+
+.quiet-card-none{text-transform:none;color:#737373}
+@media(max-width:600px){.quiet-venue .quiet-card{bottom:112px}}
