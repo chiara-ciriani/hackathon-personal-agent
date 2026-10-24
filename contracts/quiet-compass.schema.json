@@ -285,6 +285,138 @@
         "reference_note": { "type": "string" },
         "note": { "type": "string" }
       }
+    },
+    "AreaId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._,-]{0,119}$",
+      "description": "Coarse place id: an organizer's indoor zone (e.g. demo-venue-courtyard) or an outdoor cell `cell:<lat>,<lon>` with 3 decimals (~100 m).",
+      "examples": ["demo-venue-courtyard", "cell:37.770,-122.420"]
+    },
+    "AreaKind": { "type": "string", "enum": ["indoor_zone", "outdoor_cell"] },
+    "SharedContribution": {
+      "type": "object",
+      "description": "Shared sound layer v0.1. One consented acoustic summary. No audio, transcript, route, identity, preference or health data. The server re-rounds lat/lon to 3 decimals and floors time_bucket to 5 minutes UTC.",
+      "required": ["id", "schema_version", "area_id", "time_bucket", "duration_seconds", "measurement", "quality", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/Uuid", "description": "Client-generated; resending the same id is idempotent." },
+        "schema_version": { "const": "0.1" },
+        "area_id": { "$ref": "#/$defs/AreaId" },
+        "area_name": { "type": ["string", "null"], "maxLength": 80 },
+        "lat": { "type": ["number", "null"], "minimum": -90, "maximum": 90, "description": "Rounded to 3 decimals. Give lat and lon together or neither." },
+        "lon": { "type": ["number", "null"], "minimum": -180, "maximum": 180 },
+        "time_bucket": { "$ref": "#/$defs/Timestamp", "description": "Start of a 5-minute UTC bucket." },
+        "duration_seconds": { "type": "number", "exclusiveMinimum": 0, "description": "The server rejects values outside 5-600." },
+        "measurement": {
+          "type": "object",
+          "required": ["kind", "rms_dbfs", "frame_level_spread_db", "calibrated"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "relative_uncalibrated" },
+            "rms_dbfs": { "type": "number", "maximum": 0, "description": "Relative dBFS, never dBA. The server rejects values below -120." },
+            "frame_level_spread_db": { "type": "number", "minimum": 0, "description": "The server rejects values above 60." },
+            "peaks_per_min": { "type": ["number", "null"], "minimum": 0 },
+            "calibrated": { "const": false }
+          }
+        },
+        "quality": {
+          "type": "object",
+          "required": ["capture_profile", "clipping_detected"],
+          "additionalProperties": false,
+          "properties": {
+            "capture_profile": { "type": "string", "minLength": 1, "maxLength": 80, "description": "Device + capture configuration cohort. Levels are only compared within one profile." },
+            "clipping_detected": { "type": "boolean" }
+          }
+        },
+        "source": { "type": "string", "enum": ["device", "synthetic_demo"] }
+      }
+    },
+    "ContributionUpload": {
+      "type": "object",
+      "required": ["contract_version", "contribution"],
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": { "$ref": "#/$defs/ContractVersion" },
+        "contribution": { "$ref": "#/$defs/SharedContribution" }
+      }
+    },
+    "ContributionResult": {
+      "type": "object",
+      "required": ["status", "reason", "area_id", "time_bucket"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "type": "string", "enum": ["accepted", "withheld", "rejected"], "description": "accepted: stored and its aggregate is released; withheld: stored, cohort below the release threshold; rejected: not stored." },
+        "reason": { "type": ["string", "null"] },
+        "area_id": { "type": "string", "description": "The area the server assigned (e.g. the outdoor cell)." },
+        "time_bucket": { "$ref": "#/$defs/Timestamp" }
+      }
+    },
+    "AreaUpsert": {
+      "type": "object",
+      "description": "Body of PUT /v1/areas/{area_id}.",
+      "required": ["lat", "lon", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": ["string", "null"], "maxLength": 80 },
+        "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+        "lon": { "type": "number", "minimum": -180, "maximum": 180 },
+        "kind": { "$ref": "#/$defs/AreaKind" }
+      }
+    },
+    "Area": {
+      "type": "object",
+      "required": ["id", "name", "lat", "lon", "kind", "created_at"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/AreaId" },
+        "name": { "type": ["string", "null"] },
+        "lat": { "type": "number" },
+        "lon": { "type": "number" },
+        "kind": { "$ref": "#/$defs/AreaKind" },
+        "created_at": { "$ref": "#/$defs/Timestamp" }
+      }
+    },
+    "AreaAggregate": {
+      "type": "object",
+      "description": "A released (area, time_bucket, capture_profile) cohort. Different capture profiles are never merged.",
+      "required": ["area_id", "area_name", "lat", "lon", "area_kind", "distance_m", "time_bucket", "capture_profile", "n", "measurement_kind", "median_rms_dbfs", "median_frame_level_spread_db", "median_peaks_per_min", "clipped_count", "age_minutes", "has_synthetic", "source", "coverage"],
+      "additionalProperties": false,
+      "properties": {
+        "area_id": { "type": "string" },
+        "area_name": { "type": ["string", "null"] },
+        "lat": { "type": "number" },
+        "lon": { "type": "number" },
+        "area_kind": { "$ref": "#/$defs/AreaKind" },
+        "distance_m": { "type": "number", "minimum": 0, "description": "Straight-line distance from the query point." },
+        "time_bucket": { "$ref": "#/$defs/Timestamp" },
+        "capture_profile": { "type": "string" },
+        "n": { "type": "integer", "minimum": 1 },
+        "measurement_kind": { "const": "relative_uncalibrated" },
+        "median_rms_dbfs": { "type": "number" },
+        "median_frame_level_spread_db": { "type": "number" },
+        "median_peaks_per_min": { "type": ["number", "null"] },
+        "clipped_count": { "type": "integer", "minimum": 0 },
+        "age_minutes": { "type": "number", "minimum": 0 },
+        "has_synthetic": { "type": "boolean" },
+        "source": { "type": "string", "enum": ["device", "synthetic_demo", "mixed"] },
+        "coverage": { "type": "string" }
+      }
+    },
+    "SoundMapResponse": {
+      "type": "object",
+      "description": "GET /v1/map/aggregates and the query_sound_map tool.",
+      "required": ["generated_at", "lat", "lon", "radius_m", "since_minutes", "release_min_contributions", "aggregates", "unknown_coverage"],
+      "additionalProperties": false,
+      "properties": {
+        "generated_at": { "$ref": "#/$defs/Timestamp" },
+        "lat": { "type": "number" },
+        "lon": { "type": "number" },
+        "radius_m": { "type": "integer" },
+        "since_minutes": { "type": "integer" },
+        "release_min_contributions": { "type": "integer", "minimum": 1 },
+        "aggregates": { "type": "array", "items": { "$ref": "#/$defs/AreaAggregate" } },
+        "unknown_coverage": { "type": "string" }
+      }
     }
   }
 }

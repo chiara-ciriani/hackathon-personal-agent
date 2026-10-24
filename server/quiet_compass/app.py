@@ -21,6 +21,10 @@ from .db import Store
 from .mcp_server import Service, build_mcp
 from .settings import Settings
 from .sf_layers import SfLayers
+from .shared_api import build_shared_routes
+from .shared_db import SharedStore
+from .shared_layer import SharedLayer
+from .shared_tools import register_shared_tools
 
 
 class ExactMount:
@@ -54,6 +58,9 @@ def create_app(
     if layers is None and settings.city_layer_enabled:
         layers = SfLayers(settings.socrata_app_token)
     mcp = build_mcp(Service(store, settings, clock=store.clock), city, layers)
+    shared = SharedLayer(SharedStore(store.path, clock=store.clock), settings, clock=store.clock)
+    shared.store.migrate_shared()
+    register_shared_tools(mcp, shared)
     security = TransportSecuritySettings(
         enable_dns_rebinding_protection=not settings.any_host_allowed,
         allowed_hosts=settings.mcp_hosts,
@@ -78,6 +85,7 @@ def create_app(
     routes: list[BaseRoute] = [
         Route("/healthz", healthz, methods=["GET"]),
         *build_routes(store, settings.api_token),
+        *build_shared_routes(shared, settings),
         Route(path, ExactMount(endpoint), methods=["GET", "POST", "DELETE"]),
     ]
     if settings.mcp_path_secret:
