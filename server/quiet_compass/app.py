@@ -10,6 +10,7 @@ import contextlib
 from collections.abc import AsyncIterator
 
 import httpx2 as httpx
+from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
 from starlette.responses import Response
@@ -23,6 +24,7 @@ from .db import Store
 from .mcp_server import Service, build_mcp
 from .settings import Settings
 from .sf_layers import SfLayers
+from .shared_access import SHARED_INSTRUCTIONS
 from .shared_api import build_shared_routes
 from .shared_db import SharedStore
 from .shared_layer import SharedLayer
@@ -67,6 +69,8 @@ def create_app(
     shared = SharedLayer(SharedStore(store.path, clock=store.clock), settings, clock=store.clock)
     shared.store.migrate_shared()
     register_shared_tools(mcp, shared)
+    shared_mcp = MCPServer("quiet-compass-shared", instructions=SHARED_INSTRUCTIONS)
+    register_shared_tools(shared_mcp, shared)
     security = TransportSecuritySettings(
         enable_dns_rebinding_protection=not settings.any_host_allowed,
         allowed_hosts=settings.mcp_hosts,
@@ -82,10 +86,17 @@ def create_app(
     if not settings.mcp_path_secret:
         endpoint = BearerAuth(mcp_asgi, settings.api_token)
     path = mcp_path(settings)
+    shared_asgi = shared_mcp.streamable_http_app(
+        streamable_http_path="/", stateless_http=True, json_response=True, transport_security=security,
+    )
+    shared_endpoint: ASGIApp = (
+        BearerAuth(shared_asgi, settings.shared_api_token) if settings.shared_api_token
+        else Response("Shared agent access is not configured", status_code=503)
+    )
 
     @contextlib.asynccontextmanager
     async def lifespan(_: Starlette) -> AsyncIterator[None]:
-        async with mcp.session_manager.run():
+        async with mcp.session_manager.run(), shared_mcp.session_manager.run():
             sync_task = asyncio.create_task(wearables.sync_periodically()) if wearables.configured else None
             try:
                 yield
@@ -100,6 +111,7 @@ def create_app(
         *build_routes(store, settings.api_token),
         *build_wearable_routes(wearables, settings.api_token),
         *build_shared_routes(shared, settings),
+        Route("/mcp/shared", ExactMount(shared_endpoint), methods=["GET", "POST", "DELETE"]),
         Route(path, ExactMount(endpoint), methods=["GET", "POST", "DELETE"]),
     ]
     if settings.mcp_path_secret:

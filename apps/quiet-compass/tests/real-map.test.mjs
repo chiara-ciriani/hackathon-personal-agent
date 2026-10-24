@@ -43,7 +43,7 @@ test('public device request does not attach owner credentials',async()=>{
 test('invalid upstream URL is rejected before any request',async()=>{
  for(const url of ['http://example.com','https://name:secret@example.com','https://example.com/path'])assert.equal((await loadDeviceReadings(url,()=>{throw Error('must not run')})).state,'invalid_config');
 });
-test('real complaints remain gray context, with the source time unchanged',()=>{
+test('real complaints retain report provenance and the source time unchanged',()=>{
  const rows=[{lat:'37.77',long:'-122.43',requested_datetime:'2026-10-24T14:00:00',service_subtype:'Loud_Music'},{lat:'',long:'',requested_datetime:'x'}];
  const data=noiseReports(rows);assert.equal(data.features.length,1);
  const p=data.features[0].properties;assert.equal(p.evidence,'report');assert.equal(p.observedOn,rows[0].requested_datetime);assert.equal(p.score,undefined);assert.equal(measurementText(p),'No sound measurement');

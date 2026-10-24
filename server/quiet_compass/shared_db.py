@@ -11,10 +11,13 @@ and do not touch the personal schema's `user_version` migrations in `db.py`.
 
 from __future__ import annotations
 
+import hashlib
+import json
+import secrets
 import sqlite3
 from collections.abc import Sequence
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
 
 from .contracts import format_utc
 from .db import Store, parse_ts
@@ -46,7 +49,19 @@ CREATE TABLE IF NOT EXISTS contributions (
 );
 CREATE INDEX IF NOT EXISTS contributions_cohort ON contributions(area_id, time_bucket, capture_profile);
 CREATE INDEX IF NOT EXISTS contributions_bucket ON contributions(time_bucket);
+CREATE TABLE IF NOT EXISTS contribution_access (
+    contribution_id TEXT PRIMARY KEY REFERENCES contributions(id) ON DELETE CASCADE,
+    fingerprint TEXT NOT NULL UNIQUE,
+    receipt TEXT UNIQUE,
+    expires_at TEXT
+);
 """
+
+ACCESS_WINDOW = timedelta(minutes=15)
+
+
+class ContributionConflict(ValueError):
+    """An existing id was reused with different measurements."""
 
 
 @dataclass(frozen=True)
@@ -70,6 +85,29 @@ class StoredCohort:
     area_id: str
     time_bucket: datetime
     size: int
+    duplicate: bool = False
+    access_receipt: str | None = None
+    access_expires_at: datetime | None = None
+
+
+def fingerprint(row: ContributionRow) -> str:
+    """Hash only the normalized shared summary, never an identity or exact location."""
+    fields = asdict(row)
+    fields.pop("id")
+    fields["time_bucket"] = format_utc(row.time_bucket)
+    return hashlib.sha256(json.dumps(fields, sort_keys=True).encode()).hexdigest()
+
+
+def stored_cohort(conn: sqlite3.Connection, row: ContributionRow, duplicate: bool) -> StoredCohort:
+    grant = conn.execute(
+        "SELECT receipt, expires_at FROM contribution_access WHERE contribution_id = ?", (row.id,),
+    ).fetchone()
+    return StoredCohort(
+        row.area_id, row.time_bucket,
+        _cohort_size(conn, row.area_id, format_utc(row.time_bucket), row.capture_profile),
+        duplicate, grant["receipt"] if grant else None,
+        parse_ts(grant["expires_at"]) if grant and grant["expires_at"] else None,
+    )
 
 
 def _area(row: sqlite3.Row) -> Area:
@@ -166,11 +204,27 @@ class SharedStore(Store):
         with self._read() as conn:
             return _cohort_size(conn, area_id, format_utc(bucket), profile)
 
-    def insert_contribution(self, row: ContributionRow, max_per_cohort: int) -> StoredCohort | None:
+    def insert_contribution(
+        self, row: ContributionRow, max_per_cohort: int, *, exchange: bool = False,
+    ) -> StoredCohort | None:
         """Insert unless the cohort is full. Returns the cohort after the insert, or None
         when the rate limit refused it. A duplicate id is ignored (idempotent)."""
         bucket = format_utc(row.time_bucket)
         with self._write() as conn:
+            digest = fingerprint(row)
+            existing = conn.execute("SELECT * FROM contributions WHERE id = ?", (row.id,)).fetchone()
+            if existing:
+                original = _contribution(existing)
+                if fingerprint(original) != digest:
+                    raise ContributionConflict("contribution id already belongs to a different summary")
+                return stored_cohort(conn, original, True)
+            if exchange:
+                repeated = conn.execute(
+                    "SELECT c.* FROM contributions c JOIN contribution_access a ON a.contribution_id = c.id "
+                    "WHERE a.fingerprint = ?", (digest,),
+                ).fetchone()
+                if repeated:
+                    return stored_cohort(conn, _contribution(repeated), True)
             if _cohort_size(conn, row.area_id, bucket, row.capture_profile) >= max_per_cohort:
                 return None
             conn.execute(
@@ -184,8 +238,25 @@ class SharedStore(Store):
                     row.spread_db, row.peaks_per_min, int(row.clipping), row.duration_s, self._now(),
                 ),
             )
-            size = _cohort_size(conn, row.area_id, bucket, row.capture_profile)
-        return StoredCohort(row.area_id, row.time_bucket, size)
+            if exchange:
+                now = self.clock()
+                eligible = row.source == "device" and not row.clipping and now - ACCESS_WINDOW <= row.time_bucket <= now
+                conn.execute(
+                    "INSERT INTO contribution_access (contribution_id, fingerprint, receipt, expires_at) "
+                    "VALUES (?, ?, ?, ?)",
+                    (row.id, digest, secrets.token_urlsafe(32) if eligible else None,
+                     format_utc(now + ACCESS_WINDOW) if eligible else None),
+                )
+            return stored_cohort(conn, row, False)
+
+    def has_access(self, receipt: str | None) -> bool:
+        if not receipt or len(receipt) > 128:
+            return False
+        with self._read() as conn:
+            row = conn.execute(
+                "SELECT expires_at FROM contribution_access WHERE receipt = ?", (receipt,),
+            ).fetchone()
+        return bool(row and row["expires_at"] and parse_ts(row["expires_at"]) > self.clock())
 
     def contributions_for(self, area_ids: Sequence[str], since: datetime) -> list[ContributionRow]:
         if not area_ids:

@@ -8,7 +8,13 @@
 // CompassModel owns one instance (`model.companion`); CompassModel+Companion.swift feeds it.
 import Foundation
 import Observation
-import QuietCore
+import enum QuietCore.CaptureMode
+import struct QuietCore.DeviceProfile
+import struct QuietCore.FeatureFrame
+import protocol QuietCore.FeatureSource
+import enum QuietCore.MeasurementConfidence
+import struct QuietCore.Place
+import struct QuietCore.PoseSample
 
 /// Anything CompassModel can start and stop as its path tracker (ARKit on a device, a scripted walk in the Simulator).
 protocol PathTracking: AnyObject {
@@ -52,13 +58,15 @@ final class CompanionFeatures {
 
     private(set) var sessionMedian: Double?
     private(set) var dwell = DwellCounter.Status(placeId: nil, seconds: 0)
-    private(set) var lastObservationByPlace: [UUID: QuietCore.Observation] = [:]
+    private(set) var lastObservationByPlace: [UUID: AcousticObservation] = [:]
     private(set) var lastContributionText: String?
     private(set) var feedbackCount = 0
 
+    func noteFeedback() { feedbackCount += 1 }
+
     @ObservationIgnored private var baseline = SessionLevelBaseline()
     @ObservationIgnored private var dwellCounter = DwellCounter()
-    @ObservationIgnored private var recent: [QuietCore.Observation] = []
+    @ObservationIgnored private var recent: [AcousticObservation] = []
     @ObservationIgnored private var windowMaxFrameLevel: Double?
     @ObservationIgnored private var lastLevel: Double?
 
@@ -137,7 +145,7 @@ final class CompanionFeatures {
         return window
     }
 
-    func record(_ observation: QuietCore.Observation) {
+    func record(_ observation: AcousticObservation) {
         if let pid = observation.placeId { lastObservationByPlace[pid] = observation }
         recent.append(observation)
         let cutoff = observation.t.addingTimeInterval(-180)

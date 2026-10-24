@@ -63,6 +63,7 @@ class SharedContribution(Contract):
 class ContributionUpload(Contract):
     contract_version: ContractVersion
     contribution: SharedContribution
+    share_consent: bool = False
 
 
 class ContributionResult(Contract):
@@ -70,6 +71,9 @@ class ContributionResult(Contract):
     reason: str | None
     area_id: str
     time_bucket: Timestamp
+    access_receipt: str | None = None
+    access_expires_at: Timestamp | None = None
+    access_reason: str | None = None
 
 
 class AreaUpsert(Contract):

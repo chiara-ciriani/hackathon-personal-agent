@@ -94,4 +94,15 @@ separate from the person's private session memory.
   share. Submit only the `SharedContribution` fields: never preferences, ratings,
   routes, calendar, health or wearable data, audio or transcripts. `withheld`
   means it was stored but is not yet visible; `rejected` includes the reason.
-  Resending the same `id` is safe.
+  Set `share_consent=true` only after that permission. Resending the same `id`
+  is safe, but never renews access.
+- Before either shared read, obtain `access_receipt` from `submit_observation`.
+  A recent real device summary without clipping unlocks queries for 15 minutes,
+  even when its aggregate remains `withheld`. Pass the receipt to both
+  `query_sound_map` and `find_suitable_places`; use `access_expires_at` as the
+  deadline. After `contribution_required`, ask for a new voluntary measurement.
+  Simulated summaries never grant access. Do not invent measurements or silently
+  enable sensors to satisfy this rule. Private health and routes are never currency.
+- External agents must use `/mcp/shared` with the separate shared credential.
+  The owner's `/mcp` includes private tools and must never be distributed to them.
+  Private context reads do not require a shared contribution.

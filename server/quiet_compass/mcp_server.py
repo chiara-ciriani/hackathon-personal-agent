@@ -36,7 +36,9 @@ INSTRUCTIONS = (
     "Quiet Compass remembers relative sound levels (dBFS, not dBA) the user's phone "
     "measured at places in this venue. Call quiet_get_context before recommending, always "
     "state how old a measurement is, never call an unmeasured place quiet, and call "
-    "quiet_start_guidance only after the user agrees."
+    "quiet_start_guidance only after the user agrees. Shared query_sound_map and find_suitable_places "
+    "require access_receipt from a consented submit_observation, valid for 15 minutes. Never "
+    "invent a measurement or share private health/routes to obtain access."
 )
 
 
@@ -675,8 +677,10 @@ def build_mcp(
             evidence=unmeasured_candidate, source=seed (parks can be loud too).
             Nobody measured their sound; never call them quiet, mention
             hours must be checked. entertainment_permits, night_noise_permits (today or
-            tomorrow) and street_closures (in effect now): evidence=proxy, they hint that
-            something may be loud, they are not levels. sfo_cnel: the nearest SFO
+            tomorrow), street_closures (in effect now) and street_work_permits (excavation,
+            boring, street or sewer work permitted today; permits span weeks, so work may
+            not be happening right now): evidence=proxy, they hint that something may be
+            loud, they are not levels. sfo_cnel: the nearest SFO
             community noise monitors, evidence=measured, daily CNEL in A-weighted dB at the
             monitor (not at the point, not live; see observed_on and distance_m).
             sfo_events: per SFO monitor, count / median / max of aircraft noise exceedance

@@ -24,6 +24,7 @@ test('disabled, old and offline servers never appear available',async()=>{
   assert.equal((await exchangeStatus('https://api.example',async()=>Response.json(data))).state,state);
  }
  assert.equal((await exchangeStatus('https://api.example',async()=>{throw Error('offline')})).state,'unavailable');
+ assert.equal((await exchangeStatus('https://api.example',async()=>new Response(null,{status:404}))).state,'incompatible');
 });
 test('setup exposes only shared tools and placeholder credential',()=>{
  const guide=connectionGuide('https://api.example/mcp/shared');

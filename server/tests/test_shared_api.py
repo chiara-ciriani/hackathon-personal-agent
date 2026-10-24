@@ -17,7 +17,8 @@ MAP_QUERY = {"lat": LAT, "lon": LON, "radius_m": 500, "since_minutes": 60}
 
 
 def post(client: TestClient, body: dict[str, Any], headers: dict[str, str] = AUTH) -> Any:
-    return client.post("/v1/contributions", json={"contract_version": 1, "contribution": body}, headers=headers)
+    return client.post("/v1/contributions",
+                       json={"contract_version": 1, "contribution": body, "share_consent": True}, headers=headers)
 
 
 def test_contribution_requires_token(client: TestClient) -> None:
@@ -29,12 +30,13 @@ def test_contribution_requires_token(client: TestClient) -> None:
 def test_contribution_flow_withheld_then_released(client: TestClient) -> None:
     first = post(client, contribution())
     assert first.status_code == 200
+    headers = {**AUTH, "X-QC-Access-Receipt": first.json()["access_receipt"]}
     assert first.json()["status"] == "withheld"
     assert first.json()["area_id"] == "cell:37.770,-122.420"
     assert first.json()["time_bucket"].endswith(":55:00.000Z")
-    assert client.get("/v1/map/aggregates", params=MAP_QUERY).json()["aggregates"] == []
+    assert client.get("/v1/map/aggregates", params=MAP_QUERY, headers=headers).json()["aggregates"] == []
     assert post(client, contribution(rms=-44)).json()["status"] == "accepted"
-    released = client.get("/v1/map/aggregates", params=MAP_QUERY)
+    released = client.get("/v1/map/aggregates", params=MAP_QUERY, headers=headers)
     assert released.status_code == 200
     [agg] = released.json()["aggregates"]
     assert agg["n"] == 2 and agg["measurement_kind"] == "relative_uncalibrated"
@@ -58,19 +60,20 @@ def test_put_area_then_contribute_without_coords(client: TestClient) -> None:
                       headers=AUTH).status_code == 422
 
 
-def test_map_is_public_with_cors(client: TestClient) -> None:
+def test_map_requires_contribution_with_cors(client: TestClient) -> None:
     origin = {"Origin": "https://map.example"}
     r = client.get("/v1/map/aggregates", params=MAP_QUERY, headers=origin)
-    assert r.status_code == 200
+    assert r.status_code == 401
     assert r.headers["access-control-allow-origin"] == "*"
     preflight = client.options("/v1/map/aggregates", headers={**origin, "Access-Control-Request-Method": "GET"})
     assert preflight.status_code == 200
 
 
 def test_map_query_validation(client: TestClient) -> None:
-    assert client.get("/v1/map/aggregates", params={"lon": LON}).status_code == 422
-    assert client.get("/v1/map/aggregates", params={**MAP_QUERY, "radius_m": 99999}).status_code == 422
-    assert client.get("/v1/map/aggregates", params={**MAP_QUERY, "lat": "north"}).status_code == 422
+    headers = {**AUTH, "X-QC-Access-Receipt": post(client, contribution()).json()["access_receipt"]}
+    assert client.get("/v1/map/aggregates", params={"lon": LON}, headers=headers).status_code == 422
+    assert client.get("/v1/map/aggregates", params={**MAP_QUERY, "radius_m": 99999}, headers=headers).status_code == 422
+    assert client.get("/v1/map/aggregates", params={**MAP_QUERY, "lat": "north"}, headers=headers).status_code == 422
 
 
 def test_mcp_lists_shared_tools_with_annotations(client: TestClient) -> None:
@@ -83,25 +86,29 @@ def test_mcp_lists_shared_tools_with_annotations(client: TestClient) -> None:
 
 
 def test_mcp_submit_query_and_find(client: TestClient) -> None:
+    receipt = post(client, contribution(lat=0, lon=0)).json()["access_receipt"]
     for rms in (-50, -48):
         body = contribution(rms=rms, source="simulated")
-        out = call(client, "submit_observation", **body)["structuredContent"]
+        out = call(client, "submit_observation", share_consent=True, **body)["structuredContent"]
     assert out["status"] == "accepted"
-    sound_map = call(client, "query_sound_map", lat=LAT, lon=LON)["structuredContent"]
+    sound_map = call(client, "query_sound_map", lat=LAT, lon=LON, access_receipt=receipt)["structuredContent"]
     [agg] = sound_map["aggregates"]
     assert agg["source"] == "simulated" and agg["has_synthetic"] is True
-    found = call(client, "find_suitable_places", goal="rest", lat=LAT, lon=LON)["structuredContent"]
+    found = call(client, "find_suitable_places", goal="rest", lat=LAT, lon=LON,
+                 access_receipt=receipt)["structuredContent"]
     assert found["no_fit"] is False
     assert "simulated" in found["note"]
     assert found["candidates"][0]["walk"]["source"].startswith("estimate")
 
 
 def test_mcp_find_no_fit_and_bad_submit(client: TestClient) -> None:
-    found = call(client, "find_suitable_places", goal="talk", lat=LAT, lon=LON)["structuredContent"]
+    receipt = post(client, contribution(lat=0, lon=0)).json()["access_receipt"]
+    found = call(client, "find_suitable_places", goal="talk", lat=LAT, lon=LON,
+                 access_receipt=receipt)["structuredContent"]
     assert found["no_fit"] is True and found["reason"]
     bad = call(client, "submit_observation", **{**contribution(), "id": uid(), "lat": LAT, "lon": None})
     assert bad["isError"] is True
-    rejected = call(client, "submit_observation", **contribution(duration=2))["structuredContent"]
+    rejected = call(client, "submit_observation", share_consent=True, **contribution(duration=2))["structuredContent"]
     assert rejected["status"] == "rejected"
 
 
@@ -114,9 +121,11 @@ def test_responses_match_json_schema(client: TestClient) -> None:
 
     body = contribution()
     check("SharedContribution", body)
-    check("ContributionResult", post(client, body).json())
+    first = post(client, body).json()
+    headers = {**AUTH, "X-QC-Access-Receipt": first["access_receipt"]}
+    check("ContributionResult", first)
     check("ContributionResult", post(client, contribution(rms=-44)).json())
-    check("SoundMapResponse", client.get("/v1/map/aggregates", params=MAP_QUERY).json())
+    check("SoundMapResponse", client.get("/v1/map/aggregates", params=MAP_QUERY, headers=headers).json())
     area = client.put("/v1/areas/zone-a", json={"name": "A", "lat": LAT, "lon": LON, "kind": "indoor_zone"},
                       headers=AUTH)
     check("Area", area.json())

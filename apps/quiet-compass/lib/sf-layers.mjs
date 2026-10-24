@@ -4,7 +4,7 @@
 // crowdsourced, uncalibrated phone measurements. Nothing here is a reading from this app's phone.
 // Dataset ids were checked against the live Socrata API on 2026-10-24.
 export const BASE='https://data.sf.gov/resource';
-export const DATASETS={popos:'65ik-7wqd',libraries:'fhhu-wqa7',entertainment:'86e8-rfem',nightNoise:'e7pr-36bt',closures:'8x25-yybr',sfo:'qxw2-ncq3',sfoEvents:'tiju-qyvs',parks:'gtr9-ntp6',cad:'2zdj-bwza'};
+export const DATASETS={popos:'65ik-7wqd',libraries:'fhhu-wqa7',entertainment:'86e8-rfem',nightNoise:'e7pr-36bt',closures:'8x25-yybr',streetWork:'x8nh-xzn6',sfo:'qxw2-ncq3',sfoEvents:'tiju-qyvs',parks:'gtr9-ntp6',cad:'2zdj-bwza'};
 export const NOISECAPTURE_URL='/data/noisecapture-sf.json';
 export const PARK_TYPES=['Neighborhood Park or Playground','Mini Park','Regional Park','Civic Plaza or Square','Parkway','Community Garden'];
 export const CAVEATS={
@@ -12,6 +12,7 @@ export const CAVEATS={
  entertainment:'Active entertainment permit: a proxy for possible amplified sound, not a level.',
  nightNoise:'Night-work permit scheduled today or tomorrow: a proxy for temporary noise, not a level.',
  closure:'SFMTA street closure in effect now: a proxy, not a sound level.',
+ streetWork:'Public Works permit for excavation, boring, street or sewer work, valid today. Permits often span weeks or months, so work may not be happening right now: a proxy for possible daytime construction noise, not a level.',
  sfoEvents:'Aircraft noise exceedance events at an SFO monitor (max level in dBA per event, last 365 days). Only events above that monitor\'s own threshold are published, so this is the loud events, not the typical level. Measured at the monitor, published monthly; read it with its date. The portal declares no license for this dataset.',
  park:'Unmeasured candidate from a city inventory. Nobody has measured its sound; parks and play areas can be busy and loud at times.',
  cad:'Closed police dispatches classified NOISE NUISANCE at this published (masked) intersection, last 30 days: complaints, not measurements.',
@@ -62,6 +63,16 @@ export function parseNightNoise(row,now){
  if(Number(end.slice(0,4))>2100||start>tomorrow||end<today)return null; // the source has bogus far-future end dates
  const detail=[row.type_of_work,`${start} to ${end}`,row.start_end_time_each_day].filter(Boolean).join(' · ');
  return feature(c,{evidence:'proxy',kind:'Night-work permit',label:String(row.address||'Night work permit'),detail,caveat:CAVEATS.nightNoise,dataset:DATASETS.nightNoise});
+}
+// Street-use permit types that mean digging or heavy street work. NightNoise is left out: e7pr-36bt covers night work.
+export const STREET_WORK_TYPES={Excavation:'Excavation',ExcStreet:'Street excavation',Boring:'Boring',StrtImprov:'Street improvement',SideSewer:'Sewer work'};
+export function parseStreetWork(row,now){
+ const c=fromPoint({point:row.location}),kind=STREET_WORK_TYPES[row.permit_type];
+ const start=String(row.permit_start_date||'').slice(0,10),end=String(row.permit_end_date||'').slice(0,10),today=localDate(now);
+ if(!c||!kind||!start||!end||start>today||end<today)return null;
+ const street=String(row.streetname||'').trim(),crosses=[row.cross_street_1,row.cross_street_2].filter(Boolean).map(x=>String(x).trim());
+ const label=street?(crosses.length===2?`${street} between ${crosses[0]} and ${crosses[1]}`:crosses.length?`${street} at ${crosses[0]}`:street):'Street work';
+ return feature(c,{evidence:'proxy',kind:'Street work permit',label,detail:`${kind} · until ${end}`,caveat:CAVEATS.streetWork,dataset:DATASETS.streetWork});
 }
 export function parseClosure(row){
  const coords=row?.shape?.coordinates;if(!Array.isArray(coords)||!coords.length)return null;
@@ -159,14 +170,15 @@ export async function loadSfLayers(fetchFn=(url)=>fetch(url,{cache:'no-store',si
    return collection([...ok(popos,parsePopos),...ok(libs,parseLibrary),...ok(parks,parsePark)]);
   },
   proxies:async()=>{
-   const [ent,night,closures]=await Promise.allSettled([
+   const [ent,night,closures,work]=await Promise.allSettled([
     rows(fetchFn,'entertainment',{$select:'dba_name,license_type,point',$where:"permit_status='Active' AND point IS NOT NULL",$limit:'2000'}),
     rows(fetchFn,'nightNoise',{$select:'nnp,type_of_work,start_date,end_date,start_end_time_each_day,address,point',$where:`start_date <= '${tomorrow}T23:59:59' AND end_date >= '${today}T00:00:00' AND point IS NOT NULL`,$limit:'1000'}),
-    rows(fetchFn,'closures',{$select:'type,loc_desc,street,veh_imp,shape',$where:`status='Permitted' AND start_utc <= '${utc}' AND end_utc >= '${utc}'`,$limit:'1000'})]);
-   if([ent,night,closures].every(x=>x.status==='rejected'))throw new Error('all proxy datasets failed');
-   [['entertainment',ent],['nightNoise',night],['closures',closures]].forEach(([n,x])=>{if(x.status==='rejected')partial.push(n)});
+    rows(fetchFn,'closures',{$select:'type,loc_desc,street,veh_imp,shape',$where:`status='Permitted' AND start_utc <= '${utc}' AND end_utc >= '${utc}'`,$limit:'1000'}),
+    rows(fetchFn,'streetWork',{$select:'permit_type,streetname,cross_street_1,cross_street_2,permit_start_date,permit_end_date,location',$where:`permit_type in(${Object.keys(STREET_WORK_TYPES).map(t=>`'${t}'`).join(',')}) AND permit_start_date <= '${today}T23:59:59' AND permit_end_date >= '${today}T00:00:00' AND location IS NOT NULL`,$limit:'6000'})]);
+   if([ent,night,closures,work].every(x=>x.status==='rejected'))throw new Error('all proxy datasets failed');
+   [['entertainment',ent],['nightNoise',night],['closures',closures],['streetWork',work]].forEach(([n,x])=>{if(x.status==='rejected')partial.push(n)});
    const ok=(x,f)=>x.status==='fulfilled'?x.value.map(f):[];
-   return collection([...ok(ent,parseEntertainment),...ok(night,r=>parseNightNoise(r,now)),...ok(closures,parseClosure)]);
+   return collection([...ok(ent,parseEntertainment),...ok(night,r=>parseNightNoise(r,now)),...ok(closures,parseClosure),...ok(work,r=>parseStreetWork(r,now))]);
   },
   measured:async()=>collection(latestSfoMonitors(await rows(fetchFn,'sfo',{$select:'date,location_id,latitude,longitude,aircraft_cnel,community_cnel,total_cnel',$where:`location='San Francisco' AND date >= '${since}'`,$order:'date DESC',$limit:'2000'}))),
   sfoEvents:async()=>{

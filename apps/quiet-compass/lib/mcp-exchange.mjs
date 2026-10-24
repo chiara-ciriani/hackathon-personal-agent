@@ -36,6 +36,7 @@ export async function exchangeStatus(origin, fetcher = fetch) {
     const response = await fetcher(`${base.origin}/v1/exchange/status`, {
       cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(5000),
     });
+    if (response.status === 404) return {state: 'incompatible', endpoint: null};
     if (!response.ok) return {state: 'unavailable', endpoint: null};
     const data = await response.json();
     if (data.protocol !== 'contribution-window-v1' || data.access_window_seconds !== 900 ||

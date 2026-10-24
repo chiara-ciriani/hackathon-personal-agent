@@ -18,6 +18,7 @@ from pydantic import ValidationError
 
 from .contracts import Goal, format_utc
 from .mcp_server import Lean
+from .shared_access import ContributionRequired, require_access
 from .shared_contracts import (
     AreaId,
     ContributionQuality,
@@ -137,8 +138,16 @@ def _contribution(**fields: object) -> SharedContribution:
 def register_shared_tools(mcp: MCPServer, layer: SharedLayer) -> None:
     """Add the three shared-layer tools to an MCP server."""
 
+    def check_access(receipt: str | None) -> None:
+        try:
+            require_access(layer.store, receipt)
+        except ContributionRequired as exc:
+            raise ToolError(str(exc)) from exc
+
     @mcp.tool(annotations=ToolAnnotations(title="Shared sound map", readOnlyHint=True, openWorldHint=False))
-    def query_sound_map(lat: float, lon: float, radius_m: int = 500, since_minutes: int = 60) -> SoundMapResponse:
+    def query_sound_map(
+        lat: float, lon: float, radius_m: int = 500, since_minutes: int = 60, access_receipt: str | None = None,
+    ) -> SoundMapResponse:
         """Released shared sound aggregates near a point (radius_m 50-5000, since_minutes 5-1440).
 
         Each aggregate is one (area, 5-minute time bucket, capture_profile) cohort with n
@@ -146,7 +155,11 @@ def register_shared_tools(mcp: MCPServer, layer: SharedLayer) -> None:
         peaks per minute, age_minutes, source (device, simulated or mixed), coverage
         and clipping count. Only compare levels that share a capture_profile. Areas not
         listed are unknown, not quiet; sparse cohorts are withheld by policy.
+        Requires access_receipt from submit_observation, valid for 15 minutes after contribution.
         """
+        check_access(access_receipt)
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            raise ToolError("Use valid latitude and longitude.")
         if not (50 <= radius_m <= 5000 and 5 <= since_minutes <= 1440):
             raise ToolError("Use radius_m between 50 and 5000 and since_minutes between 5 and 1440.")
         return layer.sound_map(lat, lon, radius_m, since_minutes)
@@ -162,6 +175,7 @@ def register_shared_tools(mcp: MCPServer, layer: SharedLayer) -> None:
         max_walk_minutes: int = 10,
         return_by: datetime | None = None,
         max_age_minutes: int = 30,
+        access_receipt: str | None = None,
     ) -> SuitablePlaces:
         """Candidate areas from the shared map for a goal (talk, rest or work) near lat/lon.
 
@@ -171,7 +185,11 @@ def register_shared_tools(mcp: MCPServer, layer: SharedLayer) -> None:
         (no navigation). With return_by (ISO 8601 with offset), candidates whose round
         trip does not fit are dropped. Returns no_fit with a reason when nothing
         qualifies. Apply the user's personal preferences yourself; do not send them here.
+        Requires access_receipt from submit_observation, valid for 15 minutes after contribution.
         """
+        check_access(access_receipt)
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            raise ToolError("Use valid latitude and longitude.")
         if not (1 <= max_walk_minutes <= 60 and 5 <= max_age_minutes <= 1440):
             raise ToolError("Use max_walk_minutes between 1 and 60 and max_age_minutes between 5 and 1440.")
         return find_suitable_places(layer, goal, lat, lon, max_walk_minutes, return_by, max_age_minutes)
@@ -194,6 +212,7 @@ def register_shared_tools(mcp: MCPServer, layer: SharedLayer) -> None:
         area_name: str | None = None,
         lat: float | None = None,
         lon: float | None = None,
+        share_consent: bool = False,
     ) -> ContributionResult:
         """Contribute one consented acoustic summary (SharedContribution) to the shared map.
 
@@ -204,10 +223,13 @@ def register_shared_tools(mcp: MCPServer, layer: SharedLayer) -> None:
         withheld (stored, waiting for more contributions) or rejected (with reason).
         Resending the same id is harmless. Use source simulated for anything not
         measured by a real device.
+        Set share_consent=true only with explicit permission. A fresh device summary without
+        clipping returns access_receipt and access_expires_at for 15 minutes of shared queries,
+        including when status=withheld. Duplicate summaries never renew that deadline.
         """
         contribution = _contribution(
             id=id, schema_version=schema_version, area_id=area_id, area_name=area_name, lat=lat, lon=lon,
             time_bucket=time_bucket, duration_seconds=duration_seconds,
             measurement=measurement.model_dump(), quality=quality.model_dump(), source=source,
         )
-        return layer.submit(contribution)
+        return layer.submit_shared(contribution, share_consent)

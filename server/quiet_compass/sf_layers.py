@@ -15,7 +15,8 @@ Evidence labels, from strongest to weakest:
 Datasets (verified against the live Socrata API on 2026-10-24, see ``contracts/README.md``):
 POPOS ``65ik-7wqd``, libraries ``fhhu-wqa7``, SFO aircraft noise climates ``qxw2-ncq3``, active
 entertainment permits ``86e8-rfem``, night noise permits ``e7pr-36bt``, temporary street
-closures ``8x25-yybr``, SFO noise exceedance events ``tiju-qyvs`` (license not declared on the portal),
+closures ``8x25-yybr``, active street-use permits ``x8nh-xzn6`` (excavation, boring, street and sewer work),
+SFO noise exceedance events ``tiju-qyvs`` (license not declared on the portal),
 Recreation and Parks Properties ``gtr9-ntp6``, CAD dispatched calls ``2zdj-bwza`` (NOISE NUISANCE, masked
 intersections as published). Nothing here returns free text from citizens or exact complaint
 coordinates. Network access is injectable (``client``) and results are cached in memory.
@@ -38,12 +39,12 @@ from .city import CityDataError, haversine_m, sf_local_naive
 
 BASE = "https://data.sf.gov/resource"
 LayerName = Literal[
-    "quiet_candidates", "entertainment_permits", "night_noise_permits", "street_closures", "sfo_cnel",
-    "sfo_events", "cad_noise_calls", "noisecapture",
+    "quiet_candidates", "entertainment_permits", "night_noise_permits", "street_closures",
+    "street_work_permits", "sfo_cnel", "sfo_events", "cad_noise_calls", "noisecapture",
 ]
 ALL_LAYERS: tuple[LayerName, ...] = (
-    "quiet_candidates", "entertainment_permits", "night_noise_permits", "street_closures", "sfo_cnel",
-    "sfo_events", "cad_noise_calls", "noisecapture",
+    "quiet_candidates", "entertainment_permits", "night_noise_permits", "street_closures",
+    "street_work_permits", "sfo_cnel", "sfo_events", "cad_noise_calls", "noisecapture",
 )
 NOISECAPTURE_FILE = Path(__file__).parent / "data" / "noisecapture_sf_cells.json"
 
@@ -53,6 +54,7 @@ DATASETS: dict[str, str] = {
     "entertainment": "86e8-rfem",
     "night_noise": "e7pr-36bt",
     "closures": "8x25-yybr",
+    "street_work": "x8nh-xzn6",
     "sfo": "qxw2-ncq3",
     "sfo_events": "tiju-qyvs",
     "parks": "gtr9-ntp6",
@@ -71,6 +73,11 @@ CAVEATS: dict[str, str] = {
         "Night-work permit scheduled today or tomorrow (SF local date); a proxy for temporary noise, not a level"
     ),
     "street_closures": "SFMTA street closure in effect now (event or traffic change); a proxy, not a sound level",
+    "street_work_permits": (
+        "Public Works street-use permit for excavation, boring, street or sewer work, valid today (SF local date). "
+        "Permits often span weeks or months, so work may not be happening right now; a proxy for possible "
+        "daytime construction noise, not a level"
+    ),
     "sfo_cnel": (
         "Daily CNEL (A-weighted dB, 24 h) from an SFO community noise monitor, published monthly; "
         "measured at the monitor, not at your spot, and not live"
@@ -104,6 +111,7 @@ CACHE_TTL = {
     "entertainment_permits": timedelta(hours=6),
     "night_noise_permits": timedelta(minutes=15),
     "street_closures": timedelta(minutes=15),
+    "street_work_permits": timedelta(hours=6),
     "sfo_cnel": timedelta(hours=6),
     "sfo_events": timedelta(hours=6),
     "cad_noise_calls": timedelta(hours=1),
@@ -115,6 +123,12 @@ SFO_LOOKBACK_DAYS = 120
 SFO_MAX_DISTANCE_M = 5000
 SFO_MAX_MONITORS = 2
 EXCLUDED_NNP_STATUS = {"DENIED", "WITHDRAWN", "PENDING"}
+# Street-use permit types that mean digging or heavy street work. NightNoise is left out: night work already
+# comes from e7pr-36bt.
+STREET_WORK_TYPES = {
+    "Excavation": "Excavation", "ExcStreet": "Street excavation", "Boring": "Boring",
+    "StrtImprov": "Street improvement", "SideSewer": "Sewer work",
+}
 
 
 @dataclass(frozen=True)
@@ -281,6 +295,24 @@ def parse_night_noise(row: dict[str, Any], today: datetime) -> LayerPoint | None
     return LayerPoint(
         "night_noise_permits", "night_noise_permit", str(row.get("address") or "Night work permit").strip(),
         coords[0], coords[1], "proxy", CAVEATS["night_noise_permits"], DATASETS["night_noise"], detail=detail,
+    )
+
+
+def parse_street_work(row: dict[str, Any], today: datetime) -> LayerPoint | None:
+    coords = _point_coords(row, "location")
+    kind = STREET_WORK_TYPES.get(str(row.get("permit_type") or ""))
+    start, end = _parse_local_date(row.get("permit_start_date")), _parse_local_date(row.get("permit_end_date"))
+    if coords is None or kind is None or start is None or end is None:
+        return None
+    if not (start.date() <= today.date() <= end.date()):
+        return None
+    street = str(row.get("streetname") or "").strip()
+    crosses = " and ".join(str(row[k]).strip() for k in ("cross_street_1", "cross_street_2") if row.get(k))
+    label = f"{street} between {crosses}" if street and " and " in crosses else (
+        f"{street} at {crosses}" if street and crosses else street or "Street work")
+    return LayerPoint(
+        "street_work_permits", "street_work_permit", label, coords[0], coords[1], "proxy",
+        CAVEATS["street_work_permits"], DATASETS["street_work"], detail=f"{kind}; until {end.date()}",
     )
 
 
@@ -492,6 +524,19 @@ class SfLayers:
                 "$where": f"status='Permitted' AND start_utc <= '{utc}' AND end_utc >= '{utc}'", "$limit": "1000",
             })
             return [p for r in rows if (p := parse_closure(r))]
+        if layer == "street_work_permits":
+            today = today_local.date().isoformat()
+            rows = self._get("street_work", {
+                "$select": "permit_type,streetname,cross_street_1,cross_street_2,permit_start_date,"
+                           "permit_end_date,location",
+                "$where": (
+                    "permit_type in(" + ",".join(f"'{t}'" for t in STREET_WORK_TYPES) + ") "
+                    f"AND permit_start_date <= '{today}T23:59:59' AND permit_end_date >= '{today}T00:00:00' "
+                    "AND location IS NOT NULL"
+                ),
+                "$limit": "6000",
+            })
+            return [p for r in rows if (p := parse_street_work(r, today_local))]
         if layer == "sfo_cnel":
             since = (now - timedelta(days=SFO_LOOKBACK_DAYS)).astimezone(UTC).date().isoformat()
             rows = self._get("sfo", {
@@ -576,5 +621,5 @@ def _with_distance(p: LayerPoint, meters: float) -> LayerPoint:
 __all__ = [
     "ALL_LAYERS", "CAVEATS", "DATASETS", "REFERENCE_LEVELS", "REFERENCE_NOTE",
     "LayerPoint", "LayerSummary", "ReferenceLevel", "SfLayers", "cad_noise_areas", "latest_sfo_monitors",
-    "noisecapture_cells", "parse_park", "sfo_event_monitors",
+    "noisecapture_cells", "parse_park", "parse_street_work", "sfo_event_monitors",
 ]

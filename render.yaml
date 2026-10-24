@@ -22,6 +22,8 @@ services:
         value: 3.12.13
       - key: QC_API_TOKEN
         generateValue: true
+      - key: QC_SHARED_API_TOKEN
+        generateValue: true
       - key: QC_ENCRYPTION_KEY
         generateValue: true
       - key: QC_DB_PATH
