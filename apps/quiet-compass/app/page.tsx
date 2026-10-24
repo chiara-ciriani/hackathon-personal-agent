@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
-import {Check,Compass,Copy,Layers,Plug,Users,Minus,Plus,RotateCcw,X} from 'lucide-react';
+import {Building2,Check,Compass,Copy,Layers,Plug,Users,Minus,Plus,RotateCcw,X} from 'lucide-react';
 import type {StyleSpecification} from 'maplibre-gl';
 import 'ol/ol.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -194,6 +194,7 @@ export default function CityMap(){
    <div className="quiet-card-bar" role="img" aria-label={'Simulated level '+Math.round(points[selected].score*100)+' out of 100'}><span style={{width:Math.round(points[selected].score*100)+'%'}}/></div>
    <button className="quiet-share" disabled={shared.includes(selected)} onClick={()=>{setShared(a=>[...a,selected]);addEntry(selected)}}>{shared.includes(selected)?<><Check size={14}/>Sent</>:'Add observation'}</button>
   </aside>}
+  <a className="quiet-venue-btn quiet-icon" href="/venue" title="Event venue in 3D" aria-label="Event venue in 3D"><Building2 size={18} strokeWidth={1.5}/></a>
   <button className="quiet-history-btn quiet-icon" aria-label="Open agent contributions" title="Agent contributions" aria-expanded={hist} onClick={()=>setHist(v=>!v)}><Users size={18} strokeWidth={1.5}/></button>
   {hist&&<aside className="quiet-history" aria-label="Agent contributions">
    <div className="quiet-history-head"><strong>Contributions</strong><button className="quiet-icon" aria-label="Close contributions" onClick={()=>setHist(false)}><X size={16}/></button></div>
