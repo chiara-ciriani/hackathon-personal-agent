@@ -168,3 +168,9 @@ a.quiet-icon{text-decoration:none}
 .quiet-card-none{text-transform:none;color:#737373}
 @media(max-width:600px){.quiet-venue .quiet-card{bottom:112px}}
 @media(max-width:600px){.quiet-note{bottom:100px;left:17px}}
+
+.quiet-open{text-decoration:none}
+a.quiet-share{box-sizing:border-box}
+
+.quiet-venue-title{position:absolute;left:84px;top:36px;z-index:800;font:600 14px/20px Geist,Arial,sans-serif;color:#171717;letter-spacing:-.2px}
+@media(max-width:600px){.quiet-venue-title{left:70px;top:30px;font-size:13px}}
