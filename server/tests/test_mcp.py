@@ -20,6 +20,7 @@ TOOLS = {
     "quiet_get_context", "quiet_find_space", "quiet_start_guidance", "quiet_record_feedback",
     "quiet_get_personal_context",
 }
+TOOLS |= {"query_sound_map", "find_suitable_places", "submit_observation"}  # shared sound layer
 
 
 def rpc(client: TestClient, method: str, params: dict[str, Any] | None = None,

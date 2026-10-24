@@ -162,6 +162,10 @@ def test_health_upload_auth_dates_units_and_delete(rig):
     assert client.put("/v1/wearables/apple-health", json=health(), headers=AUTH).status_code == 200
     context = call(client, "quiet_get_personal_context")["structuredContent"]
     assert context["sources"]["apple_health"]["metrics"][0]["name"] == "hrv_sdnn_ms"
+    public_map = client.get("/v1/map/aggregates", params={"lat": 37.78, "lon": -122.42})
+    assert public_map.status_code == 200
+    assert public_map.json()["aggregates"] == []
+    assert "hrv_sdnn_ms" not in public_map.text
     bad = health()
     bad["metrics"][0]["unit"] = "bpm"
     assert client.put("/v1/wearables/apple-health", json=bad, headers=AUTH).status_code == 422

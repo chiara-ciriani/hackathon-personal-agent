@@ -30,6 +30,16 @@ def _optional(value: str | None) -> str | None:
     return value or None
 
 
+def _number[NumberT: (int, float)](value: str | None, default: NumberT, kind: type[NumberT]) -> NumberT:
+    value = (value or "").strip()
+    if not value:
+        return default
+    try:
+        return kind(value)
+    except ValueError as exc:
+        raise SettingsError(f"expected a number, got {value!r}") from exc
+
+
 @dataclass(frozen=True)
 class Settings:
     """Service settings. Build with `Settings.from_env()` or directly in tests."""
@@ -45,6 +55,9 @@ class Settings:
     encryption_key: str | None = field(default=None, repr=False)
     oura_client_id: str | None = None
     oura_client_secret: str | None = field(default=None, repr=False)
+    release_min_contributions: int = 2
+    contribution_retention_hours: float = 24.0
+    map_allowed_origins: tuple[str, ...] = ("*",)
 
     def __post_init__(self) -> None:
         if not self.api_token:
@@ -66,6 +79,10 @@ class Settings:
             len(self.mcp_path_secret) < 16 or not self.mcp_path_secret.isalnum()
         ):
             raise SettingsError("QC_MCP_PATH_SECRET must be at least 16 letters or digits")
+        if self.release_min_contributions < 1:
+            raise SettingsError("QC_RELEASE_MIN_CONTRIBUTIONS must be at least 1")
+        if self.contribution_retention_hours <= 0:
+            raise SettingsError("QC_CONTRIBUTION_RETENTION_HOURS must be positive")
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
@@ -89,6 +106,9 @@ class Settings:
             encryption_key=_optional(env.get("QC_ENCRYPTION_KEY")),
             oura_client_id=_optional(env.get("QC_OURA_CLIENT_ID")),
             oura_client_secret=_optional(env.get("QC_OURA_CLIENT_SECRET")),
+            release_min_contributions=_number(env.get("QC_RELEASE_MIN_CONTRIBUTIONS"), 2, int),
+            contribution_retention_hours=_number(env.get("QC_CONTRIBUTION_RETENTION_HOURS"), 24.0, float),
+            map_allowed_origins=_csv(env.get("QC_MAP_ALLOWED_ORIGINS")) or ("*",),
         )
 
     @property

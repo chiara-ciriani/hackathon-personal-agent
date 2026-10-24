@@ -86,7 +86,7 @@ without pressing Share. Deletion removes active database records, not old backup
 
 | Check | Result |
 | --- | --- |
-| Server suite | 51 tests passed, including eight new wearable tests |
+| Server suite | 86 tests passed after merging the shared sound layer, including eight wearable tests |
 | Server lint | Ruff passed |
 | QuietCore package | 55 tests passed: existing DSP/routes plus offline retry, persistence, destination isolation and sleep overlap |
 | Real local HTTP round trip | Swift client → Python ingest → MCP context → guidance → phone acknowledgement passed with synthetic data |
@@ -111,8 +111,9 @@ The live integration test skips during ordinary Swift test runs.
   MCP serves calls; Oura polling does not run the conversational agent.
 - Persist a personal preference profile across sessions. Current feedback affects
   ranking within the active session; it is not a trained cross-session model.
-- Connect the web map to measured phone data under real account ownership. Its
-  existing browser Oura flow and synthetic violet overlays remain separate.
+- Add an explicit opt-in phone flow for the new shared map contribution API.
+  Main now serves released acoustic aggregates; private phone and wearable rows
+  are not published automatically. The old browser Oura flow remains separate.
 - Add account isolation before serving multiple people on one server. Add
   retention controls, verified backup restoration and physical route validation
   before treating this as a production service.
