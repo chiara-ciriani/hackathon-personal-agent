@@ -1,0 +1,30 @@
+# Import this Blueprint in Render to create the private demo backend.
+# This selects paid compute plus a persistent disk; committing it creates no resources.
+services:
+  - type: web
+    name: quiet-compass-memory
+    runtime: python
+    plan: 0.5c-512mb
+    region: oregon
+    branch: main
+    rootDir: server
+    buildCommand: pip install .
+    startCommand: uvicorn quiet_compass.app:create_app --factory --host 0.0.0.0 --port $PORT --workers 1 --no-access-log
+    healthCheckPath: /healthz
+    autoDeployTrigger: checksPass
+    numInstances: 1
+    disk:
+      name: quiet-compass-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.13
+      - key: QC_API_TOKEN
+        generateValue: true
+      - key: QC_DB_PATH
+        value: /var/data/quiet_compass.db
+      - key: QC_CITY_LAYER_ENABLED
+        value: "false"
+      - key: PYTHONUNBUFFERED
+        value: "1"

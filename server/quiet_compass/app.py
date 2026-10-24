@@ -6,8 +6,7 @@ Run with `uvicorn quiet_compass.app:create_app --factory`.
 from __future__ import annotations
 
 import contextlib
-from collections.abc import AsyncIterator, Callable
-from datetime import datetime
+from collections.abc import AsyncIterator
 
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
@@ -18,10 +17,14 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from .api import build_routes, healthz
 from .auth import BearerAuth
 from .city import CityNoiseLayer
-from .db import Store, utc_now
+from .db import Store
 from .mcp_server import Service, build_mcp
 from .settings import Settings
 from .sf_layers import SfLayers
+from .shared_api import build_shared_routes
+from .shared_db import SharedStore
+from .shared_layer import SharedLayer
+from .shared_tools import register_shared_tools
 
 
 class ExactMount:
@@ -46,7 +49,6 @@ def mcp_path(settings: Settings) -> str:
 def create_app(
     settings: Settings | None = None,
     store: Store | None = None,
-    clock: Callable[[], datetime] = utc_now,
     layers: SfLayers | None = None,
 ) -> Starlette:
     settings = settings or Settings.from_env()
@@ -55,7 +57,10 @@ def create_app(
     city = CityNoiseLayer(settings.socrata_app_token) if settings.city_layer_enabled else None
     if layers is None and settings.city_layer_enabled:
         layers = SfLayers(settings.socrata_app_token)
-    mcp = build_mcp(Service(store, settings, clock), city, layers)
+    mcp = build_mcp(Service(store, settings, clock=store.clock), city, layers)
+    shared = SharedLayer(SharedStore(store.path, clock=store.clock), settings, clock=store.clock)
+    shared.store.migrate_shared()
+    register_shared_tools(mcp, shared)
     security = TransportSecuritySettings(
         enable_dns_rebinding_protection=not settings.any_host_allowed,
         allowed_hosts=settings.mcp_hosts,
@@ -80,6 +85,7 @@ def create_app(
     routes: list[BaseRoute] = [
         Route("/healthz", healthz, methods=["GET"]),
         *build_routes(store, settings.api_token),
+        *build_shared_routes(shared, settings),
         Route(path, ExactMount(endpoint), methods=["GET", "POST", "DELETE"]),
     ]
     if settings.mcp_path_secret:

@@ -59,3 +59,27 @@ Enabled with `QC_CITY_LAYER_ENABLED=1`, together with the 311 tool. Result shape
 | `reference_measured` | `references` (with `include_references`) | Central SoMa Plan Draft EIR, Dec 2016, Tables IV.E-2 and IV.E-3 ([PDF](https://sfmea.sfplanning.org/CentralSoMaPlanDEIR_11-iv-e-noise.pdf)) | Ldn dBA: main streets 66-78 (avg 75), alleys 63-67. Old and area-specific, no coordinates |
 
 Rules: only `measured`, `measured_crowdsourced` and `reference_measured` carry dB values (`proxy` and `unmeasured_candidate` never do), and they must never be compared with the phone's relative dBFS. A layer that cannot be fetched is listed in `unavailable` and is unknown, not quiet. Parks come from `gtr9-ntp6` (the older `wkn6-jn8k` has no tabular data and `3nje-yn2u` is legacy polygons); the playgrounds/courts facilities dataset `ib5c-xgwu` (2678 facilities) was not integrated. Label sets stay separate: `measured` / `measured_crowdsourced` / `proxy` / `unmeasured_candidate` (plus `reference_measured` and the web-only synthetic demo).
+
+## Shared sound layer
+
+A separate, coarse layer of consented summaries that other agents and the web map can read. Its payload has its own `schema_version: "0.1"` inside the v1 HTTP envelope. Definitions: `SharedContribution`, `ContributionUpload`, `ContributionResult`, `AreaUpsert`, `Area`, `AreaAggregate`, `SoundMapResponse`.
+
+`SharedContribution` fields (the iOS model mirrors these names exactly): `id` (client UUID), `schema_version`, `area_id`, `area_name?`, `lat?`/`lon?` (3 decimals, together or neither), `time_bucket` (5-minute UTC floor), `duration_seconds`, `measurement {kind: "relative_uncalibrated", rms_dbfs <= 0, frame_level_spread_db >= 0, peaks_per_min?, calibrated: false}`, `quality {capture_profile, clipping_detected}`, `source` (`device` or `synthetic_demo`). It never carries audio, transcripts, routes, identity, preferences or health data.
+
+| Method and path | Auth | Body | Response |
+| --- | --- | --- | --- |
+| `POST /v1/contributions` | bearer | `ContributionUpload` | `200 ContributionResult` (`accepted`, `withheld` or `rejected` with `reason`); `422` on schema errors |
+| `PUT /v1/areas/{area_id}` | bearer | `AreaUpsert` | `200 Area` |
+| `GET /v1/map/aggregates?lat&lon&radius_m=500&since_minutes=60` | none (CORS) | none | `200 SoundMapResponse` |
+
+Server rules: lat/lon are re-rounded and buckets re-floored; unknown `area_id` with coordinates becomes `cell:<lat>,<lon>`, without coordinates it is rejected; implausible values (`rms_dbfs < -120`, spread `> 60`, duration outside 5-600 s, future or expired buckets) are rejected; at most 3 contributions per area, bucket and capture profile; duplicate ids are idempotent; clipping is stored and counted. A cohort (area, bucket, capture profile) is released only with at least `QC_RELEASE_MIN_CONTRIBUTIONS` contributions (default 2). Capture profiles are never merged. Contributions are deleted after `QC_CONTRIBUTION_RETENTION_HOURS` (default 24).
+
+The map read is public because it returns only released aggregates, the same data the map shows any viewer; putting the token in browser code would not protect anything.
+
+| MCP tool | Purpose | Annotations |
+| --- | --- | --- |
+| `query_sound_map(lat, lon, radius_m=500, since_minutes=60)` | Released aggregates near a point plus an `unknown_coverage` note | read-only |
+| `find_suitable_places(goal, lat, lon, max_walk_minutes=10, return_by?, max_age_minutes=30)` | Candidates ranked within a capture-profile cohort, with supporting observations, age, uncertainty and a straight-line walk estimate; or `{no_fit, reason}` | read-only |
+| `submit_observation(<SharedContribution fields>)` | Same as `POST /v1/contributions` | idempotent, not destructive |
+
+The web map's MCP panel (`apps/quiet-compass/app/page.tsx`) shows an earlier proposal of these tools with different inputs (`bounds`, `zone_id`, `acoustic_summary`). The tool names match; the parameters above are the implemented ones.

@@ -29,6 +29,16 @@ def _optional(value: str | None) -> str | None:
     return value or None
 
 
+def _number[NumberT: (int, float)](value: str | None, default: NumberT, kind: type[NumberT]) -> NumberT:
+    value = (value or "").strip()
+    if not value:
+        return default
+    try:
+        return kind(value)
+    except ValueError as exc:
+        raise SettingsError(f"expected a number, got {value!r}") from exc
+
+
 @dataclass(frozen=True)
 class Settings:
     """Service settings. Build with `Settings.from_env()` or directly in tests."""
@@ -40,6 +50,9 @@ class Settings:
     socrata_app_token: str | None = None
     city_layer_enabled: bool = False
     mcp_path_secret: str | None = None
+    release_min_contributions: int = 2
+    contribution_retention_hours: float = 24.0
+    map_allowed_origins: tuple[str, ...] = ("*",)
 
     def __post_init__(self) -> None:
         if not self.api_token:
@@ -54,6 +67,10 @@ class Settings:
             len(self.mcp_path_secret) < 16 or not self.mcp_path_secret.isalnum()
         ):
             raise SettingsError("QC_MCP_PATH_SECRET must be at least 16 letters or digits")
+        if self.release_min_contributions < 1:
+            raise SettingsError("QC_RELEASE_MIN_CONTRIBUTIONS must be at least 1")
+        if self.contribution_retention_hours <= 0:
+            raise SettingsError("QC_CONTRIBUTION_RETENTION_HOURS must be positive")
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
@@ -62,6 +79,9 @@ class Settings:
         fly_app = _optional(env.get("FLY_APP_NAME"))
         if fly_app:
             hosts = (*hosts, f"{fly_app}.fly.dev")
+        render_host = _optional(env.get("RENDER_EXTERNAL_HOSTNAME"))
+        if render_host:
+            hosts = (*hosts, render_host)
         return cls(
             api_token=(env.get("QC_API_TOKEN") or "").strip(),
             db_path=Path(env.get("QC_DB_PATH") or "./data/quiet_compass.db"),
@@ -70,6 +90,9 @@ class Settings:
             socrata_app_token=_optional(env.get("QC_SOCRATA_APP_TOKEN")),
             city_layer_enabled=_flag(env.get("QC_CITY_LAYER_ENABLED")),
             mcp_path_secret=_optional(env.get("QC_MCP_PATH_SECRET")),
+            release_min_contributions=_number(env.get("QC_RELEASE_MIN_CONTRIBUTIONS"), 2, int),
+            contribution_retention_hours=_number(env.get("QC_CONTRIBUTION_RETENTION_HOURS"), 24.0, float),
+            map_allowed_origins=_csv(env.get("QC_MAP_ALLOWED_ORIGINS")) or ("*",),
         )
 
     @property

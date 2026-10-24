@@ -4,6 +4,10 @@ The repo has three parts. A native SwiftUI app turns microphone audio into per-p
 
 The product brief (in Spanish) is in [`product-spec-es.md`](product-spec-es.md). The shared data formats are in [`../contracts`](../contracts).
 
+Hosting and the capture/learning loop are specified in
+[`AGENT_LEARNING_AND_HOSTING.md`](AGENT_LEARNING_AND_HOSTING.md), with the deployable
+configuration and connection instructions in [`../server/README.md`](../server/README.md).
+
 ## Architecture
 
 ```
