@@ -5,7 +5,7 @@ import type {StyleSpecification} from 'maplibre-gl';
 import 'ol/ol.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './map.css';
-import {REFERENCE_NOTE,loadSfLayers} from '../lib/sf-layers.mjs';
+import {loadSfLayers} from '../lib/sf-layers.mjs';
 
 // Illustrative locations and synthetic acoustic scores; no real noise measurements.
 type MapPoint={name:string;lng:number;lat:number;score:number;landmark?:boolean};
@@ -86,11 +86,11 @@ const mapStyle:StyleSpecification={
 // A contribution carries only a coarse zone, a level and a rounded time. No agent id, no audio, no route.
 type LayerKey='demo'|'measured'|'proxies'|'candidates'|'reports';
 const layerRows:{key:LayerKey;label:string;tag:string;swatch:string;mapIds:string[];hint:string}[]=[
- {key:'measured',label:'SFO noise monitors',tag:'measured',swatch:'measured',mapIds:['measured-sfo'],hint:'Daily CNEL in dB at 6 monitors inside SF. Not live, not at your spot.'},
- {key:'proxies',label:'Permits and closures',tag:'proxy',swatch:'proxy',mapIds:['proxy-context'],hint:'Entertainment permits, night work today or tomorrow, street closures now. Possible noise, not levels.'},
- {key:'candidates',label:'POPOS and libraries',tag:'unmeasured candidate',swatch:'candidate',mapIds:['candidate-places'],hint:'Places from city inventories that might be calm. Nobody has measured them.'},
- {key:'reports',label:'311 noise complaints',tag:'complaints',swatch:'report',mapIds:['noise-reports'],hint:'Recent reports. A complaint is not a measurement.'},
- {key:'demo',label:'Violet demo places',tag:'synthetic',swatch:'demo',mapIds:['sound-fields'],hint:'Invented scores for illustration. Not measurements.'},
+ {key:'measured',label:'Airport monitors',tag:'measured',swatch:'measured',mapIds:['measured-sfo'],hint:'Daily CNEL in dB at 6 monitors inside SF. Not live, not at your spot.'},
+ {key:'proxies',label:'Permits & closures',tag:'indirect',swatch:'proxy',mapIds:['proxy-context'],hint:'Entertainment permits, night work today or tomorrow, street closures now. Possible noise, not levels.'},
+ {key:'candidates',label:'Parks & libraries',tag:'unmeasured',swatch:'candidate',mapIds:['candidate-places'],hint:'Places from city inventories that might be calm. Nobody has measured them.'},
+ {key:'reports',label:'311 complaints',tag:'reports',swatch:'report',mapIds:['noise-reports'],hint:'Recent reports. A complaint is not a measurement.'},
+ {key:'demo',label:'Simulated noise',tag:'demo',swatch:'demo',mapIds:['sound-fields'],hint:'Invented scores for illustration. Not measurements.'},
 ];
 type Entry={id:number;t:number;zone:string;level:Level};
 const bucket=(t:number)=>{const m=Math.max(0,Math.round((Date.now()-t)/300000))*5;return m<5?'just now':m<60?m+' min ago':Math.round(m/60)+' h ago'};
@@ -189,18 +189,15 @@ export default function CityMap(){
   <div className="quiet-filters" role="group" aria-label="Filter places by sound level">{filters.map(f=><button key={f.id} className={filter===f.id?'is-active':''} aria-pressed={filter===f.id} onClick={()=>setFilter(f.id)}>{f.label}</button>)}</div>
   {selected!==null&&<aside className="quiet-card" key={selected} aria-live="polite">
    <button className="quiet-icon quiet-card-close" aria-label="Close place details" onClick={()=>setSelected(null)}><X size={16}/></button>
-   <span className={'quiet-card-level '+levelOf(points[selected].score)}>{levelOf(points[selected].score)}</span>
    <strong>{points[selected].name}</strong>
-   <p>{points[selected].landmark?'Landmark':'Neighborhood or park'} · simulated sound level</p>
+   <span className={'quiet-card-level '+levelOf(points[selected].score)}>{levelOf(points[selected].score)} · simulated</span>
    <div className="quiet-card-bar" role="img" aria-label={'Simulated level '+Math.round(points[selected].score*100)+' out of 100'}><span style={{width:Math.round(points[selected].score*100)+'%'}}/></div>
-   <small>{Math.round(points[selected].score*100)} / 100</small>
-   <button className="quiet-share" disabled={shared.includes(selected)} onClick={()=>{setShared(a=>[...a,selected]);addEntry(selected)}}>{shared.includes(selected)?<><Check size={14}/>Sent</>:'Contribute an observation'}</button>
+   <button className="quiet-share" disabled={shared.includes(selected)} onClick={()=>{setShared(a=>[...a,selected]);addEntry(selected)}}>{shared.includes(selected)?<><Check size={14}/>Sent</>:'Add observation'}</button>
   </aside>}
   <button className="quiet-history-btn quiet-icon" aria-label="Open agent contributions" title="Agent contributions" aria-expanded={hist} onClick={()=>setHist(v=>!v)}><Users size={18} strokeWidth={1.5}/></button>
   {hist&&<aside className="quiet-history" aria-label="Agent contributions">
    <div className="quiet-history-head"><strong>Contributions</strong><button className="quiet-icon" aria-label="Close contributions" onClick={()=>setHist(false)}><X size={16}/></button></div>
-   <p className="quiet-history-note">Agents report new noise so the map keeps improving. Each entry shows the area, how loud, and when. Gray marks on the map are live DataSF data.</p>
-   <ul>{entries.map((e,i)=><li key={e.id} style={{animationDelay:Math.min(i,6)*40+'ms'}}><code>Agent</code><span>{e.zone}<b className={'quiet-dot '+e.level}/>{e.level} noise</span><time>{bucket(e.t)}</time></li>)}</ul>
+   <ul>{entries.map((e,i)=><li key={e.id} style={{animationDelay:Math.min(i,6)*40+'ms'}}><span>{e.zone}</span><b className={e.level}>{e.level}</b><time>{bucket(e.t)}</time></li>)}</ul>
   </aside>}
   <div className="quiet-map-controls">
    <button className="quiet-icon" title="Zoom in" aria-label="Zoom in" onClick={()=>map.current?.zoomIn()}><Plus size={20}/></button>
@@ -209,11 +206,10 @@ export default function CityMap(){
   <section className="quiet-layers" aria-label="Map layers">
    <button className="quiet-layers-head" aria-expanded={layersOpen} onClick={()=>setLayersOpen(!layersOpen)}><Layers size={14}/>Layers</button>
    {layersOpen&&<ul>{layerRows.map(r=><li key={r.key}><label title={r.hint}><input type="checkbox" checked={shown[r.key]} onChange={()=>setShown({...shown,[r.key]:!shown[r.key]})}/><i className={'quiet-swatch swatch-'+r.swatch} aria-hidden="true"/><span>{r.label}</span><em>{r.tag}</em></label></li>)}</ul>}
-   {layersOpen&&<p className="quiet-layers-note">{REFERENCE_NOTE}</p>}
-   {layersOpen&&failedLayers.length>0&&<p className="quiet-layers-warn" role="status">Could not load: {failedLayers.join(', ')}. Missing data is unknown, not quiet.</p>}
+   {layersOpen&&failedLayers.length>0&&<p className="quiet-layers-warn" role="status">Couldn&apos;t load {failedLayers.join(', ')}</p>}
   </section>
-  <span className="quiet-demo" title="Violet is synthetic. No agents are connected. Black, gray and ringed marks are real DataSF layers, labelled by what they are.">DEMO · VIOLET IS SYNTHETIC</span>
-  <div className="quiet-intensity" role="img" aria-label="Simulated sound intensity: lighter violet means lower levels; darker violet means higher levels. White has no observations." title="Simulated sound intensity · darker violet = higher levels · white = no observations"><em>Quiet</em><span/><em>Loud</em><small>synthetic</small></div>
+  <span className="quiet-demo" title="Violet is synthetic. No agents are connected. Black, gray and ringed marks are real DataSF layers, labelled by what they are.">Demo data</span>
+  <div className="quiet-intensity" role="img" aria-label="Simulated sound intensity: lighter violet means lower levels; darker violet means higher levels. White has no observations." title="Simulated sound intensity · darker violet = higher levels · white = no observations"><em>Quiet</em><span/><em>Loud</em></div>
   {mcp&&<div className="quiet-mcp-overlay" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><div className="quiet-mcp-panel" ref={dialog} role="dialog" aria-modal="true" aria-labelledby="mcp-title" onClick={e=>e.stopPropagation()}>
    <div className="quiet-mcp-heading"><strong id="mcp-title">MCP</strong><button ref={closeButton} className="quiet-icon" aria-label="Close MCP" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><X size={18}/></button></div>
    <><div className="quiet-mcp-state"><span/>Proposed contract · not connected</div>
