@@ -18,8 +18,8 @@ const layerRows:{key:LayerKey;label:string;tag:string;swatch:string;mapIds:strin
  {key:'crowd',label:'NoiseCapture cells',tag:'historical · uncalibrated',swatch:'crowd',mapIds:['crowd-cells'],hint:'Archived volunteer phone measurements from 2017–2025; not live or dBA.'},
  {key:'sfoEvents',label:'Airport loud events',tag:'measured · last year',swatch:'events',mapIds:['measured-sfo-events'],hint:'Only events above the monitor threshold, not the typical sound level.'},
  {key:'candidates',label:'Parks, POPOS & libraries',tag:'no measurement',swatch:'candidate',mapIds:['candidate-places'],hint:'Real city locations. No sound measurement at these places.'},
- {key:'reports',label:'311 complaints',tag:'reports · no measurement',swatch:'report',mapIds:['noise-reports','reports-heat'],hint:'Violet shows the density of the latest 100 published complaints, not sound levels.'},
- {key:'cad',label:'Noise-nuisance calls',tag:'reports · last 30 days',swatch:'cad',mapIds:['cad-calls','cad-heat'],hint:'Violet shows the density of real calls at masked intersections over 30 days, not sound levels.'},
+ {key:'reports',label:'311 complaints',tag:'reports · no measurement',swatch:'report',mapIds:['noise-reports'],hint:'Violet shows the density of complaints from the last 30 days, not sound levels.'},
+ {key:'cad',label:'Noise-nuisance calls',tag:'reports · last 30 days',swatch:'cad',mapIds:['cad-calls'],hint:'Violet shows the density of real calls at masked intersections over 30 days, not sound levels.'},
  {key:'proxies',label:'Permits & closures',tag:'context · no measurement',swatch:'proxy',mapIds:['proxy-context'],hint:'Entertainment, night work, street work permitted today and active closures. Context, not sound levels.'},
 ];
 type Properties={label?:string;name?:string;id?:string;evidence?:string;kind?:string;detail?:string;caveat?:string;observedOn?:string;dataset?:string;dbfs?:number;cnel?:number;medianDb?:number;maxDb?:number;count?:number;captureProfile?:string};
@@ -28,29 +28,32 @@ type MapData=Record<LayerKey,PointCollection<Properties>>&{failed:string[];fetch
 type McpConnection={state:string;endpoint:string|null};
 const connectionLabels:Record<string,string>={checking:'Checking server…',available:'Shared MCP available',not_configured:'Server setup needed',invalid_config:'Check server address',unavailable:'Server unavailable',disabled:'Shared access setup needed',incompatible:'Server update needed'};
 const deviceLabels:Record<string,string>={available:'Device measurements available',empty:'No published device readings in the last 24 hours',access_required:'Device readings require a contribution and authorized access',invalid_config:'Device server setup needed',unavailable:'Device readings unavailable'};
-const home={center:[-122.44,37.768] as [number,number],zoom:12.6,pitch:48,bearing:-12};
+// Flat, north-up overview of the whole city.
+const home={center:[-122.443,37.762] as [number,number],zoom:12.3,pitch:0,bearing:0};
 type ViewOptions={center?:[number,number];zoom?:number;pitch?:number;bearing?:number;duration?:number};
 type MapControls={zoomIn:()=>unknown;zoomOut:()=>unknown;getZoom:()=>number;flyTo:(o:ViewOptions)=>unknown;remove:()=>unknown};
 const measured=(p:Properties)=>['measured','measured_crowdsourced','measured_device'].includes(p.evidence||'');
-const heatRamp:import('maplibre-gl').ExpressionSpecification=['interpolate',['linear'],['heatmap-density'],0,'rgba(230,220,255,0)',.15,'#e6dcff',.4,'#b996f5',.65,'#8a45e8',.85,'#5a14b0',1,'#2b0a63'];
+// Alpha rises with density and there is no pale opaque band, so the two fields blend instead of drawing light rings.
+const heatRamp:import('maplibre-gl').ExpressionSpecification=['interpolate',['linear'],['heatmap-density'],0,'rgba(138,69,232,0)',.1,'rgba(138,69,232,0)',.22,'rgba(160,110,240,.2)',.42,'rgba(138,69,232,.38)',.7,'rgba(112,44,214,.56)',.9,'rgba(86,22,176,.7)',1,'rgba(64,14,140,.8)'];
+// One field for 311 reports (weight 1) and police noise calls (weight = calls at the intersection, capped so one corner can't dominate).
+const heatFeatures=(reports:PointFeature[],cad:PointFeature[])=>[...reports.map(f=>({...f,properties:{w:1}})),...cad.map(f=>({...f,properties:{w:Math.min(Number(f.properties.count)||1,4)}}))];
 const mapStyle:StyleSpecification={
  version:8,
  glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
- sources:{city:{type:'vector',url:'https://tiles.openfreemap.org/planet'},venuepts:{type:'geojson',data:{type:'FeatureCollection',features:venues.map(v=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:[v.lng,v.lat]},properties:{id:v.id,label:v.name,name:v.name,kind:'Venue',evidence:'unmeasured_candidate',caveat:'No acoustic measurements or verified indoor plan are available.'}}))}},...Object.fromEntries(layerRows.map(r=>[r.key,{type:'geojson' as const,data:emptyCollection() as PointCollection}]))},
+ sources:{city:{type:'vector',url:'https://tiles.openfreemap.org/planet'},heat:{type:'geojson',data:{type:'FeatureCollection',features:[]}},venuepts:{type:'geojson',data:{type:'FeatureCollection',features:venues.map(v=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:[v.lng,v.lat]},properties:{id:v.id,label:v.name,name:v.name,kind:'Venue',evidence:'unmeasured_candidate',caveat:'No acoustic measurements or verified indoor plan are available.'}}))}},...Object.fromEntries(layerRows.map(r=>[r.key,{type:'geojson' as const,data:emptyCollection() as PointCollection}]))},
  light:{anchor:'viewport',color:'#ffffff',intensity:.4,position:[1.5,205,40]},
  layers:[
-  {id:'background',type:'background',paint:{'background-color':'#f0f0f1'}},
-  {id:'land',type:'fill',source:'city','source-layer':'landcover',paint:{'fill-color':'#f3f2f5','fill-opacity':.6}},
+  {id:'background',type:'background',paint:{'background-color':'#f7f7f8'}},
+  {id:'land',type:'fill',source:'city','source-layer':'landcover',paint:{'fill-color':'#f2f2f4','fill-opacity':.5}},
   {id:'parks',type:'fill',source:'city','source-layer':'park',paint:{'fill-color':'#f0f0f1','fill-outline-color':'#e8e8eb'}},
-  {id:'water',type:'fill',source:'city','source-layer':'water',paint:{'fill-color':'#f6f6f7'}},
+  {id:'water',type:'fill',source:'city','source-layer':'water',paint:{'fill-color':'#e9eaee'}},
   {id:'roads-edge',type:'line',source:'city','source-layer':'transportation',paint:{'line-color':'#e1e1e5','line-width':['interpolate',['linear'],['zoom'],11,.3,13,.8,16,5,19,20]}},
   {id:'roads',type:'line',source:'city','source-layer':'transportation',paint:{'line-color':'#ffffff','line-width':['interpolate',['linear'],['zoom'],11,.1,13,.25,16,3.6,19,17]}},
-  {id:'footprints',type:'fill',source:'city','source-layer':'building',paint:{'fill-color':'#eae7ed','fill-outline-color':'#dfdbe5'}},
-  {id:'structures',type:'fill-extrusion',source:'city','source-layer':'building',minzoom:12.6,filter:['!=',['get','hide_3d'],true],paint:{'fill-extrusion-color':'#f7f6f9','fill-extrusion-height':['interpolate',['linear'],['zoom'],12.6,0,14.2,['coalesce',['get','render_height'],0]],'fill-extrusion-base':['coalesce',['get','render_min_height'],0],'fill-extrusion-opacity':1,'fill-extrusion-vertical-gradient':true}},
+  {id:'footprints',type:'fill',source:'city','source-layer':'building',minzoom:14,paint:{'fill-color':'#eae7ed','fill-outline-color':'#dfdbe5'}},
+  {id:'structures',type:'fill-extrusion',source:'city','source-layer':'building',minzoom:15,filter:['!=',['get','hide_3d'],true],paint:{'fill-extrusion-color':'#f7f6f9','fill-extrusion-height':['interpolate',['linear'],['zoom'],15,0,16,['coalesce',['get','render_height'],0]],'fill-extrusion-base':['coalesce',['get','render_min_height'],0],'fill-extrusion-opacity':1,'fill-extrusion-vertical-gradient':true}},
   {id:'place-labels',type:'symbol',source:'city','source-layer':'place',minzoom:11,filter:['in',['get','class'],['literal',['suburb','neighbourhood','quarter']]],layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':['interpolate',['linear'],['zoom'],11,10,15,13],'text-letter-spacing':.08,'text-transform':'uppercase'},paint:{'text-color':'#6b6b73','text-halo-color':'#ffffff','text-halo-width':1.5}},
   // Density of published reports; never an acoustic level or inferred measurement.
-  {id:'cad-heat',type:'heatmap',source:'cad',paint:{'heatmap-weight':['interpolate',['linear'],['coalesce',['get','count'],1],1,.5,16,1.4],'heatmap-intensity':['interpolate',['linear'],['zoom'],10,.7,15,1.6],'heatmap-radius':['interpolate',['linear'],['zoom'],10,16,13,30,16,56],'heatmap-opacity':.82,'heatmap-color':heatRamp}},
-  {id:'reports-heat',type:'heatmap',source:'reports',paint:{'heatmap-weight':1,'heatmap-intensity':['interpolate',['linear'],['zoom'],10,.8,15,1.8],'heatmap-radius':['interpolate',['linear'],['zoom'],10,16,13,30,16,56],'heatmap-opacity':.82,'heatmap-color':heatRamp}},
+  {id:'noise-heat',type:'heatmap',source:'heat',paint:{'heatmap-weight':['get','w'],'heatmap-intensity':['interpolate',['linear'],['zoom'],10,.1,12,.16,14,.32,16,.6],'heatmap-radius':['interpolate',['linear'],['zoom'],10,14,12,24,14,44,16,76],'heatmap-opacity':.95,'heatmap-color':heatRamp}},
   {id:'venue-points',type:'circle',source:'venuepts',paint:{'circle-color':'#a1a1aa','circle-radius':['interpolate',['linear'],['zoom'],11,7,15,10],'circle-stroke-color':'#171717','circle-stroke-width':2.2}},
   {id:'venue-labels',type:'symbol',source:'venuepts',minzoom:12,layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':12,'text-offset':[0,1.5],'text-anchor':'top'},paint:{'text-color':'#171717','text-halo-color':'#ffffff','text-halo-width':1.6}},
   {id:'proxy-context',type:'circle',source:'proxies',minzoom:13,layout:{visibility:'none'},paint:{'circle-color':'#a1a1aa','circle-radius':['interpolate',['linear'],['zoom'],13,1.8,17,4],'circle-stroke-color':'#ffffff','circle-stroke-width':1,'circle-opacity':.85}},
@@ -140,6 +143,8 @@ export default function CityMap(){
    for(const id of row.mapIds)if(gl?.getLayer(id))gl.setLayoutProperty(id,'visibility',visible?'visible':'none');
    if(visible)features.push(...collection.features as PointFeature[]);
   }
+  const on=(k:LayerKey)=>shown[k]&&filter!=='measured';
+  (gl?.getSource('heat') as GeoJSONSource|undefined)?.setData({type:'FeatureCollection',features:heatFeatures(on('reports')?data?.reports.features as PointFeature[]||[]:[],on('cad')?data?.cad.features as PointFeature[]||[]:[])} as PointCollection);
   for(const id of ['venue-points','venue-labels'])if(gl?.getLayer(id))gl.setLayoutProperty(id,'visibility',filter==='measured'?'none':'visible');
   if(filter!=='measured')features.push(...venues.map(v=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:[v.lng,v.lat]},properties:{id:v.id,label:v.name,evidence:'unmeasured_candidate',kind:'Venue',caveat:'No acoustic measurements or verified indoor plan are available.'}})));
   fallbackUpdate.current?.(features);
