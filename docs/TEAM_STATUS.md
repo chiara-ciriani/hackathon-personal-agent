@@ -1,12 +1,11 @@
 # Team status: who is doing what
 
-Last updated: October 24, 2026, 15:35 PT. Update this file whenever you start or finish something, so two people don't build the same thing.
+Last updated: October 24, 2026, 16:00 PT. Update this file whenever you start or finish something, so two people don't build the same thing.
 
 ## In progress right now
 
 | Area | Who | What | Files |
 | --- | --- | --- | --- |
-| iOS screens on top of Martin's app | Chiara | Adding what the current app lacks: minimap, arrival check and feedback, a Diagnostics screen with the hour-0 spike tests, an opt-in "share sound summaries" toggle that uploads `SharedContribution`, capture-mode selection, and Simulator mocks. It extends Martin's `CompassModel`, `PhoneSync` and outbox; it does not replace them. | `ios/QuietCompass/**` (additions), `ios/project.yml` (additions only) |
 | Background capture and noise alerts | Ana | Plan written; check with Ana before touching it | `docs/BACKGROUND_CAPTURE_AND_NOISE_ALERTS.md` |
 | Web map and venue view | Ana and Martin | Map-first redesign, DataSF layers, `/venue` 3D view | `apps/quiet-compass/**` |
 
@@ -20,6 +19,7 @@ Last updated: October 24, 2026, 15:35 PT. Update this file whenever you start or
 | Server: SF city layers | 311 noise and labelled DataSF layers (`quiet_sf_layers`) | `server/quiet_compass/{city,sf_layers}.py` |
 | Server: wearables | Apple Health summaries from the phone, Oura OAuth, kept private | `server/quiet_compass/{wearables,wearable_api}.py`, `docs/WEARABLES_AND_PHONE.md` |
 | iOS core | Audio features, direction of arrival (experimental), route back, `PhoneSync`, contracts | `ios/Packages/QuietCore` |
+| iOS additions (Chiara) | Capture-mode picker (A/C), Simulator mocks, minimap, arrival check + feedback, Diagnostics with the hour-0 spike tests, opt-in shared summaries to `/v1/contributions`. Not compiled yet. VERIFY on device: FOA API names and channel layout, 48 kHz in measurement mode, classifier 1.5 s window, spike 3 dB threshold, contribution status against the live server. TODO: mode B (zones), world rotation for direction in mode A | `ios/QuietCompass/{UI,Mocks,Sync}`, `App/Companion*`, `Audio/SpikeRunner.swift`, `ios/README.md` |
 | iOS app (Martin) | Mic capture and features, ARKit breadcrumbs, places, durable outbox, guidance polling, Health sharing | `ios/QuietCompass/App`, `Health` |
 | Hosting config | Render blueprint | `render.yaml`, `docs/AGENT_LEARNING_AND_HOSTING.md` |
 
