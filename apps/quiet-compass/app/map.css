@@ -120,3 +120,11 @@
 .quiet-history li span{display:flex;align-items:center;gap:7px;text-transform:none}.quiet-history li span .quiet-dot{width:6px;height:6px;border-radius:50%;background:#b07be1;margin-left:2px}
 .quiet-dot.loud{background:#6720c4!important}.quiet-dot.quiet{background:#d9c7fa!important}
 .quiet-history li code{color:#171717;font-weight:500}
+
+/* Map-first pass: no point markers, a clearer quiet-to-loud ramp, fewer controls, tilted 3D by default. */
+.quiet-history-btn{right:116px}
+.quiet-intensity{gap:10px;padding:8px 14px}.quiet-intensity>span{width:150px;height:8px;background:linear-gradient(90deg,#e6dcff,#b996f5 30%,#8a45e8 55%,#5a14b0 80%,#2b0a63)}
+.quiet-intensity em{font:500 11px/16px ui-monospace,SFMono-Regular,monospace;font-style:normal;color:#525252}
+.quiet-ripple{width:14px;height:14px;border-radius:50%;border:1.5px solid #5a14b0;pointer-events:none;animation:quiet-ripple 2.3s var(--ease-out) forwards}
+@keyframes quiet-ripple{0%{transform:scale(.4);opacity:.9}100%{transform:scale(6);opacity:0}}
+@media(max-width:600px){.quiet-history-btn{right:103px}.quiet-intensity>span{width:90px}}
