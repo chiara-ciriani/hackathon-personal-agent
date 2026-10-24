@@ -115,7 +115,7 @@ type Level='quiet'|'moderate'|'loud';
 const levelOf=(score:number):Level=>score>.65?'loud':score>.35?'moderate':'quiet';
 const filters:{id:Level|'all';label:string}[]=[{id:'all',label:'All'},{id:'quiet',label:'Quiet'},{id:'moderate',label:'Moderate'},{id:'loud',label:'Loud'}];
 const home={center:[-122.44,37.768] as [number,number],zoom:12.6,pitch:48,bearing:-12};
-const MCP_URL='https://YOUR-SERVER.onrender.com/mcp';
+const MCP_URL='https://quiet-compass-server.onrender.com/mcp';
 const mcpTools=[
  {name:'quiet_sf_layers',what:'Real noise layers around a point in San Francisco'},
  {name:'query_sound_map',what:'Reported noise levels in an area'},

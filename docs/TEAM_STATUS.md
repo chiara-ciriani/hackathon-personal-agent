@@ -23,9 +23,16 @@ Last updated: October 24, 2026, 16:00 PT. Update this file whenever you start or
 | iOS app (Martin) | Mic capture and features, ARKit breadcrumbs, places, durable outbox, guidance polling, Health sharing | `ios/QuietCompass/App`, `Health` |
 | Hosting config | Render blueprint | `render.yaml`, `docs/AGENT_LEARNING_AND_HOSTING.md` |
 
+## Live services
+
+| Service | URL | Notes |
+| --- | --- | --- |
+| Server (REST + MCP) | https://quiet-compass-server.onrender.com (`/healthz`, `/mcp`, `/v1/...`) | Render free plan, auto-deploys from `main`. Sleeps when idle (first request is slow; open `/healthz` before demoing). Data is wiped on restart/redeploy. `QC_API_TOKEN` is in the Render dashboard; ask Chiara, never commit it. |
+| Map | (Vercel, pending) | Import the repo in Vercel with Root Directory `apps/quiet-compass`; then set `QC_MAP_ALLOWED_ORIGINS` on the server to its URL |
+
 ## Next up (unclaimed — put your name here before starting)
 
-1. **Deploy the server for free.** Option A: a teammate's laptop + `cloudflared tunnel --url http://localhost:8000` (free, no sleep, URL changes on restart). Option B: Render free plan without the disk (stable URL, sleeps when idle, data wiped on restart). The current `render.yaml` uses a paid disk.
+1. ~~Deploy the server for free.~~ Done (see Live services). Option A: a teammate's laptop + `cloudflared tunnel --url http://localhost:8000` (free, no sleep, URL changes on restart). Option B: Render free plan without the disk (stable URL, sleeps when idle, data wiped on restart). The current `render.yaml` uses a paid disk.
 2. **Connect the agent.** Add `https://<host>/mcp` as a custom connector in the Claude app. Check whether it can send `Authorization: Bearer`; if not, set `QC_MCP_PATH_SECRET` and use `/mcp/<secret>`. Paste `server/agent_instructions.md` into the project instructions and connect a calendar.
 3. **Point the web map at real data.** Read `GET /v1/map/aggregates` instead of synthetic scores. Update the MCP panel in `apps/quiet-compass/app/page.tsx` to the implemented tool inputs listed in `contracts/README.md` (it still shows the brief's earlier draft parameters such as `bounds`, `zone_id` and `acoustic_summary`).
 4. **First iOS build on a Mac.** `cd ios && xcodegen generate`, fix compile errors, run in the Simulator, then run the hour-0 spike tests on the iPhone 16 Pro and record the chosen capture mode here.
