@@ -57,3 +57,30 @@
 .quiet-mcp{height:36px;top:28px;min-width:76px;justify-content:center;padding:0 12px;gap:7px;background:#fff;color:#37323d;border:1px solid #e6e4e9;border-radius:6px;box-shadow:0 1px 2px #00000004;font:500 11px/16px ui-monospace,SFMono-Regular,monospace;letter-spacing:.2px;transition:background 150ms,border-color 150ms}
 .quiet-mcp:hover{background:#faf8fd;border-color:#cfc5df}.quiet-mcp svg{color:#776789}.quiet-help{right:116px;height:36px;width:36px;background:white;border-radius:6px}.quiet-mcp-state{color:#777}
 @media(max-width:600px){.quiet-mcp{top:20px;right:17px;height:36px}.quiet-help{top:20px;right:103px;height:36px;width:36px}}
+
+/* Vercel-style layer: black on white, violet only for sound data. Everything eases, nothing jumps. */
+.quiet-map-only{--ease:cubic-bezier(.2,.8,.2,1);--violet:#6720c4;-webkit-font-smoothing:antialiased}
+.quiet-home,.quiet-help,.quiet-mcp,.quiet-map-controls,.quiet-filters,.quiet-card,.quiet-intensity{backdrop-filter:blur(8px)}
+.quiet-mcp{background:#171717;color:#fff;border-color:#171717}.quiet-mcp:hover{background:#333;border-color:#333}.quiet-mcp svg{color:#fff}
+.quiet-filters{position:absolute;top:28px;left:50%;transform:translateX(-50%);display:flex;gap:2px;padding:3px;background:#fffffff2;border:1px solid var(--map-border);border-radius:8px;box-shadow:0 0 0 1px #00000004,0 2px 2px #00000003,0 8px 16px -4px #00000006;z-index:800}
+.quiet-filters button{height:30px;padding:0 12px;border-radius:5px;background:transparent;color:#666;font:500 12px/16px Geist,Arial,sans-serif;transition:background .2s var(--ease),color .2s var(--ease)}
+.quiet-filters button:hover{color:#171717;background:#f5f5f5}.quiet-filters button.is-active{background:#171717;color:#fff}
+.quiet-card{position:absolute;left:28px;bottom:64px;width:272px;padding:16px 18px 18px;background:#fffffff5;border:1px solid var(--map-border);border-radius:10px;box-shadow:0 0 0 1px #00000008,0 8px 16px -4px #0000000a,0 24px 32px -8px #0000000f;z-index:800;animation:quiet-rise .35s var(--ease)}
+.quiet-card strong{display:block;font-size:16px;font-weight:600;letter-spacing:-.3px;color:#171717;margin-top:10px}
+.quiet-card p{font-size:12px;line-height:18px;color:#737373;margin-top:3px}
+.quiet-card small{display:block;font:11px/16px ui-monospace,SFMono-Regular,monospace;color:#737373;margin-top:7px}
+.quiet-card-close{position:absolute;right:8px;top:8px;width:28px;height:28px;border-radius:6px;color:#737373}
+.quiet-card-level{display:inline-block;font:500 11px/16px ui-monospace,SFMono-Regular,monospace;text-transform:capitalize;padding:2px 8px;border-radius:999px;background:#f5efff;color:var(--violet);border:1px solid #e4d4fb}
+.quiet-card-level.quiet{background:#faf7ff;color:#8a5fd0}.quiet-card-level.loud{background:var(--violet);color:#fff;border-color:var(--violet)}
+.quiet-card-bar{height:4px;margin-top:14px;border-radius:4px;background:#f0f0f0;overflow:hidden}
+.quiet-card-bar span{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#d9c7fa,var(--violet));transform-origin:left;animation:quiet-grow .7s var(--ease)}
+.sound-point{transition:opacity .3s var(--ease)}.sound-point.is-dimmed{opacity:.18;pointer-events:none}
+.point-core,.point-ripple{transition:transform .3s var(--ease),opacity .3s var(--ease),background .2s}
+.sound-point.is-selected .point-core{transform:scale(1.7);box-shadow:0 0 0 3px #fff,0 0 0 4.5px var(--point-color)}
+.quiet-icon,.quiet-mcp,.quiet-help,.quiet-home{transition:background .2s var(--ease),border-color .2s var(--ease),transform .2s var(--ease)}
+.quiet-icon:active,.quiet-mcp:active{transform:scale(.96)}
+.quiet-mcp-panel{animation:quiet-rise .3s var(--ease)}.quiet-mcp-overlay{animation:quiet-fade .25s ease}
+@keyframes quiet-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes quiet-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes quiet-fade{from{opacity:0}to{opacity:1}}
+@media(max-width:600px){.quiet-filters{top:68px;left:17px;transform:none;max-width:calc(100% - 34px)}.quiet-filters button{padding:0 10px}.quiet-card{left:17px;right:76px;bottom:70px;width:auto}}
