@@ -1,0 +1,86 @@
+# XcodeGen spec. Generate the project with:  cd ios && xcodegen generate
+name: QuietCompass
+
+options:
+  bundleIdPrefix: com.quietcompass
+  deploymentTarget:
+    iOS: "26.0"
+  xcodeVersion: "26.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    CODE_SIGN_STYLE: Automatic
+
+packages:
+  QuietCore:
+    path: Packages/QuietCore
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: "7.0.0"
+
+targets:
+  QuietCompass:
+    type: application
+    platform: iOS
+    # Config.xcconfig is gitignored: copy Config.example.xcconfig first.
+    configFiles:
+      Debug: Config.xcconfig
+      Release: Config.xcconfig
+    sources:
+      # Includes QuietCompass/Audio, which the audio track owns.
+      - path: QuietCompass
+      - path: ../fixtures/feature_trace.json
+        buildPhase: resources
+    dependencies:
+      - package: QuietCore
+      - package: GRDB
+        product: GRDB
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.quietcompass.app
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ENABLE_PREVIEWS: YES
+        GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: QuietCompass/Info.plist
+      properties:
+        CFBundleDisplayName: Quiet Compass
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UIRequiredDeviceCapabilities: [arkit]
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSMicrophoneUsageDescription: >-
+          Quiet Compass measures how loud it is around you, on this phone. It never records or stores audio.
+        NSCameraUsageDescription: >-
+          The camera is used only to track the path you walk, so Quiet Compass can guide you back. No images are stored.
+        NSLocalNetworkUsageDescription: >-
+          Used only to reach a Quiet Compass server on this network during development.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        QCServerURL: $(QC_SERVER_URL)
+        QCAPIToken: $(QC_API_TOKEN)
+    scheme:
+      testTargets:
+        - QuietCompassTests
+      gatherCoverageData: false
+
+  QuietCompassTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: QuietCompassTests
+    dependencies:
+      - target: QuietCompass
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.quietcompass.app.tests
+        GENERATE_INFOPLIST_FILE: YES
