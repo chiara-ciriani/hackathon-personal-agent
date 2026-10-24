@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CAVEATS,REFERENCE_LEVELS,cadNoiseAreas,latestSfoMonitors,loadSfLayers,noisecaptureCells,parseClosure,parseLibrary,parseNightNoise,parsePark,parsePopos,sfoEventMonitors} from '../lib/sf-layers.mjs';
+import {CAVEATS,REFERENCE_LEVELS,cadNoiseAreas,latestSfoMonitors,loadSfLayers,noisecaptureCells,parseClosure,parseLibrary,parseNightNoise,parsePark,parsePopos,parseStreetWork,sfoEventMonitors} from '../lib/sf-layers.mjs';
 
 const NOW=new Date('2026-10-24T21:00:00Z');
 const pt=(lng,lat)=>({type:'Point',coordinates:[lng,lat]});
@@ -19,6 +19,16 @@ test('night permits keep only plausible, non-denied, current ones',()=>{
  assert.equal(parseNightNoise({...base,nnp:'1',end_date:'2219-11-22T00:00:00.000'},NOW),null);
  assert.equal(parseNightNoise({...base,nnp:'1',start_date:'2026-10-20T00:00:00.000',end_date:'2026-10-22T00:00:00.000'},NOW),null);
 });
+test('street work keeps noisy permit types valid today',()=>{
+ const base={permit_start_date:'2026-05-01T00:00:00.000',permit_end_date:'2026-10-28T00:00:00.000',location:pt(-122.41188,37.77644)};
+ const w=parseStreetWork({...base,permit_type:'Excavation',streetname:'08TH ST',cross_street_1:'NATOMA ST',cross_street_2:'HOWARD ST'},NOW);
+ assert.deepEqual([w.properties.label,w.properties.detail,w.properties.evidence,w.properties.dataset],['08TH ST between NATOMA ST and HOWARD ST','Excavation · until 2026-10-28','proxy','x8nh-xzn6']);
+ assert.match(w.properties.caveat,/may not be happening right now/);
+ assert.equal(parseStreetWork({...base,permit_type:'Boring',streetname:'CLAY ST',cross_street_1:'LARKIN ST'},NOW).properties.label,'CLAY ST at LARKIN ST');
+ assert.equal(parseStreetWork({...base,permit_type:'Wireless',streetname:'x'},NOW),null);
+ assert.equal(parseStreetWork({...base,permit_type:'Excavation',permit_end_date:'2026-10-23T00:00:00.000'},NOW),null);
+ assert.equal(parseStreetWork({...base,permit_type:'Excavation',location:null},NOW),null);
+});
 test('closures use the middle vertex; only SFO monitors are measured',()=>{
  const c=parseClosure({loc_desc:'OAK ST',shape:{coordinates:[[-122.454,37.7714],[-122.4533,37.7713]]}});
  assert.deepEqual(c.geometry.coordinates,[-122.4533,37.7713]);assert.equal(c.properties.evidence,'proxy');
@@ -31,7 +41,7 @@ test('closures use the middle vertex; only SFO monitors are measured',()=>{
 test('reference table is cited and labelled',()=>{
  assert.ok(REFERENCE_LEVELS.length>=8);
  for(const r of REFERENCE_LEVELS){assert.equal(r.evidence,'reference_measured');assert.match(r.sourceUrl,/^https:\/\//)}
- assert.equal(Object.keys(CAVEATS).length,9);
+ assert.equal(Object.keys(CAVEATS).length,10);
  for(const k of Object.keys(CAVEATS))assert.ok(CAVEATS[k].length>20);
 });
 test('parks are unmeasured seeds with a loudness warning; wrong types and missing coords are dropped',()=>{
@@ -83,12 +93,15 @@ test('loadSfLayers loads the new layers, joins monitor coordinates, and queries 
   if(url.includes('gtr9-ntp6'))return json([{property_name:'Dolores Park',latitude:'37.75965',longitude:'-122.42691',propertytype:'Mini Park',acres:'2'}]);
   if(url.includes('tiju-qyvs'))return json([{location_id:'21',max_date_time:'2026-03-19T23:30:03.000',max_level:'83.9'}]);
   if(url.includes('qxw2-ncq3'))return json([{location_id:'21',latitude:'37.740',longitude:'-122.433',date:'2026-08-31T00:00:00.000',total_cnel:'61.1'}]);
+  if(url.includes('x8nh-xzn6'))return json([{permit_type:'Excavation',streetname:'08TH ST',cross_street_1:'NATOMA ST',permit_start_date:'2026-10-01T00:00:00.000',permit_end_date:'2026-10-28T00:00:00.000',location:pt(-122.41188,37.77644)}]);
   if(url.includes('2zdj-bwza'))return json([{cad_number:'A1',received_datetime:'2026-10-23T22:00:00.000',intersection_name:'A \\ B',intersection_point:pt(-122.41964,37.76481),sensitive_call:false}]);
   if(url.startsWith('/data/'))return json({features:[{geometry:{coordinates:[-122.4183,37.7579]},properties:{laeq_db:74.6,median_window_db:48.8,windows:6,tracks:3}}]});
   return json([]);};
  const r=await loadSfLayers(fetchFn,NOW);
  assert.deepEqual(r.failed,[]);
  assert.equal(r.candidates.features.length,1);assert.equal(r.sfoEvents.features[0].properties.count,1);assert.equal(r.cad.features[0].properties.count,1);assert.equal(r.crowd.features[0].properties.evidence,'measured_crowdsourced');
+ assert.equal(r.proxies.features.filter(f=>f.properties.dataset==='x8nh-xzn6').length,1);
+ assert.match(decodeURIComponent(calls.find(u=>u.includes('x8nh-xzn6'))),/permit_start_date <= '2026-10-24T23:59:59'/);
  const ev=decodeURIComponent(calls.find(u=>u.includes('tiju-qyvs')));
  assert.match(ev,/location_id in\('21'\)/);assert.match(ev,/max_date_time >= '2025-10-24T00:00:00'/);
  assert.match(decodeURIComponent(calls.find(u=>u.includes('2zdj-bwza'))),/call_type_final_desc='NOISE NUISANCE'/);
