@@ -31,16 +31,24 @@ uvicorn quiet_compass.app:create_app --factory --env-file .env --reload
 pytest -q
 ```
 
-**iOS app** (needs Xcode 26 and an iPhone 16 Pro for spatial audio)
+**iOS app** (Xcode 26; an ARKit-capable iPhone with iOS 26 for live capture)
 
 ```bash
 brew install xcodegen
 cd ios
-cp Config.example.xcconfig Config.xcconfig   # server URL and token
+cp Config.example.xcconfig Config.xcconfig   # signing team for a physical phone
 xcodegen generate && open QuietCompass.xcodeproj
 ```
 
-The Simulator runs the app with mock audio and a scripted walk. Real capture and AR tracking need a device.
+Enter the server URL and token inside the app. The token is stored in Keychain.
+The app currently uses mono sound features plus ARKit (mode C). It queues uploads
+offline and polls for guidance. The Simulator can open the app but does not run
+mock audio or a scripted walk; live sensors need a device.
+
+**Wearables.** The phone previews Apple Health daily summaries before sharing.
+Oura connects directly to the Python server, which encrypts credentials, refreshes
+access and syncs every 15 minutes. The agent reads `quiet_get_personal_context`.
+Setup and remaining validation: [wearable integration](docs/WEARABLES_AND_PHONE.md).
 
 **Agent.** Deploy the server (see `server/README.md`), add `https://<your-app>/mcp` as a custom connector in the Claude app, and paste `server/agent_instructions.md` into the project instructions.
 

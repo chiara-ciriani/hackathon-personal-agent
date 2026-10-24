@@ -13,6 +13,7 @@ dependencies = [
     "pydantic>=2.12",
     "mcp>=2.3,<3",
     "httpx2>=2.10",
+    "cryptography>=44",
 ]
 
 [project.optional-dependencies]

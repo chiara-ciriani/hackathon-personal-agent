@@ -24,6 +24,7 @@ from .contracts import Feedback, Goal, Observation, Place, Session, format_utc
 from .db import Store, utc_now
 from .settings import Settings
 from .sf_layers import ALL_LAYERS, REFERENCE_LEVELS, REFERENCE_NOTE, LayerName, SfLayers
+from .wearables import WearableError, WearableService
 
 ResponseFormat = Literal["concise", "detailed"]
 RECENT_WINDOW = timedelta(seconds=30)
@@ -536,9 +537,28 @@ class Service:
 
 
 def build_mcp(
-    service: Service, city: CityNoiseLayer | None = None, layers: SfLayers | None = None
+    service: Service, city: CityNoiseLayer | None = None, layers: SfLayers | None = None,
+    wearables: WearableService | None = None,
 ) -> MCPServer:
     mcp = MCPServer("quiet-compass", instructions=INSTRUCTIONS)
+
+    if wearables is not None:
+        @mcp.tool(annotations=ToolAnnotations(
+            title="Private wearable context", readOnlyHint=True, openWorldHint=False,
+        ))
+        def quiet_get_personal_context() -> dict[str, Any]:
+            """Read the participant's last explicitly shared Apple Health and Oura daily summaries.
+
+            Returns source, metric dates and last sync time. Missing values are unknown,
+            never zero. Daily scores are not live stress or a diagnosis. Ask what the user
+            wants; never invent preferences from physiology. Use quiet_get_context for
+            environmental sound. Refresh via the phone's sync button. Single participant
+            per server; never send these private summaries to public map layers.
+            """
+            try:
+                return wearables.context()
+            except WearableError as exc:
+                raise ToolError(str(exc)) from exc
 
     @mcp.tool(annotations=ToolAnnotations(title="Sound context", readOnlyHint=True, openWorldHint=False))
     def quiet_get_context(place_id: str | None = None, response_format: ResponseFormat = "concise") -> Context:

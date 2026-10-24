@@ -22,6 +22,8 @@ services:
         value: 3.12.13
       - key: QC_API_TOKEN
         generateValue: true
+      - key: QC_ENCRYPTION_KEY
+        generateValue: true
       - key: QC_DB_PATH
         value: /var/data/quiet_compass.db
       - key: QC_CITY_LAYER_ENABLED

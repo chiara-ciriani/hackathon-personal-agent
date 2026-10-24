@@ -49,7 +49,15 @@ public final class MonoFeatureSource: FeatureSource, @unchecked Sendable {
             self.queue.async { self.process(samples, start: t, sampleRate: sr) }
         }
         engine.prepare()
-        try engine.start()
+        do {
+            try engine.start()
+        } catch {
+            input.removeTap(onBus: 0)
+            engine.stop()
+            classifier?.stop()
+            queue.sync { continuation?.finish(); continuation = nil; extractor = nil }
+            throw error
+        }
         running = true
     }
 

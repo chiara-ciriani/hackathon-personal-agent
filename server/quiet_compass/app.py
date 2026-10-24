@@ -5,9 +5,11 @@ Run with `uvicorn quiet_compass.app:create_app --factory`.
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 from collections.abc import AsyncIterator
 
+import httpx2 as httpx
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
 from starlette.responses import Response
@@ -21,6 +23,8 @@ from .db import Store
 from .mcp_server import Service, build_mcp
 from .settings import Settings
 from .sf_layers import SfLayers
+from .wearable_api import build_wearable_routes
+from .wearables import WearableService
 
 
 class ExactMount:
@@ -46,6 +50,7 @@ def create_app(
     settings: Settings | None = None,
     store: Store | None = None,
     layers: SfLayers | None = None,
+    wearable_transport: httpx.AsyncBaseTransport | None = None,
 ) -> Starlette:
     settings = settings or Settings.from_env()
     store = store or Store(settings.db_path)
@@ -53,7 +58,8 @@ def create_app(
     city = CityNoiseLayer(settings.socrata_app_token) if settings.city_layer_enabled else None
     if layers is None and settings.city_layer_enabled:
         layers = SfLayers(settings.socrata_app_token)
-    mcp = build_mcp(Service(store, settings, clock=store.clock), city, layers)
+    wearables = WearableService(store, settings, wearable_transport)
+    mcp = build_mcp(Service(store, settings, clock=store.clock), city, layers, wearables)
     security = TransportSecuritySettings(
         enable_dns_rebinding_protection=not settings.any_host_allowed,
         allowed_hosts=settings.mcp_hosts,
@@ -73,11 +79,19 @@ def create_app(
     @contextlib.asynccontextmanager
     async def lifespan(_: Starlette) -> AsyncIterator[None]:
         async with mcp.session_manager.run():
-            yield
+            sync_task = asyncio.create_task(wearables.sync_periodically()) if wearables.configured else None
+            try:
+                yield
+            finally:
+                if sync_task:
+                    sync_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await sync_task
 
     routes: list[BaseRoute] = [
         Route("/healthz", healthz, methods=["GET"]),
         *build_routes(store, settings.api_token),
+        *build_wearable_routes(wearables, settings.api_token),
         Route(path, ExactMount(endpoint), methods=["GET", "POST", "DELETE"]),
     ]
     if settings.mcp_path_secret:
@@ -86,4 +100,5 @@ def create_app(
     app = Starlette(routes=routes, lifespan=lifespan)
     app.state.store = store
     app.state.settings = settings
+    app.state.wearables = wearables
     return app

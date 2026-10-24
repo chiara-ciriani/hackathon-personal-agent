@@ -2,7 +2,8 @@
 
 The Python service exposes authenticated ingestion at `/v1` and MCP tools at
 `/mcp`, backed by SQLite. The implementation uses Starlette and the MCP Python SDK.
-The web map and its Oura connection remain separate in `apps/quiet-compass`.
+The web map's older browser-cookie Oura connection remains separate in
+`apps/quiet-compass`; the native app uses this server's private wearable connection.
 
 ## Run locally
 
@@ -14,7 +15,7 @@ python3.12 -m venv .venv
 pip install -e '.[dev]'
 cp .env.example .env
 # Edit .env and replace QC_API_TOKEN with a long random value.
-uvicorn quiet_compass.app:create_app --factory --env-file .env --reload
+uvicorn quiet_compass.app:create_app --factory --env-file .env --reload --no-access-log
 ```
 
 `--env-file` loads the configuration; copying `.env` alone does not load it.
@@ -72,17 +73,23 @@ connector in the conversation and use [agent_instructions.md](agent_instructions
 This server implements bearer authentication, not an OAuth authorization server.
 Keep `QC_MCP_PATH_SECRET` unset for this deployment.
 
-In `ios/Config.xcconfig`, set `QC_SERVER_URL` and the same token. The example
-configuration explains the `https:/$()/host` escaping required by xcconfig.
+Enter the server URL and the same API token in the native app's Connection section.
+The token is stored in Keychain, not in the application bundle.
 Starting guidance records a target; it does not prove the phone received or
 displayed it. Verify that behavior on a connected device.
 
 ## Wearables, learning and proactive help
 
-Oura authorization currently belongs to the Sites browser session. The Python
-server has no Oura token store or wearable tool. Apple Health integration and a
-background agent runner are also pending. Do not expose browser cookies as MCP
-credentials. See [the implementation boundaries and next steps](../docs/AGENT_LEARNING_AND_HOSTING.md).
+The server now supports Oura OAuth with PKCE, encrypted token storage, rotating
+refresh tokens, periodic sync and disconnection. It accepts explicitly shared
+Apple Health summaries and exposes `quiet_get_personal_context` through MCP.
+Set `QC_ENCRYPTION_KEY` for private storage; Oura additionally requires
+`QC_OURA_CLIENT_ID`, `QC_OURA_CLIENT_SECRET` and a public URL. Keep one worker.
+See [setup, endpoints and verification](../docs/WEARABLES_AND_PHONE.md).
+
+The autonomous agent runner and learning a profile across sessions are still
+pending. Oura's polling task only updates data; it does not invoke a model or
+send notifications. Do not expose browser cookies as MCP credentials.
 
 ## Hosting references
 

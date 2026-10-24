@@ -5,8 +5,9 @@ from __future__ import annotations
 import os
 import uuid
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from urllib.parse import urlsplit
 
 LOCAL_HOSTS = ("localhost:*", "127.0.0.1:*", "[::1]:*", "localhost", "127.0.0.1")
 LOCAL_ORIGINS = ("http://localhost:*", "http://127.0.0.1:*", "http://[::1]:*")
@@ -33,17 +34,28 @@ def _optional(value: str | None) -> str | None:
 class Settings:
     """Service settings. Build with `Settings.from_env()` or directly in tests."""
 
-    api_token: str
+    api_token: str = field(repr=False)
     db_path: Path = Path("./data/quiet_compass.db")
     allowed_hosts: tuple[str, ...] = ()
     active_session_id: str | None = None
     socrata_app_token: str | None = None
     city_layer_enabled: bool = False
     mcp_path_secret: str | None = None
+    public_url: str | None = None
+    encryption_key: str | None = field(default=None, repr=False)
+    oura_client_id: str | None = None
+    oura_client_secret: str | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         if not self.api_token:
             raise SettingsError("QC_API_TOKEN must be set to a long random string")
+        if self.public_url:
+            url = urlsplit(self.public_url)
+            local = url.hostname in {"localhost", "127.0.0.1", "::1"}
+            if (url.scheme != "https" and not (local and url.scheme == "http")) or (
+                not url.netloc or url.username or url.password or url.query or url.fragment or url.path not in {"", "/"}
+            ):
+                raise SettingsError("QC_PUBLIC_URL must be an HTTPS origin (HTTP localhost is allowed for development)")
         if self.active_session_id is not None:
             try:
                 normalized = str(uuid.UUID(self.active_session_id))
@@ -73,6 +85,10 @@ class Settings:
             socrata_app_token=_optional(env.get("QC_SOCRATA_APP_TOKEN")),
             city_layer_enabled=_flag(env.get("QC_CITY_LAYER_ENABLED")),
             mcp_path_secret=_optional(env.get("QC_MCP_PATH_SECRET")),
+            public_url=_optional(env.get("QC_PUBLIC_URL")) or _optional(env.get("RENDER_EXTERNAL_URL")),
+            encryption_key=_optional(env.get("QC_ENCRYPTION_KEY")),
+            oura_client_id=_optional(env.get("QC_OURA_CLIENT_ID")),
+            oura_client_secret=_optional(env.get("QC_OURA_CLIENT_SECRET")),
         )
 
     @property
