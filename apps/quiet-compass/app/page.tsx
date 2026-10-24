@@ -19,7 +19,7 @@ const layerRows:{key:LayerKey;label:string;tag:string;swatch:string;mapIds:strin
  {key:'sfoEvents',label:'Loud planes',tag:'Over the noise limit, past year',swatch:'events',mapIds:['measured-sfo-events'],hint:'Only planes louder than the monitor limit are counted, so this shows the loudest moments.'},
  {key:'candidates',label:'Possible quiet spots',tag:'Parks, plazas and libraries',swatch:'candidate',mapIds:['candidate-places'],hint:'Places that might be calm. Nobody has measured them, so check before you go.'},
  {key:'reports',label:'Noise complaints',tag:'Reported to 311, last 30 days',swatch:'report',mapIds:['noise-reports'],hint:'Complaints people filed with the city. They show where noise bothers people, not how loud it is.'},
- {key:'cad',label:'Police noise calls',tag:'Last 30 days',swatch:'cad',mapIds:['cad-calls'],hint:'Calls police logged as a noise nuisance, shown at the nearest intersection.'},
+ {key:'cad',label:'Police noise calls',tag:'Last 24 hours',swatch:'cad',mapIds:['cad-calls'],hint:'Calls police logged as a noise nuisance, shown at the nearest intersection.'},
  {key:'proxies',label:'Construction and events',tag:'Permits and street closures today',swatch:'proxy',mapIds:['proxy-context'],hint:'Street work, night work, music venues and street closures. Noise is likely, not certain.'},
 ];
 type Properties={label?:string;name?:string;id?:string;evidence?:string;kind?:string;detail?:string;caveat?:string;observedOn?:string;dataset?:string;dbfs?:number;cnel?:number;medianDb?:number;maxDb?:number;count?:number;captureProfile?:string};

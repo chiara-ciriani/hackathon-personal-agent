@@ -307,7 +307,7 @@ def test_cad_noise_calls_count_per_masked_intersection() -> None:
     p = pts[0]
     assert (p.count, p.evidence, p.observed_on, p.label) == (2, "proxy", "2026-10-23", "MISSION ST / 16TH ST")
     assert "complaints, not measurements" in p.caveat and p.cnel_db is None and p.max_level_db is None
-    assert cad_noise_areas([], 30) == []
+    assert cad_noise_areas([], 24) == []
 
 
 def test_noisecapture_cells_are_crowdsourced_and_never_plain_measured() -> None:
