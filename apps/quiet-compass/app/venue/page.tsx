@@ -42,7 +42,7 @@ const style:StyleSpecification={
   {id:'zone-labels',type:'symbol',source:'labels',layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':12,'text-allow-overlap':true},paint:{'text-color':'#171717','text-halo-color':'#ffffff','text-halo-width':1.5}},
  ],
 };
-const home={center:[0,0] as [number,number],zoom:20.1,pitch:58,bearing:-28};
+const home=()=>({center:[0,0] as [number,number],zoom:typeof window!=='undefined'&&window.innerWidth<600?18.85:20.1,pitch:58,bearing:-28});
 export default function Venue(){
  const container=useRef<HTMLDivElement>(null),mapRef=useRef<import('maplibre-gl').Map|null>(null);
  const [ready,setReady]=useState(false),[failed,setFailed]=useState(false),[selected,setSelected]=useState<string|null>(null),[filter,setFilter]=useState<Level|'all'>('all');
@@ -53,7 +53,7 @@ export default function Venue(){
    const lib=await import('maplibre-gl');
    if(disposed||!container.current)return;
    lib.setWorkerUrl('/maplibre-gl-worker.mjs');
-   const map=new lib.Map({container:container.current,style,...home,minZoom:18.5,maxZoom:22,maxPitch:70,attributionControl:false,canvasContextAttributes:{antialias:true}});
+   const map=new lib.Map({container:container.current,style,...home(),minZoom:18.2,maxZoom:22,maxPitch:70,attributionControl:false,canvasContextAttributes:{antialias:true}});
    mapRef.current=map;
    map.getCanvas().setAttribute('aria-label','3D model of a demo event venue. Taller, darker zones are louder. Grey zones have no observations. All levels are simulated.');
    map.on('load',()=>{if(!disposed){setReady(true);setFailed(false)}});
@@ -81,8 +81,8 @@ export default function Venue(){
  },[selected,ready]);
  useEffect(()=>{if(!selected)return;const key=(e:KeyboardEvent)=>{if(e.key==='Escape')setSelected(null)};document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key)},[selected]);
  const zone=zones.find(z=>z.id===selected);
- const reset=()=>{mapRef.current?.flyTo({...home,duration:1000});setSelected(null);setFilter('all')};
- return <main className="quiet-map-only">
+ const reset=()=>{mapRef.current?.flyTo({...home(),duration:1000});setSelected(null);setFilter('all')};
+ return <main className="quiet-map-only quiet-venue">
   <div className="quiet-map-canvas" ref={container}/>
   {!ready&&!failed&&<div className="quiet-loading" role="status" aria-label="Loading venue"><span/></div>}
   {failed&&!ready&&<div className="quiet-map-error" role="status">The venue could not be loaded.<button onClick={()=>window.location.reload()} aria-label="Try again"><RotateCcw size={18}/></button></div>}
@@ -93,7 +93,7 @@ export default function Venue(){
   {zone&&<aside className="quiet-card" key={zone.id} aria-live="polite">
    <button className="quiet-icon quiet-card-close" aria-label="Close zone details" onClick={()=>setSelected(null)}><X size={16}/></button>
    <strong>{zone.name}</strong>
-   {zone.score===null?<span className="quiet-card-level">No observations yet</span>:<><span className={'quiet-card-level '+levelOf(zone.score)}>{levelOf(zone.score)} · simulated</span><div className="quiet-card-bar" role="img" aria-label={'Simulated level '+Math.round(zone.score*100)+' out of 100'}><span style={{width:Math.round(zone.score*100)+'%'}}/></div></>}
+   {zone.score===null?<span className="quiet-card-level quiet-card-none">No observations yet</span>:<><span className={'quiet-card-level '+levelOf(zone.score)}>{levelOf(zone.score)} · simulated</span><div className="quiet-card-bar" role="img" aria-label={'Simulated level '+Math.round(zone.score*100)+' out of 100'}><span style={{width:Math.round(zone.score*100)+'%'}}/></div></>}
   </aside>}
   <div className="quiet-map-controls">
    <button className="quiet-icon" title="Reset view" aria-label="Reset view" onClick={reset}><RotateCcw size={18}/></button>
