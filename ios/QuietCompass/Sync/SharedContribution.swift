@@ -203,7 +203,12 @@ struct SharedContribution: Codable, Sendable, Hashable, Identifiable {
 struct ContributionSubmission: Codable, Sendable {
     var contractVersion = 1
     var contribution: SharedContribution
-    enum CodingKeys: String, CodingKey { case contribution; case contractVersion = "contract_version" }
+    var shareConsent = false
+    enum CodingKeys: String, CodingKey {
+        case contribution
+        case contractVersion = "contract_version"
+        case shareConsent = "share_consent"
+    }
 }
 
 /// POST /v1/contributions response.

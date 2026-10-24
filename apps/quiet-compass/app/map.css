@@ -198,3 +198,7 @@ a.quiet-share{box-sizing:border-box}
 @media(max-width:600px){.quiet-mcp-panel{width:calc(100vw - 34px)}}
 .quiet-map-only:not(.quiet-venue) .quiet-intensity{bottom:50px}
 @media(max-width:600px){.quiet-map-only:not(.quiet-venue) .quiet-intensity{bottom:64px}}
+
+.quiet-exchange-detail{font-size:12px;line-height:1.6;color:#635c6b;margin:0 0 12px}
+.quiet-mcp-state[data-available="true"]>span{background:#35804b}
+.quiet-mcp-panel{max-height:calc(100dvh - 105px);overflow:auto}

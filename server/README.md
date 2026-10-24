@@ -19,8 +19,9 @@ uvicorn quiet_compass.app:create_app --factory --env-file .env --reload --no-acc
 ```
 
 `--env-file` loads the configuration; copying `.env` alone does not load it.
-`GET /healthz` is public and returns `{"ok":true}`. Every `/v1` operation and the
-default `/mcp` endpoint require `Authorization: Bearer <QC_API_TOKEN>`.
+`GET /healthz` is public and returns `{"ok":true}`. Private `/v1` operations and the default `/mcp` endpoint require
+`Authorization: Bearer <QC_API_TOKEN>`. The shared exchange has a separate
+credential and contribution receipts; see below. Its capability status is public.
 
 ```sh
 ruff check .
@@ -34,7 +35,7 @@ is no recording session. Fixtures in `tests/` are synthetic test data.
 ## Host on Render
 
 The root [render.yaml](../render.yaml) prepares one Python web service in Oregon,
-one worker process, a generated API token and a 1 GB persistent disk. The database
+one worker process, separate generated owner/shared API tokens and a 1 GB persistent disk. The database
 lives at `/var/data/quiet_compass.db`. Importing the Blueprint creates paid
 resources; check the current [Render prices](https://render.com/pricing) before
 creating the service. No cloud resources are created by committing this file.
@@ -59,7 +60,7 @@ does not fit this SQLite setup. The disk survives restarts; deletion of the
 service/disk is a separate operation. Before destructive operations, export a
 consistent SQLite backup using the SQLite backup API and verify restoration.
 
-This is a **single-user backend**. Its shared token can access every session
+This is a **single-user backend**. Its owner token (`QC_API_TOKEN`) can access every session
 in its database. An active-session setting selects context; it does not enforce
 user isolation. Do not connect unrelated participants to the same instance as
 though it provided private accounts. Multi-user hosting needs authenticated
@@ -106,15 +107,16 @@ Reviewed October 24, 2026:
 Alongside the personal `quiet_*` tools, the service keeps a shared layer of
 consented acoustic summaries (`SharedContribution` in
 [the contract](../contracts/README.md#shared-sound-layer)). Code lives in
-`quiet_compass/shared_*.py`; its tables (`areas`, `contributions`) share the
+`quiet_compass/shared_*.py`; its tables (`areas`, `contributions`, `contribution_access`) share the
 SQLite file but are separate from the personal session tables.
 
 | Interface | Auth | Purpose |
 | --- | --- | --- |
-| `POST /v1/contributions` | bearer | Submit one summary; returns `ContributionResult` |
-| `PUT /v1/areas/{area_id}` | bearer | Register an indoor zone or named area |
-| `GET /v1/map/aggregates?lat&lon&radius_m&since_minutes` | public, CORS | Released aggregates for the web map |
-| MCP `query_sound_map`, `find_suitable_places`, `submit_observation` | bearer | Agent access to the same layer |
+| `POST /v1/contributions` | owner or shared bearer | Submit one summary with `share_consent: true`; returns `ContributionResult` |
+| `PUT /v1/areas/{area_id}` | owner bearer only | Register an indoor zone or named area |
+| `GET /v1/map/aggregates?lat&lon&radius_m&since_minutes` | owner/shared bearer + `X-QC-Access-Receipt` | Released aggregates; missing/expired receipt returns 428 |
+| `/mcp/shared` | shared bearer only | Three shared tools; both read tools require `access_receipt` |
+| `GET /v1/exchange/status` | public | Protocol and availability only; no measurements or credentials |
 
 Policy, enforced on the server:
 
@@ -129,16 +131,51 @@ Policy, enforced on the server:
   `QC_RELEASE_MIN_CONTRIBUTIONS` distinct contributions (default 2; a one-phone
   walkthrough can set 1). Until then the result is `withheld`. Capture profiles are never
   merged, and `find_suitable_places` ranks quietness only within one profile.
-- Contributions older than `QC_CONTRIBUTION_RETENTION_HOURS` (default 24) are
+- Contributions older than `QC_CONTRIBUTION_RETENTION_HOURS` (default 24, minimum 0.5 to preserve a full access window) are
   deleted on every write. Aggregates are computed on read, so they expire too.
 
-**Why the map read is public.** The web map shows exactly the released aggregates
-to anyone who opens it, so requiring the API token there would only push the token
-into browser code. `GET /v1/map/aggregates` therefore needs no token and sends CORS
-headers for `QC_MAP_ALLOWED_ORIGINS` (default `*`; set the map's origin in
-production). It never returns withheld cohorts, contribution ids or personal
-session data. Every write still requires the bearer token.
+**Contribution before queries.** A recent, plausible device measurement with explicit
+`share_consent: true` and no clipping returns a random `access_receipt` valid for
+15 minutes from its first acceptance, including when `status` is `withheld`.
+A measurement's normalized 5-minute bucket must fall within the last 15 minutes.
+Pass the receipt as a tool argument or the REST `X-QC-Access-Receipt` header.
+Reads never consume it. After expiry, submit a new measurement. Simulated, old,
+clipped, rejected, or legacy uncredited rows do not unlock queries. Exact duplicate
+summaries (even with a new UUID) return the original receipt and deadline and do
+not increase the cohort count. Reusing an ID with different data is rejected.
+Receipt creation and insertion are one SQLite transaction and survive restarts.
+
+**External agent setup.** Set `QC_SHARED_API_TOKEN` to a separate random value of
+at least 16 characters (the Render Blueprint generates it). Configure external
+agents at `https://YOUR-SERVER/mcp/shared` with
+`Authorization: Bearer <QC_SHARED_API_TOKEN>`. Never give them `QC_API_TOKEN` or
+the private path secret. The shared endpoint exposes only three tools, no personal
+health, session memory or guidance. It returns 503 until configured. Keep the
+owner connector at `/mcp` for the personal agent. Its shared queries also require
+a receipt; private `quiet_*` tools do not.
+
+**Web setup.** Set `QC_SERVER_URL=https://YOUR-SERVER` in the web app's server
+runtime. The current default is `https://quiet-compass-server.onrender.com`; override it
+for another installation. The MCP panel checks public capability metadata and shows the connector
+address and copyable setup. It never embeds either API token, proxies shared reads,
+or claims that an agent is connected just because the server responds. A real
+agent needs an HTTP MCP client that can send the shared bearer header. The page's
+illustrative map and existing external city data remain separately labelled;
+opening the page grants no server receipt.
+
+This replaces the formerly public map read. Update shared clients to send consent
+on submission and the receipt on reads. Configure `QC_MAP_ALLOWED_ORIGINS` for
+allowed browser origins; CORS never replaces authorization. Keep receipts out of
+URLs, logs and public responses. See [agent_instructions.md](agent_instructions.md)
+for the exact contribution/query sequence.
 
 These are design defaults, not an anonymity guarantee: coarse place-time data can
 still reveal patterns, and the shared token means any holder can contribute.
 Label seeded or replayed data with `source: "simulated"`.
+
+The server checks payloads and replay, not hardware authenticity. `source: device`
+is asserted by the caller, and a shared credential/receipt can be copied by its
+holder. This is not per-agent identity, sensor attestation or Sybil resistance.
+Identical normalized readings in the same cell, bucket and capture profile are
+conservatively treated as one contribution. Trusted device provenance and
+individual agent credentials are separate future work.

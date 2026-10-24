@@ -46,9 +46,13 @@ final class SharedContributionTests: XCTestCase {
                                    durationSeconds: 30,
                                    measurement: .init(rmsDbfs: -31.4, frameLevelSpreadDb: 8.2, peaksPerMin: nil),
                                    quality: .init(captureProfile: "p", clippingDetected: false), source: .simulated)
-        let body = try ContractJSON.encoder().encode(ContributionSubmission(contribution: c))
+        let defaultBody = try ContractJSON.encoder().encode(ContributionSubmission(contribution: c))
+        let defaultJSON = try XCTUnwrap(JSONSerialization.jsonObject(with: defaultBody) as? [String: Any])
+        XCTAssertEqual(defaultJSON["share_consent"] as? Bool, false)
+        let body = try ContractJSON.encoder().encode(ContributionSubmission(contribution: c, shareConsent: true))
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
         XCTAssertEqual(json["contract_version"] as? Int, 1)
+        XCTAssertEqual(json["share_consent"] as? Bool, true)
         let obj = try XCTUnwrap(json["contribution"] as? [String: Any])
         XCTAssertEqual(Set(obj.keys), ["id", "schema_version", "area_id", "area_name", "lat", "lon", "time_bucket",
                                        "duration_seconds", "measurement", "quality", "source"])

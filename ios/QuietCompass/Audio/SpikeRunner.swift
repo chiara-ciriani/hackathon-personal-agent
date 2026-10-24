@@ -8,7 +8,9 @@ import ARKit
 import AVFoundation
 import Foundation
 import Observation
-import QuietCore
+import enum QuietCore.OctaveBands
+import struct QuietCore.RollingStats
+import enum QuietCore.TrackingState
 import UIKit
 import os
 

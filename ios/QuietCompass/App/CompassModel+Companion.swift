@@ -4,6 +4,9 @@
 import Foundation
 import QuietCore
 
+// Keep QuietCore.Observation out of files that expand the @Observable macro.
+typealias AcousticObservation = QuietCore.Observation
+
 extension CompassModel {
     struct PlaceSummary: Identifiable, Hashable {
         var place: Place
@@ -70,8 +73,11 @@ extension CompassModel {
     /// contribution the server rejects as invalid would block every later observation upload. Failed
     /// contributions wait in a small in-memory queue and are retried with the next one.
     private func send(_ contribution: SharedContribution, label: String, server: PhoneServer) async {
+        guard companion.shareContributions else { return }
         do {
-            let body = try ContractJSON.encoder().encode(ContributionSubmission(contribution: contribution))
+            let body = try ContractJSON.encoder().encode(
+                ContributionSubmission(contribution: contribution, shareConsent: true)
+            )
             let data = try await server.request("/v1/contributions", method: "POST", body: body)
             let result = try ContractJSON.decoder().decode(ContributionResult.self, from: data)
             companion.setContributionText("\(label): \(result.displayText)")

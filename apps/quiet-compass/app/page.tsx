@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
+import {connectionGuide,sharedTools} from '../lib/mcp-exchange.mjs';
 import {Building2,Check,Compass,Copy,Layers,Plug,Users,Minus,Plus,RotateCcw,X} from 'lucide-react';
 import type {StyleSpecification} from 'maplibre-gl';
 import 'ol/ol.css';
@@ -115,25 +116,32 @@ type Level='quiet'|'moderate'|'loud';
 const levelOf=(score:number):Level=>score>.65?'loud':score>.35?'moderate':'quiet';
 const filters:{id:Level|'all';label:string}[]=[{id:'all',label:'All'},{id:'quiet',label:'Quiet'},{id:'moderate',label:'Moderate'},{id:'loud',label:'Loud'}];
 const home={center:[-122.44,37.768] as [number,number],zoom:12.6,pitch:48,bearing:-12};
-const MCP_URL='https://quiet-compass-server.onrender.com/mcp';
-const mcpTools=[
- {name:'quiet_sf_layers',what:'Real noise layers around a point in San Francisco'},
- {name:'query_sound_map',what:'Reported noise levels in an area'},
- {name:'find_suitable_places',what:'Calm places that fit what you need'},
- {name:'submit_observation',what:'Send a noise reading, with consent'},
-];
-const snippets:Record<'code'|'app'|'json'|'prompt',{label:string;text:string}>={
- code:{label:'Claude Code',text:'claude mcp add --transport http quiet-compass '+MCP_URL+' --header "Authorization: Bearer YOUR_TOKEN"'},
- app:{label:'Claude app',text:'Settings > Connectors > Add custom connector\nName: Quiet Compass\nURL: '+MCP_URL+'\nHeader: Authorization: Bearer YOUR_TOKEN'},
- json:{label:'JSON',text:JSON.stringify({mcpServers:{'quiet-compass':{url:MCP_URL,headers:{Authorization:'Bearer YOUR_TOKEN'}}}},null,2)},
- prompt:{label:'Prompt',text:'Use the Quiet Compass tools to pick calm places: query_sound_map for an area, find_suitable_places for what I need. Say when data is simulated or only reported by people, never invent sound levels, and never ask for raw audio or my route.'},
-};
+const connectionLabels:Record<string,string>={checking:'Checking server…',available:'Shared MCP available',not_configured:'Server setup needed',invalid_config:'Check server address',unavailable:'Server unavailable',disabled:'Shared access setup needed',incompatible:'Server update needed'};
+type McpConnection={state:string;endpoint:string|null};
 type ViewOptions={center?:[number,number];zoom?:number;pitch?:number;bearing?:number;duration?:number};
 type MapControls={zoomIn:()=>unknown;zoomOut:()=>unknown;getZoom:()=>number;flyTo:(o:ViewOptions)=>unknown;easeTo:(o:ViewOptions)=>unknown;remove:()=>unknown};
 export default function CityMap(){
+ const [connection,setConnection]=useState<McpConnection>({state:'checking',endpoint:null});
+ const MCP_URL=connection.endpoint||'https://YOUR-SERVER/mcp/shared';
+ const guide=connectionGuide(connection.endpoint);
+ const snippets:Record<'code'|'app'|'json'|'prompt',{label:string;text:string}>={
+  code:{label:'Claude Code',text:'claude mcp add --transport http quiet-compass-shared '+MCP_URL+' --header "Authorization: Bearer YOUR_SHARED_TOKEN"'},
+  app:{label:'Claude app',text:'Settings > Connectors > Add custom connector\nName: Quiet Compass Shared\nURL: '+MCP_URL+'\nHeader: Authorization: Bearer YOUR_SHARED_TOKEN'},
+  json:{label:'JSON',text:JSON.stringify({mcpServers:{'quiet-compass-shared':{url:MCP_URL,headers:{Authorization:'Bearer YOUR_SHARED_TOKEN'}}}},null,2)},
+  prompt:{label:'Prompt',text:guide.workflow},
+ };
  const container=useRef<HTMLDivElement>(null),map=useRef<MapControls|null>(null),markers=useRef<{marker:{remove:()=>unknown};button:HTMLButtonElement}[]>([]),focusRef=useRef<(i:number|null)=>void>(()=>{}),simRef=useRef(false),glMap=useRef<import('maplibre-gl').Map|null>(null),filterRef=useRef<(f:Level|'all')=>void>(()=>{});
  const mcpButton=useRef<HTMLButtonElement>(null),closeButton=useRef<HTMLButtonElement>(null),dialog=useRef<HTMLDivElement>(null);
  const [ready,setReady]=useState(false),[failed,setFailed]=useState(false),[mcp,setMcp]=useState(false),[shown,setShown]=useState<Record<LayerKey,boolean>>({simulated:false,measured:true,sfoEvents:false,crowd:true,proxies:false,cad:true,candidates:false,reports:true}),[failedLayers,setFailedLayers]=useState<string[]>([]),[layersOpen,setLayersOpen]=useState(false),[copied,setCopied]=useState<string|null>(null),[tab,setTab]=useState<'code'|'app'|'json'|'prompt'>('code'),[selected,setSelected]=useState<number|null>(null),[venueSel,setVenueSel]=useState<string|null>(null),[hist,setHist]=useState(false),[entries]=useState<Entry[]>([]),[filter,setFilter]=useState<Level|'all'>('all');
+ useEffect(()=>{
+  if(!mcp)return;
+  const controller=new AbortController();setConnection({state:'checking',endpoint:null});
+  fetch('/api/mcp/status',{cache:'no-store',signal:controller.signal})
+   .then(async response=>{if(!response.ok)throw new Error('unavailable');return response.json() as Promise<McpConnection>})
+   .then(value=>{if(!controller.signal.aborted)setConnection(value)})
+   .catch(()=>{if(!controller.signal.aborted)setConnection({state:'unavailable',endpoint:null})});
+  return()=>controller.abort();
+ },[mcp]);
  useEffect(()=>{
   let disposed=false;
   const fallback=async()=>{
@@ -197,7 +205,7 @@ export default function CityMap(){
   if(!mcp)return;closeButton.current?.focus();
   const key=(e:KeyboardEvent)=>{
    if(e.key==='Escape'){setMcp(false);mcpButton.current?.focus()}
-   if(e.key==='Tab'){const buttons=dialog.current?.querySelectorAll<HTMLButtonElement>('button');if(!buttons?.length)return;const first=buttons[0],last=buttons[buttons.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}
+   if(e.key==='Tab'){const buttons=dialog.current?.querySelectorAll<HTMLElement>('button, input, textarea, [tabindex="0"]');if(!buttons?.length)return;const first=buttons[0],last=buttons[buttons.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}
   };document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key);
  },[mcp]);
  function reset(){map.current?.flyTo({...home,duration:1000});setSelected(null);setVenueSel(null);setFilter('all')}
@@ -242,13 +250,16 @@ export default function CityMap(){
   <div className="quiet-intensity" role="img" aria-label="Lighter violet means fewer noise reports or lower simulated levels; darker violet means more reports or higher levels." title="Darker violet = more noise reports (311 and noise-nuisance calls). Simulated levels use the same scale when that layer is on."><em>{shown.simulated?'Quiet':'Fewer reports'}</em><span/><em>{shown.simulated?'Loud':'More reports'}</em></div>
   {mcp&&<div className="quiet-mcp-overlay" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><div className="quiet-mcp-panel" ref={dialog} role="dialog" aria-modal="true" aria-labelledby="mcp-title" onClick={e=>e.stopPropagation()}>
    <div className="quiet-mcp-heading"><strong id="mcp-title">MCP</strong><button ref={closeButton} className="quiet-icon" aria-label="Close MCP" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><X size={18}/></button></div>
-   <p className="quiet-mcp-lead">Give any personal agent live noise data for San Francisco.</p>
+   <div className="quiet-mcp-state" role="status" data-available={connection.state==='available'}><span/>{connectionLabels[connection.state]||'Server unavailable'}</div>
+   <p className="quiet-mcp-lead">Contribute once. Ask for 15 minutes.</p>
+   <p className="quiet-exchange-detail">With your permission, an agent shares a recent sound summary and receives 15 minutes of access to the shared map. Repeating the same summary does not renew access.</p>
+   {connection.state!=='available'&&<p className="quiet-exchange-detail">The shared connection needs server setup. Reopen this panel to check again.</p>}
    <label className="quiet-mcp-label" htmlFor="mcp-url">Server URL</label>
    <div className="quiet-field"><input id="mcp-url" readOnly value={MCP_URL} onFocus={e=>e.currentTarget.select()}/><button className="quiet-icon" aria-label={copied==='url'?'URL copied':'Copy server URL'} title="Copy" onClick={()=>copyText('url',MCP_URL)}>{copied==='url'?<Check size={16}/>:<Copy size={16}/>}</button></div>
    <div className="quiet-tabs" role="tablist" aria-label="How to connect">{(Object.keys(snippets) as (keyof typeof snippets)[]).map(k=><button key={k} role="tab" aria-selected={tab===k} className={tab===k?'is-active':''} onClick={()=>setTab(k)}>{snippets[k].label}</button>)}</div>
    <div className="quiet-snippet"><pre tabIndex={0}>{snippets[tab].text}</pre><button className="quiet-share" onClick={()=>copyText('snippet',snippets[tab].text)}>{copied==='snippet'?<><Check size={14}/>Copied</>:'Copy'}</button></div>
-   <p className="quiet-mcp-hint">Replace YOUR_TOKEN with your server&apos;s access token.</p>
-   <ul className="quiet-tools">{mcpTools.map(t=><li key={t.name}><code>{t.name}</code><span>{t.what}</span></li>)}</ul>
+   <p className="quiet-mcp-hint">Replace YOUR_SHARED_TOKEN with the server&apos;s shared access key. Keep the personal agent&apos;s key private.</p>
+   <ul className="quiet-tools">{sharedTools.map(t=><li key={t.name}><code>{t.name}</code><span>{t.purpose}</span></li>)}</ul>
   </div></div>}
  </main>;
 }

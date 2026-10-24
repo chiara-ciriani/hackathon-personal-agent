@@ -58,10 +58,13 @@ class Settings:
     release_min_contributions: int = 2
     contribution_retention_hours: float = 24.0
     map_allowed_origins: tuple[str, ...] = ("*",)
+    shared_api_token: str | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         if not self.api_token:
             raise SettingsError("QC_API_TOKEN must be set to a long random string")
+        if self.shared_api_token and (len(self.shared_api_token) < 16 or self.shared_api_token == self.api_token):
+            raise SettingsError("QC_SHARED_API_TOKEN must be at least 16 characters and different from QC_API_TOKEN")
         if self.public_url:
             url = urlsplit(self.public_url)
             local = url.hostname in {"localhost", "127.0.0.1", "::1"}
@@ -81,8 +84,8 @@ class Settings:
             raise SettingsError("QC_MCP_PATH_SECRET must be at least 16 letters or digits")
         if self.release_min_contributions < 1:
             raise SettingsError("QC_RELEASE_MIN_CONTRIBUTIONS must be at least 1")
-        if self.contribution_retention_hours <= 0:
-            raise SettingsError("QC_CONTRIBUTION_RETENTION_HOURS must be positive")
+        if self.contribution_retention_hours < 0.5:
+            raise SettingsError("QC_CONTRIBUTION_RETENTION_HOURS must be at least 0.5 to preserve the 15-minute grant")
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
@@ -109,6 +112,7 @@ class Settings:
             release_min_contributions=_number(env.get("QC_RELEASE_MIN_CONTRIBUTIONS"), 2, int),
             contribution_retention_hours=_number(env.get("QC_CONTRIBUTION_RETENTION_HOURS"), 24.0, float),
             map_allowed_origins=_csv(env.get("QC_MAP_ALLOWED_ORIGINS")) or ("*",),
+            shared_api_token=_optional(env.get("QC_SHARED_API_TOKEN")),
         )
 
     @property

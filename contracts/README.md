@@ -68,18 +68,33 @@ A separate, coarse layer of consented summaries that other agents and the web ma
 
 | Method and path | Auth | Body | Response |
 | --- | --- | --- | --- |
-| `POST /v1/contributions` | bearer | `ContributionUpload` | `200 ContributionResult` (`accepted`, `withheld` or `rejected` with `reason`); `422` on schema errors |
+| `POST /v1/contributions` | owner/shared bearer | `ContributionUpload` with `share_consent: true` | `200 ContributionResult` (`accepted`, `withheld` or `rejected` with `reason`); `422` on schema errors |
 | `PUT /v1/areas/{area_id}` | bearer | `AreaUpsert` | `200 Area` |
-| `GET /v1/map/aggregates?lat&lon&radius_m=500&since_minutes=60` | none (CORS) | none | `200 SoundMapResponse` |
+| `GET /v1/map/aggregates?lat&lon&radius_m=500&since_minutes=60` | owner/shared bearer + `X-QC-Access-Receipt` | none | `200 SoundMapResponse`; 428 if contribution required |
 
 Server rules: lat/lon are re-rounded and buckets re-floored; unknown `area_id` with coordinates becomes `cell:<lat>,<lon>`, without coordinates it is rejected; implausible values (`rms_dbfs < -120`, spread `> 60`, duration outside 5-600 s, future or expired buckets) are rejected; at most 3 contributions per area, bucket and capture profile; duplicate ids are idempotent; clipping is stored and counted. A cohort (area, bucket, capture profile) is released only with at least `QC_RELEASE_MIN_CONTRIBUTIONS` contributions (default 2). Capture profiles are never merged. Contributions are deleted after `QC_CONTRIBUTION_RETENTION_HOURS` (default 24).
 
-The map read is public because it returns only released aggregates, the same data the map shows any viewer; putting the token in browser code would not protect anything.
+Shared reads require a contribution receipt. Submit a recent device summary with explicit
+`share_consent: true` (default false). A plausible, unclipped measurement with a normalized
+bucket from the last 15 minutes returns `access_receipt` and `access_expires_at`, including
+when status is `withheld`. One receipt allows unlimited queries for 15 minutes from first
+acceptance. Retries and identical normalized payloads under a different UUID never extend
+the deadline or increment the cohort. Reusing an ID with different data is rejected.
+Simulated, clipped, old and rejected measurements do not grant access. Receipt state is
+persistent and checked by REST and MCP. Never put receipts or API keys in browser bundles.
+
+External agents use `/mcp/shared` with `QC_SHARED_API_TOKEN`, which must differ from the
+owner's `QC_API_TOKEN`. Only the three shared tools exist there. `/mcp` remains private;
+its shared reads obey the same policy. `GET /v1/exchange/status` exposes only public
+capability metadata (`contribution-window-v1`, 900-second window, endpoint enabled, tools).
+This policy changes the previously public shared read; existing clients must migrate.
 
 | MCP tool | Purpose | Annotations |
 | --- | --- | --- |
 | `query_sound_map(lat, lon, radius_m=500, since_minutes=60)` | Released aggregates near a point plus an `unknown_coverage` note | read-only |
 | `find_suitable_places(goal, lat, lon, max_walk_minutes=10, return_by?, max_age_minutes=30)` | Candidates ranked within a capture-profile cohort, with supporting observations, age, uncertainty and a straight-line walk estimate; or `{no_fit, reason}` | read-only |
-| `submit_observation(<SharedContribution fields>)` | Same as `POST /v1/contributions` | idempotent, not destructive |
+| `submit_observation(<SharedContribution fields>, share_consent=true)` | Same as `POST /v1/contributions` | idempotent, not destructive |
 
 The web map's MCP panel (`apps/quiet-compass/app/page.tsx`) shows an earlier proposal of these tools with different inputs (`bounds`, `zone_id`, `acoustic_summary`). The tool names match; the parameters above are the implemented ones.
+
+Both shared query tools take `access_receipt` (the value from submission). Missing, invalid or expired receipts return an MCP tool error containing `contribution_required`. Private tools and independent external city data are unaffected. Device provenance is caller-asserted, not hardware-attested.
