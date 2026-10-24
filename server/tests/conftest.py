@@ -78,7 +78,7 @@ def clock() -> Clock:
 @pytest.fixture
 def client(tmp_path: Path, clock: Clock) -> Iterator[TestClient]:
     settings = Settings(api_token=TOKEN, db_path=tmp_path / "qc.db")
-    app = create_app(settings, Store(settings.db_path, clock=clock), clock=clock)
+    app = create_app(settings, Store(settings.db_path, clock=clock))
     with TestClient(app, base_url="http://localhost") as test_client:
         test_client.app_clock = clock  # type: ignore[attr-defined]
         yield test_client
