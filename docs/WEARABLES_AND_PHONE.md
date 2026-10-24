@@ -86,7 +86,7 @@ without pressing Share. Deletion removes active database records, not old backup
 
 | Check | Result |
 | --- | --- |
-| Server suite | 86 tests passed after merging the shared sound layer, including eight wearable tests |
+| Server suite | 100 tests passed after merging the shared sound layer and latest SF sources, including eight wearable tests |
 | Server lint | Ruff passed |
 | QuietCore package | 55 tests passed: existing DSP/routes plus offline retry, persistence, destination isolation and sleep overlap |
 | Real local HTTP round trip | Swift client → Python ingest → MCP context → guidance → phone acknowledgement passed with synthetic data |
