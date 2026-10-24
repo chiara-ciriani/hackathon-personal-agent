@@ -21,6 +21,7 @@ import enum QuietCore.PlaceTag
 import enum QuietCore.RouteBack
 import enum QuietCore.ContractJSON
 import class QuietCore.ObservationAggregator
+import protocol QuietCore.FeatureSource
 import struct QuietCore.NoiseAlertMonitor
 import struct QuietCore.NoiseAlert
 import UIKit
@@ -46,6 +47,11 @@ final class CompassModel {
     var wearableBusy = false
     var canConnectOura = false
     var ouraConnected = false
+    /// Capture mode, Simulator mocks, minimap data, shared contributions and diagnostics
+    /// (CompanionFeatures.swift, CompassModel+Companion.swift).
+    let companion = CompanionFeatures()
+    /// 30 s dwell windows waiting for the next observation, for shared contributions.
+    var pendingContributionWindows: [DwellCounter.Window] = []
     // Noise alerts (docs/BACKGROUND_CAPTURE_AND_NOISE_ALERTS.md).
     var alertsOn = UserDefaults.standard.object(forKey: "alertsOn") as? Bool ?? true {
         didSet { UserDefaults.standard.set(alertsOn, forKey: "alertsOn") }
@@ -61,16 +67,16 @@ final class CompassModel {
     private var monitor = NoiseAlertMonitor()
     private var lastObservationLevel: Double?
     private let notifier = NoiseNotifier()
-    private var server: PhoneServer?
-    private var outbox: PhoneOutbox?
+    private(set) var server: PhoneServer?
+    private(set) var outbox: PhoneOutbox?
     private let health = HealthReader()
-    private var session: Session?
-    private var source: MonoFeatureSource?
-    private var tracker: PathTracker?
-    private var pose: PoseSample?
+    private(set) var session: Session?
+    private var source: FeatureSource?
+    private var tracker: PathTracking?
+    private(set) var pose: PoseSample?
     private var recorder: BreadcrumbRecorder?
-    private var crumbs: [Crumb] = []
-    private var route: QuietCore.Route?
+    private(set) var crumbs: [Crumb] = []
+    private(set) var route: QuietCore.Route?
     private var lastNormal = Date()
     private var startTask: Task<Void, Never>?
     private var frameTask: Task<Void, Never>?
@@ -115,26 +121,29 @@ final class CompassModel {
                 guard let server, let outbox else { throw PhoneError.message("Save a server connection first.") }
                 guard await AudioSessionConfigurator.requestRecordPermission() else { throw PhoneError.message("Allow microphone access in Settings to measure sound.") }
                 try Task.checkCancellation()
+                #if !targetEnvironment(simulator)
                 guard await AVCaptureDevice.requestAccess(for: .video) else { throw PhoneError.message("Allow camera access in Settings to track the walked path.") }
                 try Task.checkCancellation()
+                #endif
                 if alertsOn { _ = await notifier.requestPermission() }
                 var settings = NoiseAlertMonitor.Settings(); settings.offsetDb = sensitivityDb
                 monitor = NoiseAlertMonitor(settings: settings); hasBaseline = false; lastAlert = nil
                 lastObservationLevel = nil; levelsOnly = false
-                let source = MonoFeatureSource(classifier: SoundClassifier())
+                let source = companion.makeSource()
                 self.source = source
                 let frames = source.frames()
                 try await source.start()
                 try Task.checkCancellation()
-                let result = source.sessionResult
-                let session = Session(name: "Phone recording", deviceProfile: .init(model: UIDevice.current.model,
-                    osVersion: UIDevice.current.systemVersion, captureMode: .arLevels,
-                    audioSessionMode: result?.mode ?? "unknown", sampleRateHz: Int(result?.sampleRate ?? 48000), appVersion: "0.2"))
+                let result = CompanionFeatures.audioSessionInfo(of: source)
+                let session = Session(name: "Phone recording", deviceProfile: .init(model: DeviceProfileBuilder.modelIdentifier(),
+                    osVersion: UIDevice.current.systemVersion, captureMode: companion.captureMode,
+                    audioSessionMode: result.mode, sampleRateHz: Int(result.sampleRate), appVersion: "0.2"))
                 try await outbox.enqueue(SessionUpsert(session: session), path: "/v1/sessions/\(session.id)", method: "PUT", server: server)
                 self.session = session; places = []; crumbs = []; pose = nil
                 recorder = BreadcrumbRecorder(sessionId: session.id)
                 guidance = nil; route = nil; direction = ""; level = nil; lastNormal = Date()
-                let tracker = PathTracker(onPose: { [weak self] pose in self?.received(pose) }, onFailure: { [weak self] text in
+                companion.beginSession()
+                let tracker = companion.makeTracker(onPose: { [weak self] pose in self?.received(pose) }, onFailure: { [weak self] text in
                     self?.trackingFailed(text)
                 })
                 self.tracker = tracker
@@ -146,6 +155,7 @@ final class CompassModel {
                         guard !Task.isCancelled, running else { break }
                         level = frame.levelDbfs
                         let recentPose = pose.flatMap { Date().timeIntervalSince($0.t) < 2 ? $0 : nil }
+                        companionFrame(frame, pose: recentPose)
                         await aggregator.updatePose(recentPose)
                         if var observation = await aggregator.ingest(frame) {
                             observation.placeId = PlaceLocator(places: places).nearestPlace(to: observation.position)?.id
@@ -154,6 +164,7 @@ final class CompassModel {
                             handle(monitor.ingest(observation))
                             do { try await outbox.enqueue(ObservationBatch(observations: [observation]), path: "/v1/observations", server: server) }
                             catch { message = error.localizedDescription; Task { await self.stop() }; break }
+                            await companionObservation(observation)
                         }
                     }
                 }
@@ -197,11 +208,11 @@ final class CompassModel {
     func enterBackground() async {
         guard running else { await stop(); return }
         endTracking("Measuring sound in the background. Path tracking ended; start a new recording to track a path again.")
-        source?.setClassifierPaused(true)
+        (source as? MonoFeatureSource)?.setClassifierPaused(true)
     }
 
     func enterForeground() {
-        source?.setClassifierPaused(false)
+        (source as? MonoFeatureSource)?.setClassifierPaused(false)
     }
 
     /// ARKit is interrupted when the app leaves the foreground. That ends the path, not the session.
