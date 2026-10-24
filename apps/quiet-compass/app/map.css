@@ -57,3 +57,4 @@
 .quiet-mcp{height:36px;top:28px;min-width:76px;justify-content:center;padding:0 12px;gap:7px;background:#fff;color:#37323d;border:1px solid #e6e4e9;border-radius:6px;box-shadow:0 1px 2px #00000004;font:500 11px/16px ui-monospace,SFMono-Regular,monospace;letter-spacing:.2px;transition:background 150ms,border-color 150ms}
 .quiet-mcp:hover{background:#faf8fd;border-color:#cfc5df}.quiet-mcp svg{color:#776789}.quiet-help{right:116px;height:36px;width:36px;background:white;border-radius:6px}.quiet-mcp-state{color:#777}
 @media(max-width:600px){.quiet-mcp{top:20px;right:17px;height:36px}.quiet-help{top:20px;right:103px;height:36px;width:36px}}
+.report-popup .maplibregl-popup-content{padding:7px 10px;border-radius:8px;font-size:12px;color:#27272a;box-shadow:0 4px 16px rgba(39,39,42,.12)}

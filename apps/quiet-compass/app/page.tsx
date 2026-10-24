@@ -42,9 +42,18 @@ const points:MapPoint[]=[
  {name:'Mission Bay',lng:-122.3895,lat:37.7721,score:.75},
 ];
 const soundData={type:'FeatureCollection' as const,features:points.map((p,i)=>({type:'Feature' as const,id:i,geometry:{type:'Point' as const,coordinates:[p.lng,p.lat]},properties:{score:p.score}}))};
+// Real SF 311 noise complaints (DataSF). These are reports, not measurements, so they get their own neutral style.
+const reportsUrl="https://data.sf.gov/resource/vw6y-z8j6.json?$where=service_name in ('Noise','Noise Report')&$order=requested_datetime DESC&$limit=100";
+type NoiseReport={service_request_id:string;requested_datetime:string;service_subtype?:string;neighborhoods_sffind_boundaries?:string;lat?:string;long?:string};
+async function loadReports(){
+ const r=await fetch(encodeURI(reportsUrl));if(!r.ok)throw new Error('311 unavailable');
+ const rows=await r.json() as NoiseReport[];
+ return {type:'FeatureCollection' as const,features:rows.filter(x=>Number(x.lat)&&Number(x.long)).map(x=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:[Number(x.long),Number(x.lat)]},properties:{kind:(x.service_subtype||'noise').replace(/_/g,' '),place:x.neighborhoods_sffind_boundaries||'',at:x.requested_datetime}}))};
+}
+function ago(at:string){const m=Math.round((Date.now()-new Date(at+'-07:00').getTime())/60000);return m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'}
 const mapStyle:StyleSpecification={
  version:8,
- sources:{city:{type:'vector',url:'https://tiles.openfreemap.org/planet'},sound:{type:'geojson',data:soundData}},
+ sources:{city:{type:'vector',url:'https://tiles.openfreemap.org/planet'},sound:{type:'geojson',data:soundData},reports:{type:'geojson',data:{type:'FeatureCollection',features:[]}}},
  light:{anchor:'viewport',color:'#ffffff',intensity:.4,position:[1.5,205,40]},
  layers:[
   {id:'background',type:'background',paint:{'background-color':'#ffffff'}},
@@ -57,6 +66,7 @@ const mapStyle:StyleSpecification={
   {id:'structures',type:'fill-extrusion',source:'city','source-layer':'building',minzoom:13.5,filter:['!=',['get','hide_3d'],true],paint:{'fill-extrusion-color':'#fcfcfd','fill-extrusion-height':['interpolate',['linear'],['zoom'],13.5,0,15,['coalesce',['get','render_height'],8]],'fill-extrusion-base':['coalesce',['get','render_min_height'],0],'fill-extrusion-opacity':1,'fill-extrusion-vertical-gradient':true}},
   // Color encodes noise score, not the number of contributors. No density heatmap.
   {id:'sound-fields',type:'circle',source:'sound',paint:{'circle-color':['interpolate',['linear'],['get','score'],0,'#d9c7fa',.5,'#ae77ee',1,'#6720c4'],'circle-radius':['interpolate',['linear'],['zoom'],11,16,13,43,16,120,19,220],'circle-blur':.85,'circle-opacity':.48,'circle-pitch-alignment':'map'}},
+  {id:'noise-reports',type:'circle',source:'reports',paint:{'circle-color':'#3f3f46','circle-radius':['interpolate',['linear'],['zoom'],11,2.5,16,5],'circle-stroke-color':'#ffffff','circle-stroke-width':1,'circle-opacity':.8}},
  ]
 };
 const home={center:[-122.447,37.776] as [number,number],zoom:12.75,pitch:0,bearing:0};
@@ -86,8 +96,14 @@ export default function CityMap(){
    const instance=new lib.Map({container:container.current,style:mapStyle,...home,minZoom:10,maxZoom:19,attributionControl:false,canvasContextAttributes:{antialias:true}});
    map.current=instance;
    instance.addControl(new lib.AttributionControl({compact:true}),'bottom-right');
-   instance.getCanvas().setAttribute('aria-label','Map of San Francisco. Drag to explore. Darker violet means higher simulated sound levels. Pulses represent fictional contributions.');
-   instance.on('load',()=>{if(!disposed){setReady(true);setFailed(false)}});
+   instance.getCanvas().setAttribute('aria-label','Map of San Francisco. Drag to explore. Darker violet means higher simulated sound levels. Pulses represent fictional contributions. Small gray dots are recent SF 311 noise reports.');
+   instance.on('load',()=>{
+    if(disposed)return;setReady(true);setFailed(false);
+    loadReports().then(data=>{if(!disposed)(instance.getSource('reports') as import('maplibre-gl').GeoJSONSource|undefined)?.setData(data)}).catch(()=>{});
+   });
+   instance.on('click','noise-reports',e=>{const f=e.features?.[0];if(!f)return;const p=f.properties as {kind:string;place:string;at:string};new lib.Popup({closeButton:false,className:'report-popup'}).setLngLat(e.lngLat).setText('311 noise report · '+p.kind+(p.place?' · '+p.place:'')+' · '+ago(p.at)).addTo(instance)});
+   instance.on('mouseenter','noise-reports',()=>{instance.getCanvas().style.cursor='pointer'});
+   instance.on('mouseleave','noise-reports',()=>{instance.getCanvas().style.cursor=''});
    instance.on('error',()=>{if(!disposed&&!instance.isStyleLoaded())setFailed(true)});
    markers.current=points.map((p,i)=>{
     const button=document.createElement('button');
@@ -141,8 +157,9 @@ export default function CityMap(){
     <div><span>01</span><section><strong>Explore San Francisco.</strong><p>Drag the map. Select a point to zoom in. Square markers identify landmarks and important buildings.</p></section></div>
     <div><span>02</span><section><strong>Read the violet.</strong><p>Darker means higher sound levels. Lighter means lower levels. White means no observations, not silence.</p></section></div>
     <div><span>03</span><section><strong>Watch contributions.</strong><p>A pulse illustrates a new contribution. Use pause to stop the animation.</p></section></div>
-    <div><span>04</span><section><strong>Bring your agent.</strong><p>The proposed MCP tools let agents query places and contribute summaries with consent. Raw audio and personal routes stay private.</p></section></div>
-    <div className="quiet-guide-note">Visual demo · synthetic levels and contributions. MCP is not connected.</div>
+    <div><span>04</span><section><strong>Gray dots are real.</strong><p>Each one is a recent SF 311 noise complaint from DataSF. Select one to see its type and age. A complaint is not a measurement.</p></section></div>
+    <div><span>05</span><section><strong>Bring your agent.</strong><p>The proposed MCP tools let agents query places and contribute summaries with consent. Raw audio and personal routes stay private.</p></section></div>
+    <div className="quiet-guide-note">Violet levels and pulses are synthetic. Gray 311 reports are live. MCP is not connected.</div>
    </div>:<><div className="quiet-mcp-state"><span/>Proposed contract · not connected</div>
    <div className="quiet-tool-list">{contract.tools.map(t=><code key={t.name}>{t.name}<span>↗</span></code>)}</div>
    <button className="quiet-copy" onClick={copy} aria-label={copied?'Contract copied':'Copy proposed MCP contract'} title={copied?'Copied':'Copy contract'}>{copied?<Check size={17}/>:<Copy size={17}/>}</button>{copyFallback&&<textarea className="quiet-contract" aria-label="MCP contract for manual copying" readOnly value={JSON.stringify(contract,null,2)} onFocus={e=>e.currentTarget.select()}/>}</>}
