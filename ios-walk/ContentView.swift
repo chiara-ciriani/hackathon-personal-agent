@@ -3,6 +3,36 @@ import UIKit
 
 struct ContentView: View {
     @State private var model = CompassModel()
+    @State private var showAdvanced = false
+
+    var body: some View {
+        QuietMapView(model: model, showAdvanced: $showAdvanced)
+            .sheet(isPresented: $showAdvanced) {
+                NavigationStack {
+                    AdvancedView(model: model)
+                        .toolbar { Button("Done") { showAdvanced = false } }
+                }
+            }
+            .task {
+                await model.start()
+                // Mapping starts on its own: open the app and walk.
+                if !model.isRecording { model.startWalk() }
+            }
+            .task(id: model.autoLog) {
+                while model.autoLog, !Task.isCancelled {
+                    model.logNow()
+                    try? await Task.sleep(for: .milliseconds(200))
+                }
+            }
+            .onChange(of: model.settings) { model.settingsChanged() }
+            .onChange(of: model.threshold) { model.settingsChanged() }
+            .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+    }
+}
+
+/// Every mode (compass, radar, locate, walk map with replay and export) and the debug panel.
+struct AdvancedView: View {
+    @Bindable var model: CompassModel
 
     var body: some View {
         ScrollView {
@@ -39,16 +69,6 @@ struct ContentView: View {
             }
             .padding()
         }
-        .task { await model.start() }
-        .task(id: model.autoLog) {
-            while model.autoLog, !Task.isCancelled {
-                model.logNow()
-                try? await Task.sleep(for: .milliseconds(200))
-            }
-        }
-        .onChange(of: model.settings) { model.settingsChanged() }
-        .onChange(of: model.threshold) { model.settingsChanged() }
-        .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
     }
 
     private var header: some View {
