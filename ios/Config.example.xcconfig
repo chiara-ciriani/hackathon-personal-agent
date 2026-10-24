@@ -1,0 +1,11 @@
+// Copy to Config.xcconfig (gitignored) and fill in:
+//   cp Config.example.xcconfig Config.xcconfig
+//
+// xcconfig treats "//" as the start of a comment, so write URLs as https:/$()/host.
+// The empty $() expands to nothing and the app sees https://host.
+
+QC_SERVER_URL = https:/$()/quiet-compass.example.fly.dev
+QC_API_TOKEN = change-me
+
+// Your Apple developer team id (Xcode > Settings > Accounts), needed to run on a device.
+DEVELOPMENT_TEAM =
