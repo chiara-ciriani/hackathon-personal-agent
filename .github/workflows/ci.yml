@@ -42,3 +42,13 @@ jobs:
       - name: Verify phone, server and MCP round trip
         working-directory: .
         run: python scripts/test_phone_server.py
+
+  web-measurement:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Test web data, measurement and sensor lifecycle
+        run: node --test apps/quiet-compass/tests/*.test.mjs

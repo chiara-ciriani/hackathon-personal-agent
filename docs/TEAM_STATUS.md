@@ -14,6 +14,7 @@ Last updated: October 24, 2026, 16:00 PT. Update this file whenever you start or
 
 | Area | Status | Where |
 | --- | --- | --- |
+| Agent-controlled phone page | `/measure`, scoped phone sessions, four MCP tools, automatic contributions and advice displayed on the phone. Software tests; real phone/Dot verification pending. | `docs/AGENT_PHONE_LOOP.md` |
 | Contracts | Phone ↔ server schema, HTTP API and MCP tool reference | `contracts/` |
 | Server: personal memory | Ingest API, the `quiet_*` MCP tools, scoring, guidance; tests pass | `server/quiet_compass/{api,db,scoring,mcp_server}.py` |
 | Server: shared sound layer | `query_sound_map`, `find_suitable_places`, `submit_observation`; `POST /v1/contributions`, `PUT /v1/areas/{id}`, public `GET /v1/map/aggregates`; release threshold, ~100 m cells, 5-minute buckets, 24 h retention | `server/quiet_compass/shared_*.py` |

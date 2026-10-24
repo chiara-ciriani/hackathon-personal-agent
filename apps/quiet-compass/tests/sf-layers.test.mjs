@@ -83,7 +83,7 @@ test('loadSfLayers isolates a failing dataset and mocks the network',async()=>{
   return {ok:false,status:500,json:async()=>[]};};
  const r=await loadSfLayers(fetchFn,NOW);
  assert.equal(r.candidates.features.length,2);assert.equal(r.proxies.features.length,1);
- assert.deepEqual(r.failed,['measured','sfoEvents','cad','crowd','parks']);assert.equal(r.measured.features.length,0);
+ assert.deepEqual(r.failed,['measured','sfoEvents','cad','crowd','parks','nightNoise','closures','streetWork']);assert.equal(r.measured.features.length,0);
  assert.ok(calls.filter(u=>!u.startsWith('/data/')).every(u=>u.startsWith('https://data.sf.gov/resource/')));
 });
 test('loadSfLayers loads the new layers, joins monitor coordinates, and queries the verified datasets',async()=>{

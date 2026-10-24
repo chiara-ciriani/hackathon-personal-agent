@@ -115,7 +115,7 @@ SQLite file but are separate from the personal session tables.
 | `POST /v1/contributions` | owner or shared bearer | Submit one summary with `share_consent: true`; returns `ContributionResult` |
 | `PUT /v1/areas/{area_id}` | owner bearer only | Register an indoor zone or named area |
 | `GET /v1/map/aggregates?lat&lon&radius_m&since_minutes` | owner/shared bearer + `X-QC-Access-Receipt` | Released aggregates; missing/expired receipt returns 428 |
-| `/mcp/shared` | shared bearer only | Three shared tools; both read tools require `access_receipt` |
+| `/mcp/shared` | shared bearer only | Shared sound and authorized phone tools; map reads require `access_receipt` |
 | `GET /v1/exchange/status` | public | Protocol and availability only; no measurements or credentials |
 
 Policy, enforced on the server:
@@ -149,7 +149,7 @@ Receipt creation and insertion are one SQLite transaction and survive restarts.
 at least 16 characters (the Render Blueprint generates it). Configure external
 agents at `https://YOUR-SERVER/mcp/shared` with
 `Authorization: Bearer <QC_SHARED_API_TOKEN>`. Never give them `QC_API_TOKEN` or
-the private path secret. The shared endpoint exposes only three tools, no personal
+the private path secret. The shared endpoint exposes shared sound and phone-session tools, no personal
 health, session memory or guidance. It returns 503 until configured. Keep the
 owner connector at `/mcp` for the personal agent. Its shared queries also require
 a receipt; private `quiet_*` tools do not.
@@ -179,3 +179,10 @@ holder. This is not per-agent identity, sensor attestation or Sybil resistance.
 Identical normalized readings in the same cell, bucket and capture profile are
 conservatively treated as one contribution. Trusted device provenance and
 individual agent credentials are separate future work.
+
+## Agent-controlled phone measurements
+
+`connect_phone` creates a private phone link; `request_phone_measurement` starts a 30-second
+measurement after the owner approves sensors on `/measure`. Poll `phone_measurement_status`
+for the automatically submitted contribution and receipt; use `send_phone_recommendation`
+to return evidence-based advice to that phone. See [the phone loop](../docs/AGENT_PHONE_LOOP.md).
