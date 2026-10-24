@@ -21,28 +21,67 @@ const filters:{id:Level|'all';label:string}[]=[{id:'all',label:'All'},{id:'quiet
 const M=1/111320,OX=-30,OY=-20,INSET=.6;
 const ll=(x:number,y:number):[number,number]=>[(x+OX)*M,(y+OY)*M];
 const rect=(x0:number,y0:number,x1:number,y1:number)=>[[ll(x0,y0),ll(x1,y0),ll(x1,y1),ll(x0,y1),ll(x0,y0)]];
-const height=(z:Zone)=>z.score===null?.3:.4+z.score*2.4;
-const zoneData={type:'FeatureCollection' as const,features:zones.map(z=>({type:'Feature' as const,geometry:{type:'Polygon' as const,coordinates:rect(z.x[0]+INSET,z.y[0]+INSET,z.x[1]-INSET,z.y[1]-INSET)},properties:{id:z.id,name:z.name,score:z.score??-1,h:height(z)}}))};
-const frame=(z:Zone)=>({type:'Feature' as const,geometry:{type:'Polygon' as const,coordinates:[rect(z.x[0]+INSET,z.y[0]+INSET,z.x[1]-INSET,z.y[1]-INSET)[0],rect(z.x[0]+INSET+.7,z.y[0]+INSET+.7,z.x[1]-INSET-.7,z.y[1]-INSET-.7)[0]]},properties:{h:height(z)}});
-const labelData={type:'FeatureCollection' as const,features:zones.map(z=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:ll((z.x[0]+z.x[1])/2,(z.y[0]+z.y[1])/2)},properties:{name:z.name}}))};
-const wallData={type:'FeatureCollection' as const,features:[{type:'Feature' as const,geometry:{type:'Polygon' as const,coordinates:[rect(0,0,60,40)[0],rect(.7,.7,59.3,39.3)[0]]},properties:{}}]};
-const stageBlock={type:'FeatureCollection' as const,features:[{type:'Feature' as const,geometry:{type:'Polygon' as const,coordinates:rect(40,35,56,39)},properties:{}}]};
+const disc=(cx:number,cy:number,r:number,n=28)=>[Array.from({length:n+1},(_,i)=>ll(cx+r*Math.cos(i/n*6.2832),cy+r*Math.sin(i/n*6.2832)))];
+type Poly={type:'Polygon';coordinates:[number,number][][]};
+const feat=(geometry:Poly,properties:Record<string,unknown>)=>({type:'Feature' as const,geometry,properties});
+const fc=(features:ReturnType<typeof feat>[])=>({type:'FeatureCollection' as const,features});
+const box=(x0:number,y0:number,x1:number,y1:number,props:Record<string,unknown>)=>feat({type:'Polygon',coordinates:rect(x0,y0,x1,y1)},props);
+const floorH=(z:Zone)=>z.score===null?.12:.12;
+const frame=(z:Zone)=>feat({type:'Polygon',coordinates:[rect(z.x[0]+INSET,z.y[0]+INSET,z.x[1]-INSET,z.y[1]-INSET)[0],rect(z.x[0]+INSET+.7,z.y[0]+INSET+.7,z.x[1]-INSET-.7,z.y[1]-INSET-.7)[0]]},{h:floorH(z)});
+const floors=fc(zones.map(z=>feat({type:'Polygon',coordinates:rect(z.x[0]+INSET,z.y[0]+INSET,z.x[1]-INSET,z.y[1]-INSET)},{id:z.id,name:z.name,score:z.score??-1})));
+const labelData=fc(zones.map(z=>feat({type:'Point',coordinates:ll((z.x[0]+z.x[1])/2,(z.y[0]+z.y[1])/2)} as unknown as Poly,{name:z.name})));
+// Walls are thin boxes with doorway gaps. The courtyard is open air, so its outer walls are low.
+const WALL=2.2,LOW=.9;
+const wall=(horizontal:boolean,pos:number,a:number,b:number,gaps:[number,number][],h=WALL,t=.4)=>{
+ const out:ReturnType<typeof feat>[]=[];let cursor=a;
+ const seg=(s0:number,s1:number)=>{if(s1-s0>.05)out.push(horizontal?box(s0,pos-t/2,s1,pos+t/2,{h}):box(pos-t/2,s0,pos+t/2,s1,{h}))};
+ for(const g of gaps){seg(cursor,g[0]);cursor=g[1]}seg(cursor,b);return out;
+};
+const walls=fc([
+ ...wall(true,0,0,60,[[8,12]]),...wall(true,40,0,20,[],LOW),...wall(true,40,20,60,[]),
+ ...wall(false,0,0,22,[]),...wall(false,0,22,40,[],LOW),...wall(false,60,0,40,[]),
+ ...wall(true,14,0,60,[[8,12],[26,30],[46,52]]),...wall(true,22,0,35,[[8,12],[26,30]]),
+ ...wall(false,21,0,14,[[6,9]]),...wall(false,21,22,40,[]),...wall(false,35,14,40,[[17,21]]),
+]);
+const slab=fc([box(-1,-1,61,41,{})]);
+// Sound sources: nested translucent domes, tallest and darkest at the centre. Heights are metres.
+const sources:{zone:string;x:number;y:number;rings:[number,number,number][]}[]=[
+ {zone:'stage',x:48,y:28,rings:[[4.5,.95,6.5],[8.5,.8,4.2],[12.5,.6,2.2]]},
+ {zone:'food',x:40,y:7,rings:[[3,.75,3.6],[6.5,.6,2]]},
+ {zone:'entrance',x:10,y:7,rings:[[3,.55,2.6],[5.5,.45,1.5]]},
+];
+const domes=fc(sources.flatMap(src=>{const z=zones.find(q=>q.id===src.zone)!;return [...src.rings].reverse().map(([r,score,h])=>feat({type:'Polygon',coordinates:disc(src.x,src.y,r)},{score,zscore:z.score,h}))}));
+// Props give the rooms scale: stage, speakers, seats, tables, counters, planters.
+const prop=(x0:number,y0:number,x1:number,y1:number,h:number,color:string,base=.12)=>box(x0,y0,x1,y1,{h,color,base});
+const props=fc([
+ prop(38,34,58,39,1.2,'#3f3f46'),prop(38,38.6,58,39.2,4.4,'#171717'),prop(38.4,34.6,40.4,36.6,3.2,'#27272a',1.2),prop(55.6,34.6,57.6,36.6,3.2,'#27272a',1.2),
+ ...Array.from({length:6},(_,r)=>Array.from({length:11},(_,c)=>prop(39.6+c*1.7,17+r*2.4,40.6+c*1.7,18+r*2.4,.6,'#d0d0d8'))).flat(),
+ prop(24,10.6,56,11.8,1.1,'#52525b'),
+ ...Array.from({length:5},(_,i)=>prop(25+i*6.6,3.4,27+i*6.6,5.4,.8,'#d9d9df')),
+ prop(3.5,9,8,10,1.1,'#52525b'),
+ ...[[3,25],[3,36],[9,38],[15,26],[16,36]].map(([x,y])=>feat({type:'Polygon',coordinates:disc(x,y,1.3,12)},{h:3.2,base:1.1,color:'#d4d4da'})),
+ ...[[3,25],[3,36],[9,38],[15,26],[16,36]].map(([x,y])=>feat({type:'Polygon',coordinates:disc(x,y,.35,8)},{h:1.2,base:.12,color:'#a1a1aa'})),
+ prop(7,30,13,30.8,.5,'#d0d0d8'),prop(24,25,27,28,.8,'#d9d9df'),prop(29,31,32,34,.8,'#d9d9df'),
+]);
 const noiseRamp:ExpressionSpecification=['case',['<',['get','score'],0],'#e8e8ec',['interpolate',['linear'],['get','score'],0,'#e6dcff',.3,'#b996f5',.55,'#8a45e8',.8,'#5a14b0',1,'#2b0a63']];
+const domeRamp:ExpressionSpecification=['interpolate',['linear'],['get','score'],0,'#e6dcff',.3,'#b996f5',.55,'#8a45e8',.8,'#5a14b0',1,'#2b0a63'];
+const empty={type:'FeatureCollection' as const,features:[]};
 const style:StyleSpecification={
  version:8,
  glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
- sources:{zones:{type:'geojson',data:zoneData},labels:{type:'geojson',data:labelData},walls:{type:'geojson',data:wallData},stage:{type:'geojson',data:stageBlock},sel:{type:'geojson',data:{type:'FeatureCollection',features:[]}}},
+ sources:{floors:{type:'geojson',data:floors},labels:{type:'geojson',data:labelData},walls:{type:'geojson',data:walls},slab:{type:'geojson',data:slab},props:{type:'geojson',data:props},domes:{type:'geojson',data:domes},sel:{type:'geojson',data:empty}},
  layers:[
-  {id:'bg',type:'background',paint:{'background-color':'#fafafa'}},
-  {id:'slab',type:'fill-extrusion',source:'walls',paint:{'fill-extrusion-color':'#ffffff','fill-extrusion-height':.15}},
-  {id:'zones',type:'fill-extrusion',source:'zones',paint:{'fill-extrusion-color':noiseRamp,'fill-extrusion-height':['get','h'],'fill-extrusion-base':.15,'fill-extrusion-opacity':.95,'fill-extrusion-vertical-gradient':true}},
-  {id:'stage-block',type:'fill-extrusion',source:'stage',paint:{'fill-extrusion-color':'#52525b','fill-extrusion-height':3.9,'fill-extrusion-base':2.7}},
-  {id:'sel',type:'fill-extrusion',source:'sel',paint:{'fill-extrusion-color':'#171717','fill-extrusion-height':['+',['get','h'],.35],'fill-extrusion-base':['get','h']}},
-  {id:'walls',type:'fill-extrusion',source:'walls',paint:{'fill-extrusion-color':'#d4d4da','fill-extrusion-height':2.2,'fill-extrusion-opacity':.4}},
+  {id:'bg',type:'background',paint:{'background-color':'#f7f7f9'}},
+  {id:'slab',type:'fill-extrusion',source:'slab',paint:{'fill-extrusion-color':'#ffffff','fill-extrusion-height':.12}},
+  {id:'zones',type:'fill-extrusion',source:'floors',paint:{'fill-extrusion-color':noiseRamp,'fill-extrusion-height':.2,'fill-extrusion-base':.12}},
+  {id:'sel',type:'fill-extrusion',source:'sel',paint:{'fill-extrusion-color':'#171717','fill-extrusion-height':.45,'fill-extrusion-base':.2}},
+  {id:'props',type:'fill-extrusion',source:'props',paint:{'fill-extrusion-color':['get','color'],'fill-extrusion-height':['get','h'],'fill-extrusion-base':['coalesce',['get','base'],.12],'fill-extrusion-vertical-gradient':true}},
+  {id:'walls',type:'fill-extrusion',source:'walls',paint:{'fill-extrusion-color':'#f7f7fa','fill-extrusion-height':['get','h'],'fill-extrusion-base':.12,'fill-extrusion-vertical-gradient':false}},
+  {id:'domes',type:'fill-extrusion',source:'domes',paint:{'fill-extrusion-color':domeRamp,'fill-extrusion-height':['+',.12,['get','h']],'fill-extrusion-base':.12,'fill-extrusion-opacity':.3}},
   {id:'zone-labels',type:'symbol',source:'labels',layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':12,'text-allow-overlap':true},paint:{'text-color':'#171717','text-halo-color':'#ffffff','text-halo-width':1.5}},
  ],
 };
-const home=()=>({center:[0,0] as [number,number],zoom:typeof window!=='undefined'&&window.innerWidth<600?18.85:20.1,pitch:58,bearing:-28});
+const home=()=>({center:[0,0] as [number,number],zoom:typeof window!=='undefined'&&window.innerWidth<600?18.85:20.1,pitch:62,bearing:-32});
 export default function Venue(){
  const container=useRef<HTMLDivElement>(null),mapRef=useRef<import('maplibre-gl').Map|null>(null);
  const [ready,setReady]=useState(false),[failed,setFailed]=useState(false),[selected,setSelected]=useState<string|null>(null),[filter,setFilter]=useState<Level|'all'>('all');
@@ -73,11 +112,12 @@ export default function Venue(){
   return()=>{disposed=true;clearInterval(interval);timeouts.forEach(clearTimeout);mapRef.current?.remove();mapRef.current=null};
  },[]);
  useEffect(()=>{const map=mapRef.current;if(!map||!ready)return;
-  map.setFilter('zones',filter==='all'?null:filter==='quiet'?['all',['>=',['get','score'],0],['<=',['get','score'],.35]]:filter==='moderate'?['all',['>',['get','score'],.35],['<=',['get','score'],.65]]:['>',['get','score'],.65]);
+  const f=(prop:string):ExpressionSpecification|null=>filter==='all'?null:filter==='quiet'?['all',['>=',['get',prop],0],['<=',['get',prop],.35]]:filter==='moderate'?['all',['>',['get',prop],.35],['<=',['get',prop],.65]]:['>',['get',prop],.65];
+  map.setFilter('zones',f('score'));map.setFilter('domes',f('zscore'));
  },[filter,ready]);
  useEffect(()=>{const map=mapRef.current;if(!map||!ready)return;
   const f=zones.filter(q=>q.id===selected).map(frame);
-  (map.getSource('sel') as GeoJSONSource|undefined)?.setData({type:'FeatureCollection',features:f});
+  (map.getSource('sel') as GeoJSONSource|undefined)?.setData(fc(f));
  },[selected,ready]);
  useEffect(()=>{if(!selected)return;const key=(e:KeyboardEvent)=>{if(e.key==='Escape')setSelected(null)};document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key)},[selected]);
  const zone=zones.find(z=>z.id===selected);
