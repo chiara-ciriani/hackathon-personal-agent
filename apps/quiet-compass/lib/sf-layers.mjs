@@ -31,9 +31,9 @@ export const REFERENCE_LEVELS=[
  {location:'Bluxome St east of Fifth St (interior alley)',ldn:66,note:'10 min, p.m. peak',date:'2014-05-20'},
  {location:'Clementina St, Fifth to Sixth (interior alley)',ldn:63,note:'41 h',date:'2011-09-27',table:'Table IV.E-3'},
 ].map(r=>({...r,evidence:'reference_measured',source:`Central SoMa Plan Draft EIR (Dec 2016), ${r.table||'Table IV.E-2'}`,sourceUrl:EIR_URL}));
-export const REFERENCE_NOTE='Ldn in dBA from a 2016 environmental review, Central SoMa only (main streets averaged 75, alleys 63-67). Old, area-specific context: not today\'s level and not comparable to the simulated scores.';
+export const REFERENCE_NOTE='Ldn in dBA from a 2016 environmental review, Central SoMa only (main streets averaged 75, alleys 63-67). Old, area-specific context: not today\'s level.';
 
-const num=v=>{const n=Number.parseFloat(String(v));return Number.isFinite(n)?n:null};
+const num=v=>{if(v===null||v===undefined||typeof v==='boolean'||String(v).trim()==='')return null;const n=Number(v);return Number.isFinite(n)?n:null};
 const inSf=(lat,lng)=>lat!==null&&lng!==null&&lat>=37.6&&lat<=37.85&&lng>=-122.55&&lng<=-122.3;
 const fromPoint=row=>{const c=row?.point?.coordinates;if(!Array.isArray(c)||c.length<2)return null;const [lng,lat]=c.map(Number);return inSf(lat,lng)?[lng,lat]:null};
 const feature=(coords,properties)=>({type:'Feature',geometry:{type:'Point',coordinates:coords},properties});
@@ -141,7 +141,7 @@ const collection=features=>({type:'FeatureCollection',features:features.filter(B
  * @param {Date} [now]
  * @returns {Promise<{candidates:any,proxies:any,measured:any,sfoEvents:any,cad:any,crowd:any,failed:string[]}>}
  */
-export async function loadSfLayers(fetchFn=(url)=>fetch(url),now=new Date()){
+export async function loadSfLayers(fetchFn=(url)=>fetch(url,{cache:'no-store',signal:AbortSignal.timeout(12000)}),now=new Date()){
  const today=localDate(now),tomorrow=localDate(new Date(now.getTime()+86400000));
  const utc=now.toISOString().slice(0,19);
  const since=new Date(now.getTime()-120*86400000).toISOString().slice(0,10);
@@ -164,6 +164,7 @@ export async function loadSfLayers(fetchFn=(url)=>fetch(url),now=new Date()){
     rows(fetchFn,'nightNoise',{$select:'nnp,type_of_work,start_date,end_date,start_end_time_each_day,address,point',$where:`start_date <= '${tomorrow}T23:59:59' AND end_date >= '${today}T00:00:00' AND point IS NOT NULL`,$limit:'1000'}),
     rows(fetchFn,'closures',{$select:'type,loc_desc,street,veh_imp,shape',$where:`status='Permitted' AND start_utc <= '${utc}' AND end_utc >= '${utc}'`,$limit:'1000'})]);
    if([ent,night,closures].every(x=>x.status==='rejected'))throw new Error('all proxy datasets failed');
+   [['entertainment',ent],['nightNoise',night],['closures',closures]].forEach(([n,x])=>{if(x.status==='rejected')partial.push(n)});
    const ok=(x,f)=>x.status==='fulfilled'?x.value.map(f):[];
    return collection([...ok(ent,parseEntertainment),...ok(night,r=>parseNightNoise(r,now)),...ok(closures,parseClosure)]);
   },
