@@ -6,7 +6,7 @@ import type {StyleSpecification,GeoJSONSource,Map as GLMap} from 'maplibre-gl';
 import {connectionGuide,sharedTools} from '../lib/mcp-exchange.mjs';
 import {loadSfLayers} from '../lib/sf-layers.mjs';
 import {loadNoiseReports,emptyCollection,measurementText} from '../lib/real-map.mjs';
-import {venues} from '../lib/venues';
+import {venues,venueMapProperties} from '../lib/venues';
 import 'ol/ol.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './map.css';
@@ -36,7 +36,7 @@ const heatRamp:import('maplibre-gl').ExpressionSpecification=['interpolate',['li
 const mapStyle:StyleSpecification={
  version:8,
  glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
- sources:{city:{type:'vector',url:'https://tiles.openfreemap.org/planet'},venuepts:{type:'geojson',data:{type:'FeatureCollection',features:venues.map(v=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:[v.lng,v.lat]},properties:{id:v.id,label:v.name,name:v.name,kind:'Venue',evidence:'unmeasured_candidate',caveat:'No acoustic measurements or verified indoor plan are available.'}}))}},...Object.fromEntries(layerRows.map(r=>[r.key,{type:'geojson' as const,data:emptyCollection() as PointCollection}]))},
+ sources:{city:{type:'vector',url:'https://tiles.openfreemap.org/planet'},venuepts:{type:'geojson',data:{type:'FeatureCollection',features:venues.map(v=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:[v.lng,v.lat]},properties:venueMapProperties(v)}))}},...Object.fromEntries(layerRows.map(r=>[r.key,{type:'geojson' as const,data:emptyCollection() as PointCollection}]))},
  light:{anchor:'viewport',color:'#ffffff',intensity:.4,position:[1.5,205,40]},
  layers:[
   {id:'background',type:'background',paint:{'background-color':'#f0f0f1'}},
@@ -141,7 +141,7 @@ export default function CityMap(){
    if(visible)features.push(...collection.features as PointFeature[]);
   }
   for(const id of ['venue-points','venue-labels'])if(gl?.getLayer(id))gl.setLayoutProperty(id,'visibility',filter==='measured'?'none':'visible');
-  if(filter!=='measured')features.push(...venues.map(v=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:[v.lng,v.lat]},properties:{id:v.id,label:v.name,evidence:'unmeasured_candidate',kind:'Venue',caveat:'No acoustic measurements or verified indoor plan are available.'}})));
+  if(filter!=='measured')features.push(...venues.map(v=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:[v.lng,v.lat]},properties:venueMapProperties(v)})));
   fallbackUpdate.current?.(features);
  },[data,ready,shown,filter,fallback]);
  useEffect(()=>{

@@ -9,6 +9,12 @@ Last updated: October 24, 2026, 16:00 PT. Update this file whenever you start or
 | Background capture and noise alerts | Ana | Plan written; check with Ana before touching it | `docs/BACKGROUND_CAPTURE_AND_NOISE_ALERTS.md` |
 | Web map and venue view | Ana and Martin | Map-first redesign, DataSF layers, `/venue` 3D view | `apps/quiet-compass/**` |
 
+## Ready for main
+
+| Area | Status | Where |
+| --- | --- | --- |
+| Venue visitor guides | Local commit prepared; direct push awaits explicit confirmation required by automatic review. Five sourced guides, three official plan previews, explicit unmeasured status and canonical IDs. Combined with main at `a5c9a87`, preserving its map style, layers and tabbed MCP panel. Vercel production build, type check and 28 web tests passed; desktop/mobile checks completed. | `apps/quiet-compass/lib/venues.ts`, `app/venue/`, `public/plans/`, `tests/venues.test.mjs` |
+
 ## Done and on `main`
 
 | Area | Status | Where |
