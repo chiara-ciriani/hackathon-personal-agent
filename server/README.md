@@ -93,3 +93,45 @@ Reviewed October 24, 2026:
 - [Persistent disks and their limitations](https://render.com/docs/disks)
 - [Assigned host environment variable](https://render.com/docs/environment-variables)
 - [Claude custom connectors and request headers](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)
+
+## Shared sound layer
+
+Alongside the personal `quiet_*` tools, the service keeps a shared layer of
+consented acoustic summaries (`SharedContribution` in
+[the contract](../contracts/README.md#shared-sound-layer)). Code lives in
+`quiet_compass/shared_*.py`; its tables (`areas`, `contributions`) share the
+SQLite file but are separate from the personal session tables.
+
+| Interface | Auth | Purpose |
+| --- | --- | --- |
+| `POST /v1/contributions` | bearer | Submit one summary; returns `ContributionResult` |
+| `PUT /v1/areas/{area_id}` | bearer | Register an indoor zone or named area |
+| `GET /v1/map/aggregates?lat&lon&radius_m&since_minutes` | public, CORS | Released aggregates for the web map |
+| MCP `query_sound_map`, `find_suitable_places`, `submit_observation` | bearer | Agent access to the same layer |
+
+Policy, enforced on the server:
+
+- Coordinates are re-rounded to 3 decimals (~100 m) and times floored to 5-minute
+  UTC buckets. An unknown `area_id` with coordinates becomes the outdoor cell
+  `cell:<lat>,<lon>`; an unknown `area_id` without coordinates is rejected.
+- Rejected: `rms_dbfs` above 0 or below -120, spread above 60 dB, duration outside
+  5-600 s, buckets in the future or older than the retention window, and more than
+  3 contributions per area, bucket and capture profile. Clipped readings are stored
+  and counted in `clipped_count`. Resending an `id` is idempotent.
+- An (area, bucket, capture profile) aggregate is released only once it has
+  `QC_RELEASE_MIN_CONTRIBUTIONS` distinct contributions (default 2; a one-phone
+  demo can set 1). Until then the result is `withheld`. Capture profiles are never
+  merged, and `find_suitable_places` ranks quietness only within one profile.
+- Contributions older than `QC_CONTRIBUTION_RETENTION_HOURS` (default 24) are
+  deleted on every write. Aggregates are computed on read, so they expire too.
+
+**Why the map read is public.** The web map shows exactly the released aggregates
+to anyone who opens it, so requiring the API token there would only push the token
+into browser code. `GET /v1/map/aggregates` therefore needs no token and sends CORS
+headers for `QC_MAP_ALLOWED_ORIGINS` (default `*`; set the map's origin in
+production). It never returns withheld cohorts, contribution ids or personal
+session data. Every write still requires the bearer token.
+
+These are design defaults, not an anonymity guarantee: coarse place-time data can
+still reveal patterns, and the shared token means any holder can contribute.
+Label seeded or replayed data with `source: "synthetic_demo"`.
