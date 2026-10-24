@@ -174,3 +174,27 @@ a.quiet-share{box-sizing:border-box}
 
 .quiet-venue-title{position:absolute;left:84px;top:36px;z-index:800;font:600 14px/20px Geist,Arial,sans-serif;color:#171717;letter-spacing:-.2px}
 @media(max-width:600px){.quiet-venue-title{left:70px;top:30px;font-size:13px}}
+
+/* MCP panel: connect an agent in two steps, copy the URL and one snippet. */
+.quiet-mcp-panel{width:380px;font-family:Geist,Arial,sans-serif}
+.quiet-mcp-heading strong{font-size:15px;font-weight:600;letter-spacing:-.2px}
+.quiet-mcp-lead{margin:6px 0 16px;font-size:13px;line-height:19px;color:#525252}
+.quiet-mcp-label{display:block;font-size:12px;font-weight:500;color:#171717;margin-bottom:6px}
+.quiet-field{display:flex;align-items:center;gap:4px;border:1px solid var(--map-border);border-radius:8px;background:#fafafa;padding:3px 3px 3px 12px}
+.quiet-field input{flex:1;min-width:0;border:0;background:transparent;font:12px/20px ui-monospace,SFMono-Regular,monospace;color:#171717;outline:0}
+.quiet-field .quiet-icon{width:32px;height:32px;border-radius:6px}
+.quiet-tabs{display:flex;gap:2px;margin:16px 0 8px;padding:3px;border:1px solid var(--map-border);border-radius:8px;background:#fff}
+.quiet-tabs button{flex:1;height:28px;border-radius:5px;background:transparent;color:#525252;font:500 12px/16px Geist,Arial,sans-serif;transition:background .15s ease,color .15s ease}
+.quiet-tabs button.is-active{background:#171717;color:#fff}
+@media(hover:hover) and (pointer:fine){.quiet-tabs button:not(.is-active):hover{background:#f5f5f5;color:#171717}}
+.quiet-snippet{position:relative}
+.quiet-snippet pre{margin:0;padding:12px;max-height:150px;overflow:auto;white-space:pre-wrap;word-break:break-all;border-radius:8px;background:#171717;color:#f4f4f6;font:11.5px/18px ui-monospace,SFMono-Regular,monospace}
+.quiet-snippet .quiet-share{margin-top:8px}
+.quiet-mcp-hint{margin:10px 0 0;font-size:12px;line-height:18px;color:#737373}
+.quiet-tools{list-style:none;margin:16px 0 0;padding:0;border-top:1px solid #f0f0f0}
+.quiet-tools li{display:grid;gap:2px;padding:11px 0;border-bottom:1px solid #f0f0f0}
+.quiet-tools code{font:500 12px/16px ui-monospace,SFMono-Regular,monospace;color:#5a14b0}
+.quiet-tools span{font-size:12.5px;line-height:18px;color:#525252}
+@media(max-width:600px){.quiet-mcp-panel{width:calc(100vw - 34px)}}
+.quiet-map-only:not(.quiet-venue) .quiet-intensity{bottom:50px}
+@media(max-width:600px){.quiet-map-only:not(.quiet-venue) .quiet-intensity{bottom:64px}}

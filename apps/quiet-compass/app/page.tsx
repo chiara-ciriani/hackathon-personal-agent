@@ -5,7 +5,7 @@ import type {StyleSpecification} from 'maplibre-gl';
 import 'ol/ol.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './map.css';
-import {loadSfLayers,REFERENCE_LEVELS,REFERENCE_NOTE} from '../lib/sf-layers.mjs';
+import {loadSfLayers} from '../lib/sf-layers.mjs';
 import {venues} from '../lib/venues';
 
 // Illustrative locations and synthetic acoustic scores; no real noise measurements.
@@ -59,6 +59,7 @@ async function loadReports(){
 }
 function ago(at:string){const m=Math.round((Date.now()-new Date(at+'-07:00').getTime())/60000);return m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'}
 const noiseRamp:import('maplibre-gl').ExpressionSpecification=['interpolate',['linear'],['get','score'],0,'#e6dcff',.3,'#b996f5',.55,'#8a45e8',.8,'#5a14b0',1,'#2b0a63'];
+const heatRamp:import('maplibre-gl').ExpressionSpecification=['interpolate',['linear'],['heatmap-density'],0,'rgba(230,220,255,0)',.15,'#e6dcff',.4,'#b996f5',.65,'#8a45e8',.85,'#5a14b0',1,'#2b0a63'];
 const mapStyle:StyleSpecification={
  version:8,
  glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
@@ -76,6 +77,9 @@ const mapStyle:StyleSpecification={
   // Color encodes noise score, not the number of contributors. No density heatmap.
   {id:'sound-fields',type:'circle',source:'sound',paint:{'circle-color':noiseRamp,'circle-radius':['interpolate',['linear'],['zoom'],11,14,13,36,16,100,19,190],'circle-blur':1,'circle-opacity':.5,'circle-pitch-alignment':'map'}},
   {id:'place-labels',type:'symbol',source:'city','source-layer':'place',minzoom:11,filter:['in',['get','class'],['literal',['suburb','neighbourhood','quarter']]],layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':['interpolate',['linear'],['zoom'],11,10,15,13],'text-letter-spacing':.08,'text-transform':'uppercase'},paint:{'text-color':'#6b6b73','text-halo-color':'#ffffff','text-halo-width':1.5}},
+  // Real data first: smooth fields of where people actually reported noise (311 and noise-nuisance calls). Density of reports, not a sound level.
+  {id:'cad-heat',type:'heatmap',source:'cad',paint:{'heatmap-weight':['interpolate',['linear'],['coalesce',['get','count'],1],1,.5,16,1.4],'heatmap-intensity':['interpolate',['linear'],['zoom'],10,.7,15,1.6],'heatmap-radius':['interpolate',['linear'],['zoom'],10,16,13,30,16,56],'heatmap-opacity':.82,'heatmap-color':heatRamp}},
+  {id:'reports-heat',type:'heatmap',source:'reports',paint:{'heatmap-weight':1,'heatmap-intensity':['interpolate',['linear'],['zoom'],10,.8,15,1.8],'heatmap-radius':['interpolate',['linear'],['zoom'],10,16,13,30,16,56],'heatmap-opacity':.82,'heatmap-color':heatRamp}},
   // Venues: ink-ringed points filled with their simulated noise level. Click one to open its 3D floor plan.
   {id:'venue-halo',type:'circle',source:'venuepts',paint:{'circle-color':noiseRamp,'circle-radius':['interpolate',['linear'],['zoom'],11,16,15,34],'circle-blur':1,'circle-opacity':.45}},
   {id:'venue-points',type:'circle',source:'venuepts',paint:{'circle-color':noiseRamp,'circle-radius':['interpolate',['linear'],['zoom'],11,7,15,10],'circle-stroke-color':'#171717','circle-stroke-width':2.2}},
@@ -84,8 +88,8 @@ const mapStyle:StyleSpecification={
   // Real layers stay out of the violet scale: ink for measured, grays for the rest. Violet is reserved for the synthetic sound score.
   {id:'proxy-context',type:'circle',source:'proxies',minzoom:13,layout:{visibility:'none'},paint:{'circle-color':'#a1a1aa','circle-radius':['interpolate',['linear'],['zoom'],13,1.8,17,4],'circle-stroke-color':'#ffffff','circle-stroke-width':1,'circle-opacity':.85}},
   {id:'candidate-places',type:'circle',source:'candidates',minzoom:12,paint:{'circle-color':'#ffffff','circle-radius':['interpolate',['linear'],['zoom'],12,3,17,6],'circle-stroke-color':'#171717','circle-stroke-width':1.5}},
-  {id:'noise-reports',type:'circle',source:'reports',minzoom:13,paint:{'circle-color':'#52525b','circle-radius':['interpolate',['linear'],['zoom'],13,1.6,17,3.4],'circle-opacity':.6}},
-  {id:'cad-calls',type:'circle',source:'cad',minzoom:12,paint:{'circle-color':'#ffffff00','circle-radius':['interpolate',['linear'],['zoom'],12,['+',2,['*',.25,['min',['get','count'],16]]],17,['+',3,['*',.6,['min',['get','count'],16]]]],'circle-stroke-color':'#71717a','circle-stroke-width':1.4,'circle-opacity':.8}},
+  {id:'noise-reports',type:'circle',source:'reports',minzoom:15,paint:{'circle-color':'#52525b','circle-radius':['interpolate',['linear'],['zoom'],13,1.6,17,3.4],'circle-opacity':.6}},
+  {id:'cad-calls',type:'circle',source:'cad',minzoom:15,paint:{'circle-color':'#ffffff00','circle-radius':['interpolate',['linear'],['zoom'],12,['+',2,['*',.25,['min',['get','count'],16]]],17,['+',3,['*',.6,['min',['get','count'],16]]]],'circle-stroke-color':'#71717a','circle-stroke-width':1.4,'circle-opacity':.8}},
   {id:'crowd-cells',type:'circle',source:'crowd',paint:{'circle-color':'#17171799','circle-radius':['interpolate',['linear'],['zoom'],11,4,16,9],'circle-stroke-color':'#171717','circle-stroke-width':1.5}},
   {id:'measured-sfo-events',type:'circle',source:'sfoEvents',paint:{'circle-color':'#ffffff00','circle-radius':['interpolate',['linear'],['zoom'],11,9,16,15],'circle-stroke-color':'#171717','circle-stroke-width':2.2}},
   {id:'measured-sfo',type:'circle',source:'measured',paint:{'circle-color':'#171717','circle-radius':['interpolate',['linear'],['zoom'],11,5,16,9],'circle-stroke-color':'#ffffff','circle-stroke-width':2}},
@@ -97,38 +101,47 @@ type LayerKey='simulated'|'measured'|'sfoEvents'|'crowd'|'proxies'|'cad'|'candid
 const layerRows:{key:LayerKey;label:string;tag:string;swatch:string;mapIds:string[];hint:string}[]=[
  {key:'measured',label:'Airport monitors',tag:'measured',swatch:'measured',mapIds:['measured-sfo'],hint:'Daily CNEL in dB at 6 SFO monitors inside SF. Not live, not at your spot.'},
  {key:'sfoEvents',label:'Airport loud events',tag:'measured',swatch:'events',mapIds:['measured-sfo-events'],hint:'Aircraft noise exceedance events per SFO monitor, last 365 days: count, median and max dBA, latest date. Only events above each monitor threshold are published. No license declared.'},
- {key:'crowd',label:'NoiseCapture cells',tag:'crowdsourced, uncalibrated',swatch:'crowd',mapIds:['crowd-cells'],hint:'About 20 cells of ~100 m with 3+ volunteer tracks, 2017-2025. Uncalibrated phones, several dB of error, not dBA. ODbL, NoiseCapture / Noise-Planet.'},
+ {key:'crowd',label:'NoiseCapture cells',tag:'crowdsourced',swatch:'crowd',mapIds:['crowd-cells'],hint:'About 20 cells of ~100 m with 3+ volunteer tracks, 2017-2025. Uncalibrated phones, several dB of error, not dBA. ODbL, NoiseCapture / Noise-Planet.'},
  {key:'proxies',label:'Permits & closures',tag:'indirect',swatch:'proxy',mapIds:['proxy-context'],hint:'Entertainment permits, night work today or tomorrow, street closures now. Possible noise, not levels.'},
- {key:'cad',label:'Noise-nuisance calls',tag:'indirect',swatch:'cad',mapIds:['cad-calls'],hint:'Police dispatches classified NOISE NUISANCE per masked intersection, last 30 days. Complaints, not measurements.'},
+ {key:'cad',label:'Noise-nuisance calls',tag:'indirect',swatch:'cad',mapIds:['cad-calls','cad-heat'],hint:'Police dispatches classified NOISE NUISANCE per masked intersection, last 30 days. Complaints, not measurements.'},
  {key:'candidates',label:'Parks, POPOS & libraries',tag:'unmeasured',swatch:'candidate',mapIds:['candidate-places'],hint:'Places from city inventories that might be calm (parks and playgrounds can be loud). Nobody has measured them.'},
- {key:'reports',label:'311 complaints',tag:'reports',swatch:'report',mapIds:['noise-reports'],hint:'Recent reports. A complaint is not a measurement.'},
+ {key:'reports',label:'311 complaints',tag:'reports',swatch:'report',mapIds:['noise-reports','reports-heat'],hint:'Recent reports. A complaint is not a measurement.'},
  {key:'simulated',label:'Simulated noise',tag:'simulated',swatch:'simulated',mapIds:['sound-fields'],hint:'Invented scores for illustration. Not measurements.'},
 ];
+// Contributions come from agents through the MCP server; none are made up here.
 type Entry={id:number;t:number;zone:string;level:Level};
 const bucket=(t:number)=>{const m=Math.max(0,Math.round((Date.now()-t)/300000))*5;return m<5?'just now':m<60?m+' min ago':Math.round(m/60)+' h ago'};
-const makeEntry=(i:number,ago=0):Entry=>({id:Date.now()+Math.random(),t:Date.now()-ago*60000,zone:points[i].name,level:levelOf(points[i].score)});
 type Level='quiet'|'moderate'|'loud';
 const levelOf=(score:number):Level=>score>.65?'loud':score>.35?'moderate':'quiet';
 const filters:{id:Level|'all';label:string}[]=[{id:'all',label:'All'},{id:'quiet',label:'Quiet'},{id:'moderate',label:'Moderate'},{id:'loud',label:'Loud'}];
 const home={center:[-122.44,37.768] as [number,number],zoom:12.6,pitch:48,bearing:-12};
-const contract={name:'quiet-compass',status:'proposal',connected:false,data:'simulated + real DataSF layers (labelled measured / measured crowdsourced / proxy / unmeasured candidate)',tools:[{name:'quiet_sf_layers',input:{lat:'number',lon:'number',radius_m:'50-2000',include:'quiet_candidates | entertainment_permits | night_noise_permits | street_closures | sfo_cnel | sfo_events | cad_noise_calls | noisecapture',include_references:'boolean'},returns:'points with evidence = measured | measured_crowdsourced | proxy | unmeasured_candidate (source seed), optional reference_measured table'},{name:'query_sound_map',input:{bounds:'[west,south,east,north]',max_age_minutes:'number'}},{name:'find_suitable_places',input:{area:'coarse zone',preference:'user-selected acoustic preference'}},{name:'submit_observation',input:{zone_id:'coarse zone',time_bucket:'rounded time',acoustic_summary:'aggregated calibrated indicators'},requires:'explicit contribution consent'}],excluded:['raw_audio','personal_routes','health_data']};
+const MCP_URL='https://YOUR-SERVER.onrender.com/mcp';
+const mcpTools=[
+ {name:'quiet_sf_layers',what:'Real noise layers around a point in San Francisco'},
+ {name:'query_sound_map',what:'Reported noise levels in an area'},
+ {name:'find_suitable_places',what:'Calm places that fit what you need'},
+ {name:'submit_observation',what:'Send a noise reading, with consent'},
+];
+const snippets:Record<'code'|'app'|'json'|'prompt',{label:string;text:string}>={
+ code:{label:'Claude Code',text:'claude mcp add --transport http quiet-compass '+MCP_URL+' --header "Authorization: Bearer YOUR_TOKEN"'},
+ app:{label:'Claude app',text:'Settings > Connectors > Add custom connector\nName: Quiet Compass\nURL: '+MCP_URL+'\nHeader: Authorization: Bearer YOUR_TOKEN'},
+ json:{label:'JSON',text:JSON.stringify({mcpServers:{'quiet-compass':{url:MCP_URL,headers:{Authorization:'Bearer YOUR_TOKEN'}}}},null,2)},
+ prompt:{label:'Prompt',text:'Use the Quiet Compass tools to pick calm places: query_sound_map for an area, find_suitable_places for what I need. Say when data is simulated or only reported by people, never invent sound levels, and never ask for raw audio or my route.'},
+};
 type ViewOptions={center?:[number,number];zoom?:number;pitch?:number;bearing?:number;duration?:number};
 type MapControls={zoomIn:()=>unknown;zoomOut:()=>unknown;getZoom:()=>number;flyTo:(o:ViewOptions)=>unknown;easeTo:(o:ViewOptions)=>unknown;remove:()=>unknown};
 export default function CityMap(){
- const container=useRef<HTMLDivElement>(null),map=useRef<MapControls|null>(null),markers=useRef<{marker:{remove:()=>unknown};button:HTMLButtonElement}[]>([]),focusRef=useRef<(i:number|null)=>void>(()=>{}),glMap=useRef<import('maplibre-gl').Map|null>(null),filterRef=useRef<(f:Level|'all')=>void>(()=>{});
+ const container=useRef<HTMLDivElement>(null),map=useRef<MapControls|null>(null),markers=useRef<{marker:{remove:()=>unknown};button:HTMLButtonElement}[]>([]),focusRef=useRef<(i:number|null)=>void>(()=>{}),simRef=useRef(false),glMap=useRef<import('maplibre-gl').Map|null>(null),filterRef=useRef<(f:Level|'all')=>void>(()=>{});
  const mcpButton=useRef<HTMLButtonElement>(null),closeButton=useRef<HTMLButtonElement>(null),dialog=useRef<HTMLDivElement>(null);
- const [ready,setReady]=useState(false),[failed,setFailed]=useState(false),[mcp,setMcp]=useState(false),[shown,setShown]=useState<Record<LayerKey,boolean>>({simulated:true,measured:true,sfoEvents:false,crowd:true,proxies:false,cad:false,candidates:false,reports:true}),[failedLayers,setFailedLayers]=useState<string[]>([]),[layersOpen,setLayersOpen]=useState(false),[copied,setCopied]=useState(false),[copyFallback,setCopyFallback]=useState(false),[selected,setSelected]=useState<number|null>(null),[venueSel,setVenueSel]=useState<string|null>(null),[hist,setHist]=useState(false),[entries,setEntries]=useState<Entry[]>(()=>[3,9,17,27,41,64].map((a,k)=>makeEntry((k*5+3)%points.length,a))),[shared,setShared]=useState<number[]>([]),[filter,setFilter]=useState<Level|'all'>('all');
- const addEntry=(i:number)=>setEntries(e=>[makeEntry(i),...e].slice(0,40));
+ const [ready,setReady]=useState(false),[failed,setFailed]=useState(false),[mcp,setMcp]=useState(false),[shown,setShown]=useState<Record<LayerKey,boolean>>({simulated:false,measured:true,sfoEvents:false,crowd:true,proxies:false,cad:true,candidates:false,reports:true}),[failedLayers,setFailedLayers]=useState<string[]>([]),[layersOpen,setLayersOpen]=useState(false),[copied,setCopied]=useState<string|null>(null),[tab,setTab]=useState<'code'|'app'|'json'|'prompt'>('code'),[selected,setSelected]=useState<number|null>(null),[venueSel,setVenueSel]=useState<string|null>(null),[hist,setHist]=useState(false),[entries]=useState<Entry[]>([]),[filter,setFilter]=useState<Level|'all'>('all');
  useEffect(()=>{
-  let disposed=false,index=0,interval:ReturnType<typeof setInterval>;
-  const timeouts=new Set<ReturnType<typeof setTimeout>>();
+  let disposed=false;
   const fallback=async()=>{
    const {createCanvasMap}=await import('../lib/canvas-map');
    if(disposed||!container.current)return;
    const result=await createCanvasMap(container.current,points,()=>disposed,()=>{if(!disposed){setReady(true);setFailed(false)}});
    if(!result)return;
    map.current=result.controls;markers.current=result.markers;
-   interval=setInterval(()=>{if(disposed)return;const at=(index*7+2)%points.length,next=markers.current[at];index++;addEntry(at);next.button.classList.add('is-contributing');const timer=setTimeout(()=>{next.button.classList.remove('is-contributing');timeouts.delete(timer)},2300);timeouts.add(timer)},3200);
   };
   const start=async()=>{try{
    const lib=await import('maplibre-gl');
@@ -136,7 +149,7 @@ export default function CityMap(){
    lib.setWorkerUrl('/maplibre-gl-worker.mjs');
    const instance=new lib.Map({container:container.current,style:mapStyle,...home,minZoom:10,maxZoom:19,attributionControl:false,canvasContextAttributes:{antialias:true}});
    map.current=instance;glMap.current=instance;
-   instance.addControl(new lib.AttributionControl({compact:true}),'bottom-right');
+   instance.addControl(new lib.AttributionControl({compact:true,customAttribution:'NoiseCapture / Noise-Planet community (ODbL 1.0) · DataSF'}),'bottom-right');
    instance.getCanvas().setAttribute('aria-label','Map of San Francisco. Drag to explore. Darker violet means higher simulated sound levels, not measurements. Ripples represent fictional contributions. Real layers, labelled by what they are: filled and ringed dark dots are SFO noise monitors (measured), semi-filled dark dots are NoiseCapture phone cells (crowdsourced, uncalibrated), small gray dots are permits and closures and gray rings are noise-nuisance call counts (proxies), white rings are unmeasured candidate places, tiny gray dots are 311 noise complaints.');
    instance.on('load',()=>{
     if(disposed)return;setReady(true);setFailed(false);
@@ -166,23 +179,17 @@ export default function CityMap(){
     const vf=instance.queryRenderedFeatures(e.point,{layers:['venue-points']})[0];
     if(vf){const id=vf.properties.id as string;const v=venues.find(q=>q.id===id);setVenueSel(id);setSelected(null);if(v)instance.flyTo({center:[v.lng,v.lat],zoom:Math.max(instance.getZoom(),14.2),duration:1000});return}
     setVenueSel(null);
+    if(!simRef.current){setSelected(null);return}
     let best=-1,nearest=80;points.forEach((p,i)=>{const s=instance.project([p.lng,p.lat]);const d=Math.hypot(s.x-e.point.x,s.y-e.point.y);if(d<nearest){nearest=d;best=i}});
     if(best<0){setSelected(null);return}
     setVenueSel(null);setSelected(best);instance.flyTo({center:[points[best].lng,points[best].lat],zoom:Math.max(instance.getZoom(),14.8),duration:1200});
    });
-   interval=setInterval(()=>{
-    if(disposed)return;
-    const at=(index*7+2)%points.length;index++;addEntry(at);
-    const el=document.createElement('div');el.className='quiet-ripple';
-    const ripple=new lib.Marker({element:el,anchor:'center'}).setLngLat([points[at].lng,points[at].lat]).addTo(instance);
-    const timer=setTimeout(()=>{ripple.remove();timeouts.delete(timer)},2300);timeouts.add(timer);
-   },3200);
   }catch{try{await fallback()}catch{if(!disposed)setFailed(true)}}};
   void start();
-  return()=>{disposed=true;clearInterval(interval);timeouts.forEach(clearTimeout);markers.current.forEach(m=>m.marker.remove());markers.current=[];map.current?.remove();map.current=null};
+  return()=>{disposed=true;markers.current.forEach(m=>m.marker.remove());markers.current=[];map.current?.remove();map.current=null};
  },[]);
  useEffect(()=>{if(!hist)return;const key=(e:KeyboardEvent)=>{if(e.key==='Escape')setHist(false)};document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key)},[hist]);
- useEffect(()=>{const gl=glMap.current;for(const row of layerRows){for(const id of row.mapIds){if(gl?.getLayer(id))gl.setLayoutProperty(id,'visibility',shown[row.key]?'visible':'none')}}},[shown,ready]);
+ useEffect(()=>{simRef.current=shown.simulated;const gl=glMap.current;if(gl?.getLayer('venue-points')){gl.setPaintProperty('venue-points','circle-color',shown.simulated?noiseRamp:'#ffffff');gl.setPaintProperty('venue-halo','circle-opacity',shown.simulated?.45:0)}for(const row of layerRows){for(const id of row.mapIds){if(gl?.getLayer(id))gl.setLayoutProperty(id,'visibility',shown[row.key]?'visible':'none')}}},[shown,ready]);
  useEffect(()=>{focusRef.current(selected)},[selected,ready]);
  useEffect(()=>{filterRef.current(filter)},[filter,ready]);
  useEffect(()=>{if((selected===null&&!venueSel)||mcp)return;const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){setSelected(null);setVenueSel(null)}};document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key)},[selected,venueSel,mcp]);
@@ -194,19 +201,19 @@ export default function CityMap(){
   };document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key);
  },[mcp]);
  function reset(){map.current?.flyTo({...home,duration:1000});setSelected(null);setVenueSel(null);setFilter('all')}
- async function copy(){try{await navigator.clipboard.writeText(JSON.stringify(contract,null,2));setCopied(true)}catch{setCopied(false);setCopyFallback(true)}}
+ async function copyText(key:string,text:string){try{await navigator.clipboard.writeText(text);setCopied(key);setTimeout(()=>setCopied(c=>c===key?null:c),1800)}catch{setCopied(null)}}
  return <main className="quiet-map-only">
   <div className="quiet-map-canvas" ref={container}/>
   {!ready&&!failed&&<div className="quiet-loading" role="status" aria-label="Loading map"><span/></div>}
   {failed&&!ready&&<div className="quiet-map-error" role="status">The map could not be loaded.<button onClick={()=>window.location.reload()} aria-label="Try again"><RotateCcw size={18}/></button></div>}
   <button className="quiet-home quiet-icon" onClick={reset} title="Reset San Francisco view" aria-label="Reset San Francisco view"><Compass size={25} strokeWidth={1.4}/></button>
-  <button className="quiet-mcp" ref={mcpButton} onClick={()=>{setMcp(true);setCopied(false);setCopyFallback(false)}} aria-haspopup="dialog"><Plug size={14} strokeWidth={1.5}/>MCP</button>
-  <div className="quiet-filters" role="group" aria-label="Filter places by sound level">{filters.map(f=><button key={f.id} className={filter===f.id?'is-active':''} aria-pressed={filter===f.id} onClick={()=>setFilter(f.id)}>{f.label}</button>)}</div>
+  <button className="quiet-mcp" ref={mcpButton} onClick={()=>{setMcp(true);setCopied(null)}} aria-haspopup="dialog"><Plug size={14} strokeWidth={1.5}/>MCP</button>
+  {shown.simulated&&<div className="quiet-filters" role="group" aria-label="Filter places by sound level">{filters.map(f=><button key={f.id} className={filter===f.id?'is-active':''} aria-pressed={filter===f.id} onClick={()=>setFilter(f.id)}>{f.label}</button>)}</div>}
   {venueSel&&(()=>{const v=venues.find(q=>q.id===venueSel);if(!v)return null;const lv=levelOf(v.score);return <aside className="quiet-card" key={v.id} aria-live="polite">
    <button className="quiet-icon quiet-card-close" aria-label="Close venue details" onClick={()=>setVenueSel(null)}><X size={16}/></button>
    <strong>{v.name}</strong>
-   <span className={'quiet-card-level '+lv}>{lv} · simulated</span>
-   <div className="quiet-card-bar" role="img" aria-label={'Simulated level '+Math.round(v.score*100)+' out of 100'}><span style={{width:Math.round(v.score*100)+'%'}}/></div>
+   {shown.simulated?<><span className={'quiet-card-level '+lv}>{lv} · simulated</span>
+   <div className="quiet-card-bar" role="img" aria-label={'Simulated level '+Math.round(v.score*100)+' out of 100'}><span style={{width:Math.round(v.score*100)+'%'}}/></div></>:<span className="quiet-card-level quiet-card-none">No measurements yet</span>}
    {/* A plain anchor: next/link breaks under this project's vinext dev server. */}
    <a className="quiet-share quiet-open" href={'/venue?v='+v.id}>Open 3D floor plan</a>
   </aside>})()}
@@ -215,13 +222,13 @@ export default function CityMap(){
    <strong>{points[selected].name}</strong>
    <span className={'quiet-card-level '+levelOf(points[selected].score)}>{levelOf(points[selected].score)} · simulated</span>
    <div className="quiet-card-bar" role="img" aria-label={'Simulated level '+Math.round(points[selected].score*100)+' out of 100'}><span style={{width:Math.round(points[selected].score*100)+'%'}}/></div>
-   <button className="quiet-share" disabled={shared.includes(selected)} onClick={()=>{setShared(a=>[...a,selected]);addEntry(selected)}}>{shared.includes(selected)?<><Check size={14}/>Sent</>:'Add observation'}</button>
   </aside>}
   <a className="quiet-venue-btn quiet-icon" href="/venue" title="Event venue in 3D" aria-label="Event venue in 3D"><Building2 size={18} strokeWidth={1.5}/></a>
   <button className="quiet-history-btn quiet-icon" aria-label="Open agent contributions" title="Agent contributions" aria-expanded={hist} onClick={()=>setHist(v=>!v)}><Users size={18} strokeWidth={1.5}/></button>
   {hist&&<aside className="quiet-history" aria-label="Agent contributions">
    <div className="quiet-history-head"><strong>Contributions</strong><button className="quiet-icon" aria-label="Close contributions" onClick={()=>setHist(false)}><X size={16}/></button></div>
-   <ul>{entries.map((e,i)=><li key={e.id} style={{animationDelay:Math.min(i,6)*40+'ms'}}><span>{e.zone}</span><b className={e.level}>{e.level}</b><time>{bucket(e.t)}</time></li>)}</ul>
+   {entries.length===0?<div className="quiet-history-empty"><strong>No contributions yet</strong><p>Agents that connect through MCP report new noise here.</p><button className="quiet-share" onClick={()=>{setHist(false);setMcp(true)}}>Connect your agent</button></div>
+   :<ul>{entries.map((e,i)=><li key={e.id} style={{animationDelay:Math.min(i,6)*40+'ms'}}><span>{e.zone}</span><b className={e.level}>{e.level}</b><time>{bucket(e.t)}</time></li>)}</ul>}
   </aside>}
   <div className="quiet-map-controls">
    <button className="quiet-icon" title="Zoom in" aria-label="Zoom in" onClick={()=>map.current?.zoomIn()}><Plus size={20}/></button>
@@ -231,14 +238,17 @@ export default function CityMap(){
    <button className="quiet-layers-head" aria-expanded={layersOpen} onClick={()=>setLayersOpen(!layersOpen)}><Layers size={14}/>Layers</button>
    {layersOpen&&<ul>{layerRows.map(r=><li key={r.key}><label title={r.hint}><input type="checkbox" checked={shown[r.key]} onChange={()=>setShown({...shown,[r.key]:!shown[r.key]})}/><i className={'quiet-swatch swatch-'+r.swatch} aria-hidden="true"/><span>{r.label}</span><em>{r.tag}</em></label></li>)}</ul>}
    {layersOpen&&failedLayers.length>0&&<p className="quiet-layers-warn" role="status">Couldn&apos;t load {failedLayers.join(', ')}. Unknown, not quiet.</p>}
-   {layersOpen&&<div className="quiet-layers-note"><p>Complaints and calls are not measurements. NoiseCapture values are uncalibrated and are not dBA. Contains information from the NoiseCapture / Noise-Planet community, ODbL 1.0.</p><details><summary>Published reference levels</summary><p>{REFERENCE_NOTE}</p><ul className="quiet-refs">{REFERENCE_LEVELS.map((r:{location:string;ldn:number;note:string;date:string})=><li key={r.location}><b>{r.ldn}</b> dBA Ldn · {r.location} · {r.note} · {r.date}</li>)}</ul><a href={REFERENCE_LEVELS[0].sourceUrl} target="_blank" rel="noreferrer">Central SoMa Plan Draft EIR, Dec 2016</a></details></div>}
   </section>
-  <div className="quiet-intensity" role="img" aria-label="Simulated sound intensity: lighter violet means lower levels; darker violet means higher levels. White has no observations." title="Simulated sound intensity · darker violet = higher levels · white = no observations"><em>Quiet</em><span/><em>Loud</em></div>
+  <div className="quiet-intensity" role="img" aria-label="Lighter violet means fewer noise reports or lower simulated levels; darker violet means more reports or higher levels." title="Darker violet = more noise reports (311 and noise-nuisance calls). Simulated levels use the same scale when that layer is on."><em>{shown.simulated?'Quiet':'Fewer reports'}</em><span/><em>{shown.simulated?'Loud':'More reports'}</em></div>
   {mcp&&<div className="quiet-mcp-overlay" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><div className="quiet-mcp-panel" ref={dialog} role="dialog" aria-modal="true" aria-labelledby="mcp-title" onClick={e=>e.stopPropagation()}>
    <div className="quiet-mcp-heading"><strong id="mcp-title">MCP</strong><button ref={closeButton} className="quiet-icon" aria-label="Close MCP" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><X size={18}/></button></div>
-   <><div className="quiet-mcp-state"><span/>Proposed contract · not connected</div>
-   <div className="quiet-tool-list">{contract.tools.map(t=><code key={t.name}>{t.name}<span>↗</span></code>)}</div>
-   <button className="quiet-copy" onClick={copy} aria-label={copied?'Contract copied':'Copy proposed MCP contract'} title={copied?'Copied':'Copy contract'}>{copied?<Check size={17}/>:<Copy size={17}/>}</button>{copyFallback&&<textarea className="quiet-contract" aria-label="MCP contract for manual copying" readOnly value={JSON.stringify(contract,null,2)} onFocus={e=>e.currentTarget.select()}/>}</>
+   <p className="quiet-mcp-lead">Give any personal agent live noise data for San Francisco.</p>
+   <label className="quiet-mcp-label" htmlFor="mcp-url">Server URL</label>
+   <div className="quiet-field"><input id="mcp-url" readOnly value={MCP_URL} onFocus={e=>e.currentTarget.select()}/><button className="quiet-icon" aria-label={copied==='url'?'URL copied':'Copy server URL'} title="Copy" onClick={()=>copyText('url',MCP_URL)}>{copied==='url'?<Check size={16}/>:<Copy size={16}/>}</button></div>
+   <div className="quiet-tabs" role="tablist" aria-label="How to connect">{(Object.keys(snippets) as (keyof typeof snippets)[]).map(k=><button key={k} role="tab" aria-selected={tab===k} className={tab===k?'is-active':''} onClick={()=>setTab(k)}>{snippets[k].label}</button>)}</div>
+   <div className="quiet-snippet"><pre tabIndex={0}>{snippets[tab].text}</pre><button className="quiet-share" onClick={()=>copyText('snippet',snippets[tab].text)}>{copied==='snippet'?<><Check size={14}/>Copied</>:'Copy'}</button></div>
+   <p className="quiet-mcp-hint">Replace YOUR_TOKEN with your server&apos;s access token.</p>
+   <ul className="quiet-tools">{mcpTools.map(t=><li key={t.name}><code>{t.name}</code><span>{t.what}</span></li>)}</ul>
   </div></div>}
  </main>;
 }
