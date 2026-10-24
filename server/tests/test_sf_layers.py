@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import tempfile
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import httpx2 as httpx
@@ -18,9 +21,13 @@ from quiet_compass.sf_layers import (
     DATASETS,
     REFERENCE_LEVELS,
     SfLayers,
+    cad_noise_areas,
     latest_sfo_monitors,
+    noisecapture_cells,
     parse_closure,
     parse_night_noise,
+    parse_park,
+    sfo_event_monitors,
 )
 
 # Row shapes copied from live responses (2026-10-24), trimmed to the selected fields.
@@ -61,13 +68,53 @@ SFO = [
     {"date": "2026-08-31T00:00:00.000", "location_id": "23", "latitude": "37.711", "longitude": "-122.399",
      "aircraft_cnel": "52.0", "community_cnel": "58.0", "total_cnel": ""},
 ]
+PARKS = [
+    {"property_name": "Dolores Park", "latitude": "37.75965", "longitude": "-122.42691",
+     "propertytype": "Neighborhood Park or Playground", "acres": "15.9"},
+    {"property_name": "Main Library", "latitude": "37.779", "longitude": "-122.416", "propertytype": "Library"},
+    {"property_name": "Family Camp", "latitude": "37.9", "longitude": "-120.1", "propertytype": "Family Camp"},
+    {"property_name": "No coords", "latitude": "", "longitude": "", "propertytype": "Mini Park"},
+]
+# tiju-qyvs: max_level is TEXT. Monitor 99 has no coordinates in qxw2, so it cannot be placed and is skipped.
+SFO_EVENTS = [
+    {"location_id": "21", "max_date_time": "2026-03-19T23:30:03.000", "max_level": "83.9"},
+    {"location_id": "21", "max_date_time": "2026-01-02T01:00:00.000", "max_level": "81.1"},
+    {"location_id": "21", "max_date_time": "2025-12-01T01:00:00.000", "max_level": "100.2"},
+    {"location_id": "21", "max_date_time": "2025-11-01T01:00:00.000", "max_level": "n/a"},
+    {"location_id": "23", "max_date_time": "2026-08-02T01:03:50.000", "max_level": "71.0"},
+    {"location_id": "99", "max_date_time": "2026-08-02T01:03:50.000", "max_level": "90.0"},
+]
+CAD = [
+    {"cad_number": "A1", "received_datetime": "2026-10-20T10:00:00.000", "intersection_name": "MISSION ST \\ 16TH ST",
+     "intersection_point": {"type": "Point", "coordinates": [-122.41964, 37.76481]}, "sensitive_call": False},
+    {"cad_number": "A2", "received_datetime": "2026-10-23T22:00:00.000", "intersection_name": "MISSION ST \\ 16TH ST",
+     "intersection_point": {"type": "Point", "coordinates": [-122.41964, 37.76481]}, "sensitive_call": False},
+    {"cad_number": "A2", "received_datetime": "2026-10-23T22:00:00.000", "intersection_name": "MISSION ST \\ 16TH ST",
+     "intersection_point": {"type": "Point", "coordinates": [-122.41964, 37.76481]}, "sensitive_call": False},
+    {"cad_number": "A3", "received_datetime": "2026-10-22T22:00:00.000", "intersection_name": "SENSITIVE",
+     "intersection_point": {"type": "Point", "coordinates": [-122.4, 37.77]}, "sensitive_call": True},
+    {"cad_number": "A4", "received_datetime": "2026-10-22T22:00:00.000", "intersection_name": "NO POINT"},
+]
+NC = {"type": "FeatureCollection", "features": [
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [-122.4183, 37.7579]},
+     "properties": {"evidence": "measured_crowdsourced", "cell_m": 100, "laeq_db": 74.6, "median_window_db": 48.8,
+                    "windows": 648, "tracks": 22, "periods": {"day": {"laeq_db": 77.3, "windows": 328}},
+                    "first_date": "2021-02-07", "last_date": "2021-08-03"}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [-122.4, 37.9]},
+     "properties": {"laeq_db": 60, "median_window_db": 60}},
+]}
+NC_PATH = Path(tempfile.mkdtemp()) / "nc.json"
+NC_PATH.write_text(json.dumps(NC))
 BY_ID: dict[str, list[dict[str, Any]]] = {
     DATASETS["popos"]: POPOS, DATASETS["libraries"]: LIBS, DATASETS["entertainment"]: ENT,
     DATASETS["night_noise"]: NIGHT, DATASETS["closures"]: CLOSURES, DATASETS["sfo"]: SFO,
+    DATASETS["parks"]: PARKS, DATASETS["sfo_events"]: SFO_EVENTS, DATASETS["cad"]: CAD,
 }
 
 
-def make_layers(fail: set[str] | None = None, calls: list[str] | None = None) -> SfLayers:
+def make_layers(
+    fail: set[str] | None = None, calls: list[str] | None = None, nc_path: Path | None = NC_PATH
+) -> SfLayers:
     def handler(request: httpx.Request) -> httpx.Response:
         dataset = request.url.path.rsplit("/", 1)[-1].removesuffix(".json")
         if calls is not None:
@@ -77,14 +124,17 @@ def make_layers(fail: set[str] | None = None, calls: list[str] | None = None) ->
         return httpx.Response(200, json=BY_ID[dataset])
 
     client = httpx.Client(transport=httpx.MockTransport(handler))
-    return SfLayers(client=client, clock=lambda: NOW)
+    return SfLayers(client=client, clock=lambda: NOW, noisecapture_path=nc_path)
 
 
 def test_candidates_are_unmeasured_seed_and_filtered() -> None:
     points = make_layers().layer("quiet_candidates")
-    assert {p.label for p in points} == {"Transamerica Redwood Park", "Main Library"}
+    assert {p.label for p in points} == {"Transamerica Redwood Park", "Main Library", "Dolores Park"}
     assert all(p.evidence == "unmeasured_candidate" and p.source == "seed" for p in points)
     assert all(p.cnel_db is None and "nobody has measured" in p.caveat for p in points)
+    park = next(p for p in points if p.kind == "park")
+    assert park.dataset == DATASETS["parks"] and "15.9 acres" in (park.detail or "") and "loud" in park.caveat
+    assert parse_park(PARKS[1]) is None and parse_park(PARKS[2]) is None and parse_park(PARKS[3]) is None
 
 
 def test_only_sfo_is_measured_and_latest_per_monitor_wins() -> None:
@@ -112,7 +162,7 @@ def test_closure_uses_middle_vertex_and_needs_geometry() -> None:
 
 def test_around_filters_by_radius_sorts_and_caps_sfo() -> None:
     s = make_layers().around(37.7952, -122.4030, 300)
-    assert [p.label for p in s.points["quiet_candidates"]] == ["Transamerica Redwood Park"]
+    assert [p.label for p in s.points["quiet_candidates"]] == ["Transamerica Redwood Park"]  # Dolores is 4 km away
     assert s.points["entertainment_permits"] == []  # 111 Minna is ~1.3 km away
     assert s.points["sfo_cnel"] == []  # nearest monitor is beyond 5 km
     far = make_layers().around(37.74, -122.43, 300)
@@ -191,3 +241,78 @@ def test_tool_output_matches_json_schema(tmp_path: Any) -> None:
     validator = jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker())
     validator.validate(body["structuredContent"])
     assert {"quiet_candidates", "sfo_cnel"} <= set(body["structuredContent"]["layers"])
+
+
+def test_sfo_events_summarise_per_monitor_with_date_and_skip_unplaceable() -> None:
+    pts = make_layers().layer("sfo_events")
+    by = {p.label: p for p in pts}
+    m21 = by["SFO noise monitor 21"]
+    assert m21.evidence == "measured" and m21.dataset == DATASETS["sfo_events"]
+    # 83.9 / 81.1 / 100.2 ("n/a" skipped): count 3, median 83.9, max 100.2, latest date shown
+    assert (m21.count, m21.median_level_db, m21.max_level_db, m21.observed_on) == (3, 83.9, 100.2, "2026-03-19")
+    assert "2026-03-19" in (m21.detail or "") and "declares no license" in m21.caveat
+    assert "SFO noise monitor 99" not in by  # not in the SF monitor list, so never invented
+    assert m21.cnel_db is None  # event levels are not CNEL
+    assert sfo_event_monitors([], SFO_EVENTS, 365) == []  # no coordinates, no points
+
+
+def test_sfo_events_query_uses_text_level_ids_from_monitor_join() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        dataset = request.url.path.rsplit("/", 1)[-1].removesuffix(".json")
+        return httpx.Response(200, json=BY_ID[dataset])
+
+    SfLayers(client=httpx.Client(transport=httpx.MockTransport(handler)), clock=lambda: NOW).layer("sfo_events")
+    events = next(r for r in seen if DATASETS["sfo_events"] in str(r.url))
+    where = events.url.params["$where"]
+    assert "location_id in('21','23')" in where and "max_date_time >= '2025-10-24T00:00:00'" in where
+
+
+def test_cad_noise_calls_count_per_masked_intersection() -> None:
+    pts = make_layers().layer("cad_noise_calls")
+    assert len(pts) == 1  # sensitive, duplicate and pointless rows dropped
+    p = pts[0]
+    assert (p.count, p.evidence, p.observed_on, p.label) == (2, "proxy", "2026-10-23", "MISSION ST / 16TH ST")
+    assert "complaints, not measurements" in p.caveat and p.cnel_db is None and p.max_level_db is None
+    assert cad_noise_areas([], 30) == []
+
+
+def test_noisecapture_cells_are_crowdsourced_and_never_plain_measured() -> None:
+    pts = make_layers().layer("noisecapture")
+    assert len(pts) == 1  # the out-of-city cell is dropped
+    p = pts[0]
+    assert p.evidence == "measured_crowdsourced" and p.quality == "measured_crowdsourced_uncalibrated"
+    assert (p.median_level_db, p.laeq_db, p.count) == (48.8, 74.6, 648)
+    assert "ODbL" in p.caveat and "uncalibrated" in p.caveat and p.cnel_db is None
+    assert noisecapture_cells({"features": []}) == []
+
+
+def test_noisecapture_missing_file_is_unavailable_not_invented() -> None:
+    layers = make_layers(nc_path=Path(tempfile.gettempdir()) / "does-not-exist-nc.json")
+    s = layers.around(37.7579, -122.4183, 500, ["noisecapture"])
+    assert "noisecapture" in s.unavailable and s.points == {}
+
+
+def test_shipped_noisecapture_file_is_labelled_and_in_city() -> None:
+    from quiet_compass.sf_layers import NOISECAPTURE_FILE
+
+    data = json.loads(NOISECAPTURE_FILE.read_text())
+    assert "ODbL" in data["attribution"] and data["features"]
+    for f in data["features"]:
+        pr = f["properties"]
+        assert pr["evidence"] == "measured_crowdsourced" and pr["tracks"] >= 3 and pr["windows"] >= 5
+    pts = SfLayers(clock=lambda: NOW).layer("noisecapture")
+    assert len(pts) == len(data["features"])
+
+
+def test_mcp_tool_new_layers_labels(tmp_path: Any) -> None:
+    with _app(tmp_path, make_layers()) as c:
+        body = call(c, "quiet_sf_layers", lat=37.7579, lon=-122.4183, radius_m=2000)["structuredContent"]
+        assert {"sfo_events", "cad_noise_calls", "noisecapture"} <= set(body["layers"])
+        assert body["layers"]["noisecapture"][0]["evidence"] == "measured_crowdsourced"
+        assert body["layers"]["cad_noise_calls"][0]["evidence"] == "proxy"
+        ev = call(c, "quiet_sf_layers", lat=37.74, lon=-122.433, include=["sfo_events"])["structuredContent"]
+        assert ev["layers"]["sfo_events"][0]["evidence"] == "measured"
+        assert ev["layers"]["sfo_events"][0]["observed_on"] == "2026-03-19"

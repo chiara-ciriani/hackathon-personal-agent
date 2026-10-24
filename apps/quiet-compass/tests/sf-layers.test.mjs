@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CAVEATS,REFERENCE_LEVELS,latestSfoMonitors,loadSfLayers,parseClosure,parseLibrary,parseNightNoise,parsePopos} from '../lib/sf-layers.mjs';
+import {CAVEATS,REFERENCE_LEVELS,cadNoiseAreas,latestSfoMonitors,loadSfLayers,noisecaptureCells,parseClosure,parseLibrary,parseNightNoise,parsePark,parsePopos,sfoEventMonitors} from '../lib/sf-layers.mjs';
 
 const NOW=new Date('2026-10-24T21:00:00Z');
 const pt=(lng,lat)=>({type:'Point',coordinates:[lng,lat]});
@@ -31,7 +31,37 @@ test('closures use the middle vertex; only SFO monitors are measured',()=>{
 test('reference table is cited and labelled',()=>{
  assert.ok(REFERENCE_LEVELS.length>=8);
  for(const r of REFERENCE_LEVELS){assert.equal(r.evidence,'reference_measured');assert.match(r.sourceUrl,/^https:\/\//)}
- assert.ok(Object.keys(CAVEATS).length===5);
+ assert.equal(Object.keys(CAVEATS).length,9);
+ for(const k of Object.keys(CAVEATS))assert.ok(CAVEATS[k].length>20);
+});
+test('parks are unmeasured seeds with a loudness warning; wrong types and missing coords are dropped',()=>{
+ const p=parsePark({property_name:'Dolores Park',latitude:'37.75965',longitude:'-122.42691',propertytype:'Neighborhood Park or Playground',acres:'15.9'});
+ assert.equal(p.properties.evidence,'unmeasured_candidate');assert.equal(p.properties.source,'seed');assert.match(p.properties.detail,/15\.9 acres/);assert.match(p.properties.caveat,/loud/);
+ assert.equal(parsePark({property_name:'Main Library',latitude:'37.779',longitude:'-122.416',propertytype:'Library'}),null);
+ assert.equal(parsePark({property_name:'x',latitude:'',longitude:'',propertytype:'Mini Park'}),null);
+});
+test('SFO exceedance events: text max_level, per-monitor summary with date, unplaceable monitors skipped',()=>{
+ const monitors=[{location_id:'21',latitude:'37.740',longitude:'-122.433'},{location_id:'99'}];
+ const events=[{location_id:'21',max_date_time:'2026-03-19T23:30:03.000',max_level:'83.9'},{location_id:'21',max_date_time:'2026-01-02T01:00:00.000',max_level:'81.1'},
+  {location_id:'21',max_date_time:'2025-12-01T01:00:00.000',max_level:'100.2'},{location_id:'21',max_date_time:'2025-11-01T01:00:00.000',max_level:'n/a'},{location_id:'99',max_date_time:'2026-08-02T01:03:50.000',max_level:'90.0'}];
+ const out=sfoEventMonitors(monitors,events);
+ assert.equal(out.length,1);const p=out[0].properties;
+ assert.deepEqual([p.count,p.medianDb,p.maxDb,p.observedOn,p.evidence],[3,83.9,100.2,'2026-03-19','measured']);
+ assert.match(p.caveat,/declares no license/);assert.equal(p.cnel,undefined);
+ assert.deepEqual(sfoEventMonitors([],events),[]);
+});
+test('CAD noise calls: counts per masked intersection, sensitive and duplicate rows dropped, proxy only',()=>{
+ const base={intersection_name:'MISSION ST \\ 16TH ST',intersection_point:pt(-122.41964,37.76481),sensitive_call:false};
+ const out=cadNoiseAreas([{...base,cad_number:'A1',received_datetime:'2026-10-20T10:00:00.000'},{...base,cad_number:'A2',received_datetime:'2026-10-23T22:00:00.000'},{...base,cad_number:'A2',received_datetime:'2026-10-23T22:00:00.000'},
+  {...base,cad_number:'A3',sensitive_call:true},{cad_number:'A4',intersection_name:'NO POINT'}]);
+ assert.equal(out.length,1);const p=out[0].properties;
+ assert.deepEqual([p.count,p.evidence,p.observedOn,p.label],[2,'proxy','2026-10-23','MISSION ST / 16TH ST']);assert.match(p.caveat,/not measurements/);
+});
+test('NoiseCapture cells are crowdsourced and uncalibrated, never plain measured',()=>{
+ const out=noisecaptureCells({features:[{geometry:{coordinates:[-122.4183,37.7579]},properties:{cell_m:100,laeq_db:74.6,median_window_db:48.8,windows:648,tracks:22,periods:{day:{laeq_db:77.3,windows:328}},first_date:'2021-02-07',last_date:'2021-08-03'}},
+  {geometry:{coordinates:[-122.4,37.9]},properties:{laeq_db:60,median_window_db:60}}]});
+ assert.equal(out.length,1);const p=out[0].properties;
+ assert.deepEqual([p.evidence,p.quality,p.medianDb,p.laeqDb],['measured_crowdsourced','measured_crowdsourced_uncalibrated',48.8,74.6]);assert.match(p.caveat,/ODbL/);assert.match(p.caveat,/uncalibrated/);
 });
 test('loadSfLayers isolates a failing dataset and mocks the network',async()=>{
  const calls=[];
@@ -43,6 +73,23 @@ test('loadSfLayers isolates a failing dataset and mocks the network',async()=>{
   return {ok:false,status:500,json:async()=>[]};};
  const r=await loadSfLayers(fetchFn,NOW);
  assert.equal(r.candidates.features.length,2);assert.equal(r.proxies.features.length,1);
- assert.deepEqual(r.failed,['measured']);assert.equal(r.measured.features.length,0);
- assert.ok(calls.every(u=>u.startsWith('https://data.sf.gov/resource/')));
+ assert.deepEqual(r.failed,['measured','sfoEvents','cad','crowd','parks']);assert.equal(r.measured.features.length,0);
+ assert.ok(calls.filter(u=>!u.startsWith('/data/')).every(u=>u.startsWith('https://data.sf.gov/resource/')));
+});
+test('loadSfLayers loads the new layers, joins monitor coordinates, and queries the verified datasets',async()=>{
+ const calls=[];
+ const json=body=>({ok:true,json:async()=>body});
+ const fetchFn=async url=>{calls.push(url);
+  if(url.includes('gtr9-ntp6'))return json([{property_name:'Dolores Park',latitude:'37.75965',longitude:'-122.42691',propertytype:'Mini Park',acres:'2'}]);
+  if(url.includes('tiju-qyvs'))return json([{location_id:'21',max_date_time:'2026-03-19T23:30:03.000',max_level:'83.9'}]);
+  if(url.includes('qxw2-ncq3'))return json([{location_id:'21',latitude:'37.740',longitude:'-122.433',date:'2026-08-31T00:00:00.000',total_cnel:'61.1'}]);
+  if(url.includes('2zdj-bwza'))return json([{cad_number:'A1',received_datetime:'2026-10-23T22:00:00.000',intersection_name:'A \\ B',intersection_point:pt(-122.41964,37.76481),sensitive_call:false}]);
+  if(url.startsWith('/data/'))return json({features:[{geometry:{coordinates:[-122.4183,37.7579]},properties:{laeq_db:74.6,median_window_db:48.8,windows:6,tracks:3}}]});
+  return json([]);};
+ const r=await loadSfLayers(fetchFn,NOW);
+ assert.deepEqual(r.failed,[]);
+ assert.equal(r.candidates.features.length,1);assert.equal(r.sfoEvents.features[0].properties.count,1);assert.equal(r.cad.features[0].properties.count,1);assert.equal(r.crowd.features[0].properties.evidence,'measured_crowdsourced');
+ const ev=decodeURIComponent(calls.find(u=>u.includes('tiju-qyvs')));
+ assert.match(ev,/location_id in\('21'\)/);assert.match(ev,/max_date_time >= '2025-10-24T00:00:00'/);
+ assert.match(decodeURIComponent(calls.find(u=>u.includes('2zdj-bwza'))),/call_type_final_desc='NOISE NUISANCE'/);
 });

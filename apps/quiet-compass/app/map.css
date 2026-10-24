@@ -92,8 +92,8 @@
 .quiet-layers ul{list-style:none;margin:0;padding:0 6px 6px}.quiet-layers li label{display:grid;grid-template-columns:16px 14px 1fr;column-gap:7px;align-items:center;padding:5px 6px;border-radius:6px;cursor:pointer}.quiet-layers li label:hover{background:#f6f6f7}
 .quiet-layers li em{grid-column:3;font-style:normal;font-size:10px;color:#777;margin-top:-1px}.quiet-layers li span{grid-column:3;line-height:15px}
 .quiet-layers li input{grid-row:1/3;grid-column:1;margin:0}.quiet-swatch{grid-row:1/3;grid-column:2;width:11px;height:11px;border-radius:50%;display:block}
-.swatch-measured{background:#0f766e}.swatch-proxy{background:#d97706}.swatch-candidate{background:#fff;border:2px solid #2563eb;width:9px;height:9px}.swatch-report{background:#3f3f46;width:7px;height:7px;margin-left:2px}.swatch-demo{background:#ae77ee;opacity:.7}
-.tag-measured{color:#0f766e!important;font-weight:600}.tag-proxy{color:#b45309!important}.tag-candidate{color:#2563eb!important}.tag-demo{color:#7444bc!important;font-weight:600}
+.swatch-measured{background:#0f766e}.swatch-events{background:#fff;border:2.4px solid #0f766e;width:9px;height:9px}.swatch-crowd{background:#65a30d}.swatch-cad{background:#fff7ed;border:1.6px solid #b45309;width:9px;height:9px}.swatch-proxy{background:#d97706}.swatch-candidate{background:#fff;border:2px solid #2563eb;width:9px;height:9px}.swatch-report{background:#3f3f46;width:7px;height:7px;margin-left:2px}.swatch-demo{background:#ae77ee;opacity:.7}
+.tag-measured{color:#0f766e!important;font-weight:600}.tag-crowd{color:#4d7c0f!important;font-weight:600}.tag-proxy,.tag-cad{color:#b45309!important}.tag-events{color:#0f766e!important;font-weight:600}.tag-candidate{color:#2563eb!important}.tag-demo{color:#7444bc!important;font-weight:600}
 .quiet-layers-warn{margin:0;padding:2px 12px 10px;font-size:10px;color:#a14d00}
 .quiet-intensity small{font:9px monospace;letter-spacing:1px;color:#79737f}
 .quiet-refs{margin:8px 0;padding:0;list-style:none;font-size:11px;line-height:16px;color:#555}.quiet-refs li{padding:2px 0}.quiet-guide a{font-size:11px;color:#2563eb}

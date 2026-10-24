@@ -2,25 +2,34 @@
 
 Evidence labels, from strongest to weakest:
 
-* ``measured``             a sensor measurement (only the SFO community-noise monitors, CNEL).
+* ``measured``             a sensor measurement (only the SFO community-noise monitors: CNEL and the
+                           aircraft noise exceedance events summarised per monitor).
+* ``measured_crowdsourced`` phone measurements from NoiseCapture volunteers, uncalibrated, aggregated offline
+                           into ~100 m cells (``noisecapture.py``). Never mixed up with ``measured``.
 * ``reference_measured``   a published measurement with a citation (small fixed table below).
-* ``proxy``                a permit or closure near a point; says something may be loud, not how loud.
-* ``unmeasured_candidate`` a place from a city inventory (POPOS, libraries) that might be calm.
+* ``proxy``                a permit, closure or complaint/dispatch count near a point; says something may be
+                           loud, not how loud.
+* ``unmeasured_candidate`` a place from a city inventory (POPOS, libraries, parks) that might be calm.
                            Nobody has measured it. Candidates carry ``source="seed"`` like seeded places.
 
 Datasets (verified against the live Socrata API on 2026-10-24, see ``contracts/README.md``):
 POPOS ``65ik-7wqd``, libraries ``fhhu-wqa7``, SFO aircraft noise climates ``qxw2-ncq3``, active
 entertainment permits ``86e8-rfem``, night noise permits ``e7pr-36bt``, temporary street
-closures ``8x25-yybr``. Nothing here returns free text from citizens or exact complaint
+closures ``8x25-yybr``, SFO noise exceedance events ``tiju-qyvs`` (license not declared on the portal),
+Recreation and Parks Properties ``gtr9-ntp6``, CAD dispatched calls ``2zdj-bwza`` (NOISE NUISANCE, masked
+intersections as published). Nothing here returns free text from citizens or exact complaint
 coordinates. Network access is injectable (``client``) and results are cached in memory.
 """
 
 from __future__ import annotations
 
+import json
+import statistics
 import threading
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, Literal
 
 import httpx2 as httpx
@@ -28,10 +37,15 @@ import httpx2 as httpx
 from .city import CityDataError, haversine_m, sf_local_naive
 
 BASE = "https://data.sf.gov/resource"
-LayerName = Literal["quiet_candidates", "entertainment_permits", "night_noise_permits", "street_closures", "sfo_cnel"]
+LayerName = Literal[
+    "quiet_candidates", "entertainment_permits", "night_noise_permits", "street_closures", "sfo_cnel",
+    "sfo_events", "cad_noise_calls", "noisecapture",
+]
 ALL_LAYERS: tuple[LayerName, ...] = (
     "quiet_candidates", "entertainment_permits", "night_noise_permits", "street_closures", "sfo_cnel",
+    "sfo_events", "cad_noise_calls", "noisecapture",
 )
+NOISECAPTURE_FILE = Path(__file__).parent / "data" / "noisecapture_sf_cells.json"
 
 DATASETS: dict[str, str] = {
     "popos": "65ik-7wqd",
@@ -40,6 +54,9 @@ DATASETS: dict[str, str] = {
     "night_noise": "e7pr-36bt",
     "closures": "8x25-yybr",
     "sfo": "qxw2-ncq3",
+    "sfo_events": "tiju-qyvs",
+    "parks": "gtr9-ntp6",
+    "cad": "2zdj-bwza",
 }
 
 CAVEATS: dict[str, str] = {
@@ -58,7 +75,29 @@ CAVEATS: dict[str, str] = {
         "Daily CNEL (A-weighted dB, 24 h) from an SFO community noise monitor, published monthly; "
         "measured at the monitor, not at your spot, and not live"
     ),
+    "sfo_events": (
+        "Aircraft noise exceedance events at an SFO community noise monitor (max level in dBA per event). Only "
+        "events above that monitor's own day/night threshold are published, so this describes the loud aircraft "
+        "events, not the typical level; measured at the monitor, published monthly, always read it with its date. "
+        "The portal declares no license for this dataset"
+    ),
+    "cad_noise_calls": (
+        "Count of closed police dispatches classified NOISE NUISANCE at this published (masked) intersection "
+        "over the last 30 days: complaints, not measurements, and they depend on who calls"
+    ),
+    "noisecapture": (
+        "Crowdsourced phone measurements from NoiseCapture volunteers, mostly uncalibrated (several dB of error), "
+        "collected 2017-2025 where people happened to walk, not live; not comparable with dBFS readings. "
+        "Contains information from the NoiseCapture / Noise-Planet community, ODbL 1.0"
+    ),
 }
+PARK_CAVEAT = (
+    CAVEATS["quiet_candidates"] + "; parks and play areas can be busy and loud at times (playgrounds, sports, events)"
+)
+PARK_TYPES = (
+    "Neighborhood Park or Playground", "Mini Park", "Regional Park", "Civic Plaza or Square", "Parkway",
+    "Community Garden",
+)
 
 CACHE_TTL = {
     "quiet_candidates": timedelta(hours=24),
@@ -66,7 +105,12 @@ CACHE_TTL = {
     "night_noise_permits": timedelta(minutes=15),
     "street_closures": timedelta(minutes=15),
     "sfo_cnel": timedelta(hours=6),
+    "sfo_events": timedelta(hours=6),
+    "cad_noise_calls": timedelta(hours=1),
+    "noisecapture": timedelta(hours=24),
 }
+SFO_EVENTS_LOOKBACK_DAYS = 365
+CAD_LOOKBACK_DAYS = 30
 SFO_LOOKBACK_DAYS = 120
 SFO_MAX_DISTANCE_M = 5000
 SFO_MAX_MONITORS = 2
@@ -122,7 +166,7 @@ class LayerPoint:
     label: str
     lat: float
     lon: float
-    evidence: str  # unmeasured_candidate | proxy | measured
+    evidence: str  # unmeasured_candidate | proxy | measured | measured_crowdsourced
     caveat: str
     dataset: str
     source: str | None = None  # "seed" for quiet candidates
@@ -130,6 +174,11 @@ class LayerPoint:
     cnel_db: float | None = None
     observed_on: str | None = None
     distance_m: int | None = None
+    count: int | None = None  # sfo_events: events in the window; cad_noise_calls: calls in the window
+    max_level_db: float | None = None  # sfo_events: loudest event, dBA
+    median_level_db: float | None = None  # sfo_events: median of event max levels; noisecapture: median 5-min LAeq
+    laeq_db: float | None = None  # noisecapture: energy-mean LAeq of the cell's 5-minute windows
+    quality: str | None = None  # noisecapture: "measured_crowdsourced_uncalibrated"
 
 
 @dataclass(frozen=True)
@@ -190,6 +239,20 @@ def parse_library(row: dict[str, Any]) -> LayerPoint | None:
     return LayerPoint(
         "quiet_candidates", "library", name, lat, lon, "unmeasured_candidate",
         CAVEATS["quiet_candidates"], DATASETS["libraries"], source="seed", detail="public library",
+    )
+
+
+def parse_park(row: dict[str, Any]) -> LayerPoint | None:
+    lat, lon = _num(row.get("latitude")), _num(row.get("longitude"))
+    name = str(row.get("property_name") or "").strip()
+    kind = str(row.get("propertytype") or "").strip()
+    if not name or kind not in PARK_TYPES or not _in_sf(lat, lon):
+        return None
+    acres = _num(row.get("acres"))
+    bits = [kind] + ([f"{acres:.1f} acres"] if acres is not None else [])
+    return LayerPoint(
+        "quiet_candidates", "park", name, lat, lon, "unmeasured_candidate",
+        PARK_CAVEAT, DATASETS["parks"], source="seed", detail="; ".join(bits),
     )
 
 
@@ -267,6 +330,99 @@ def latest_sfo_monitors(rows: Iterable[dict[str, Any]]) -> list[LayerPoint]:
     return out
 
 
+def sfo_event_monitors(
+    monitors: Iterable[dict[str, Any]], events: Iterable[dict[str, Any]], window_days: int
+) -> list[LayerPoint]:
+    """Per-monitor summary of exceedance events. Needs coordinates from ``qxw2-ncq3``: no coordinates, no point.
+
+    ``max_level`` is text in the source; non-numeric values are skipped. A monitor with no event in the
+    window is left out (a missing summary is unknown, not quiet).
+    """
+    coords: dict[str, tuple[float, float]] = {}
+    for row in monitors:
+        loc_id, lat, lon = str(row.get("location_id") or ""), _num(row.get("latitude")), _num(row.get("longitude"))
+        if loc_id and lat is not None and lon is not None and _in_sf(lat, lon):
+            coords[loc_id] = (lat, lon)
+    levels: dict[str, list[float]] = {}
+    latest: dict[str, str] = {}
+    for row in events:
+        loc_id, level = str(row.get("location_id") or ""), _num(row.get("max_level"))
+        when = str(row.get("max_date_time") or "")
+        if loc_id not in coords or level is None or not when:
+            continue
+        levels.setdefault(loc_id, []).append(level)
+        latest[loc_id] = max(latest.get(loc_id, ""), when)
+    out: list[LayerPoint] = []
+    for loc_id in sorted(levels, key=lambda x: (len(x), x)):
+        vals = levels[loc_id]
+        lat, lon = coords[loc_id]
+        out.append(LayerPoint(
+            "sfo_events", "sfo_exceedance_events", f"SFO noise monitor {loc_id}", lat, lon, "measured",
+            CAVEATS["sfo_events"], DATASETS["sfo_events"],
+            detail=f"{len(vals)} exceedance events in the last {window_days} days; latest {latest[loc_id][:10]}",
+            observed_on=latest[loc_id][:10], count=len(vals), max_level_db=round(max(vals), 1),
+            median_level_db=round(statistics.median(vals), 1),
+        ))
+    return out
+
+
+def cad_noise_areas(rows: Iterable[dict[str, Any]], window_days: int) -> list[LayerPoint]:
+    """Counts of NOISE NUISANCE dispatches per published (masked) intersection point.
+
+    Uses the intersection exactly as published; calls flagged ``sensitive_call`` and duplicates by
+    ``cad_number`` are dropped.
+    """
+    seen: set[str] = set()
+    groups: dict[tuple[float, float], list[tuple[str, str]]] = {}
+    for row in rows:
+        if row.get("sensitive_call") is True:
+            continue
+        cad = str(row.get("cad_number") or "")
+        coords = _point_coords(row, "intersection_point")
+        if coords is None or (cad and cad in seen):
+            continue
+        seen.add(cad)
+        groups.setdefault((round(coords[0], 5), round(coords[1], 5)), []).append(
+            (str(row.get("received_datetime") or "")[:10], str(row.get("intersection_name") or "").strip())
+        )
+    out: list[LayerPoint] = []
+    for (lat, lon), items in sorted(groups.items()):
+        name = next((n for _, n in items if n), "Intersection")
+        last = max(d for d, _ in items)
+        out.append(LayerPoint(
+            "cad_noise_calls", "noise_nuisance_calls", name.replace("\\", "/"), lat, lon, "proxy",
+            CAVEATS["cad_noise_calls"], DATASETS["cad"],
+            detail=f"{len(items)} calls in the last {window_days} days (masked intersection); latest {last}",
+            observed_on=last or None, count=len(items),
+        ))
+    return out
+
+
+def noisecapture_cells(collection: dict[str, Any]) -> list[LayerPoint]:
+    """Cells produced by ``noisecapture.py``; a cell without coordinates or numbers is skipped."""
+    out: list[LayerPoint] = []
+    for feature in collection.get("features", []):
+        props = feature.get("properties") or {}
+        coords = (feature.get("geometry") or {}).get("coordinates") or []
+        if len(coords) < 2:
+            continue
+        lat, lon = float(coords[1]), float(coords[0])
+        median, laeq = _num(props.get("median_window_db")), _num(props.get("laeq_db"))
+        if not _in_sf(lat, lon) or median is None or laeq is None:
+            continue
+        periods = props.get("periods") or {}
+        split = "; ".join(f"{k} {v['laeq_db']:g} dB" for k, v in periods.items())
+        out.append(LayerPoint(
+            "noisecapture", "noisecapture_cell", f"NoiseCapture cell (~{props.get('cell_m', 100)} m)", lat, lon,
+            "measured_crowdsourced", CAVEATS["noisecapture"], "noise-planet.org/dump (United States.zip)",
+            detail=(f"{props.get('windows')} five-minute windows from {props.get('tracks')} tracks, "
+                    f"{props.get('first_date')} to {props.get('last_date')}" + (f"; {split}" if split else "")),
+            observed_on=str(props.get("last_date") or "") or None, count=int(props.get("windows") or 0),
+            median_level_db=median, laeq_db=laeq, quality="measured_crowdsourced_uncalibrated",
+        ))
+    return out
+
+
 class SfLayers:
     """Fetches and caches the DataSF layers. Each layer fails independently."""
 
@@ -275,7 +431,9 @@ class SfLayers:
         app_token: str | None = None,
         client: httpx.Client | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        noisecapture_path: Path | None = NOISECAPTURE_FILE,
     ) -> None:
+        self._noisecapture_path = noisecapture_path
         self._app_token = app_token
         self._client = client or httpx.Client(timeout=httpx.Timeout(20.0), follow_redirects=True)
         self._clock = clock
@@ -305,7 +463,11 @@ class SfLayers:
                 "$select": "common_name,latitude,longitude",
                 "$where": "common_name like '%Library%' OR common_name like '%Branch%'", "$limit": "200",
             })
-            return [p for p in [*map(parse_popos, popos), *map(parse_library, libs)] if p]
+            parks = self._get("parks", {
+                "$select": "property_name,latitude,longitude,propertytype,acres",
+                "$where": "propertytype in(" + ",".join(f"'{t}'" for t in PARK_TYPES) + ")", "$limit": "500",
+            })
+            return [p for p in [*map(parse_popos, popos), *map(parse_library, libs), *map(parse_park, parks)] if p]
         if layer == "entertainment_permits":
             rows = self._get("entertainment", {
                 "$select": "dba_name,license_type,point",
@@ -337,6 +499,41 @@ class SfLayers:
                 "$where": f"location='San Francisco' AND date >= '{since}'", "$order": "date DESC", "$limit": "2000",
             })
             return latest_sfo_monitors(rows)
+        if layer == "sfo_events":
+            monitors = self._get("sfo", {
+                "$select": "location_id,latitude,longitude", "$where": "location='San Francisco'",
+                "$group": "location_id,latitude,longitude", "$limit": "100",
+            })
+            ids = sorted({str(m["location_id"]) for m in monitors if m.get("location_id")})
+            if not ids:
+                raise CityDataError("no SF monitors with coordinates in qxw2-ncq3; exceedance events cannot be placed")
+            since_local = (today_local - timedelta(days=SFO_EVENTS_LOOKBACK_DAYS)).date().isoformat()
+            events = self._get("sfo_events", {
+                "$select": "location_id,max_date_time,max_level",
+                "$where": (
+                    f"location_id in({','.join(repr(i) for i in ids)}) "
+                    f"AND max_date_time >= '{since_local}T00:00:00'"
+                ),
+                "$order": "max_date_time DESC", "$limit": "5000",
+            })
+            return sfo_event_monitors(monitors, events, SFO_EVENTS_LOOKBACK_DAYS)
+        if layer == "cad_noise_calls":
+            since_local = (today_local - timedelta(days=CAD_LOOKBACK_DAYS)).isoformat(timespec="seconds")
+            rows = self._get("cad", {
+                "$select": "cad_number,received_datetime,intersection_name,intersection_point,sensitive_call",
+                "$where": (
+                    "call_type_final_desc='NOISE NUISANCE' AND intersection_point IS NOT NULL "
+                    f"AND received_datetime >= '{since_local}'"
+                ),
+                "$limit": "5000",
+            })
+            return cad_noise_areas(rows, CAD_LOOKBACK_DAYS)
+        if layer == "noisecapture":
+            try:
+                collection = json.loads(Path(self._noisecapture_path).read_text(encoding="utf-8"))  # type: ignore[arg-type]
+            except (OSError, ValueError, TypeError) as exc:
+                raise CityDataError(f"NoiseCapture cell file is not available: {exc}") from exc
+            return noisecapture_cells(collection)
         raise ValueError(f"unknown layer {layer!r}")
 
     def layer(self, name: str) -> list[LayerPoint]:
@@ -364,7 +561,7 @@ class SfLayers:
                 (_with_distance(p, haversine_m(lat, lon, p.lat, p.lon)) for p in points),
                 key=lambda p: p.distance_m or 0,
             )
-            if name == "sfo_cnel":  # sparse sensors: nearest few, with their distance
+            if name in ("sfo_cnel", "sfo_events"):  # sparse sensors: nearest few, with their distance
                 ranked = [p for p in ranked if (p.distance_m or 0) <= SFO_MAX_DISTANCE_M][:SFO_MAX_MONITORS]
             else:
                 ranked = [p for p in ranked if (p.distance_m or 0) <= radius_m][:limit]
@@ -378,5 +575,6 @@ def _with_distance(p: LayerPoint, meters: float) -> LayerPoint:
 
 __all__ = [
     "ALL_LAYERS", "CAVEATS", "DATASETS", "REFERENCE_LEVELS", "REFERENCE_NOTE",
-    "LayerPoint", "LayerSummary", "ReferenceLevel", "SfLayers", "latest_sfo_monitors",
+    "LayerPoint", "LayerSummary", "ReferenceLevel", "SfLayers", "cad_noise_areas", "latest_sfo_monitors",
+    "noisecapture_cells", "parse_park", "sfo_event_monitors",
 ]
