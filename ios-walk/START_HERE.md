@@ -25,9 +25,9 @@ You need a Mac with **Xcode 26** and an **iPhone 16 Pro or newer** (spatial audi
 
 ## Use it
 
-- **Walk map:** press Record and walk slowly with the phone held up, camera forward. The map fills in as you go; grey means not walked yet. Stop saves the walk; Replay plays it back; Share exports the JSON.
-- **Radar:** stand still and turn slowly; the loud wedge should point at the noise source.
-- **Compass:** the arrow points at the dominant noise source.
+- **Quiet Map:** after the permissions prompts, mapping starts when the app opens. Walk slowly with the phone held up, camera forward. The map fills in as you go; grey means not measured. The card points toward the quietest measured spot. **Stop and save** saves the walk. Replay and export are under **Advanced → Walk map**.
+- **Advanced → Radar:** stand still and turn slowly; the loud wedge should point at the noise source.
+- **Advanced → Compass:** the arrow points at the dominant noise source.
 - The debug panel shows whether the phone delivers 4-channel spatial audio. If it says 1–2 channels, the walk map still works; radar and compass do not.
 
 ## Show a recorded walk on a laptop

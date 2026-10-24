@@ -2,7 +2,7 @@
 
 An experimental "acoustic compass". It captures the iPhone's spatial audio as First Order Ambisonics (FOA: W, X, Y, Z), estimates where the dominant sound comes from, and draws an arrow that stays pointed at the source while the phone turns. When the sound field is too diffuse it shows a question mark instead of an arrow.
 
-A segmented control at the top switches between four modes:
+The default **Quiet Map** screen starts mapping after permission prompts, shows the map and a direction to the quietest measured spot, and has one **Stop and save** button. **Advanced** contains the four detailed modes:
 
 - **Compass**: the original arrow, calibration toggles and CSV log.
 - **Radar**: stand in one spot and turn slowly. Each 15° world-direction wedge collects how much confident sound arrived from that direction over the last ~20 s.
