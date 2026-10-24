@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -e '.[dev]'
+      - name: Lint
+        run: ruff check .
+      - name: Test
+        run: pytest -q
+
+
+  quietcore:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: ios/Packages/QuietCore
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test QuietCore
+        run: swift test

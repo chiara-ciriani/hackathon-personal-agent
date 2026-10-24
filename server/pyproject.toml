@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "quiet-compass"
+version = "0.1.0"
+description = "Quiet Compass memory service: REST ingest for the phone, MCP tools for the agent"
+requires-python = ">=3.12"
+dependencies = [
+    "starlette>=0.48",
+    "uvicorn[standard]>=0.31",
+    "pydantic>=2.12",
+    "mcp>=2.3,<3",
+    "httpx2>=2.10",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6", "jsonschema>=4.20"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["quiet_compass"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]
