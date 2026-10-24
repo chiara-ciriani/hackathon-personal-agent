@@ -83,6 +83,18 @@ MIGRATIONS: tuple[str, ...] = (
         PRIMARY KEY (session_id, place_id)
     );
     """,
+    """
+    CREATE TABLE private_state (
+        key TEXT PRIMARY KEY,
+        value BLOB NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE TABLE oauth_requests (
+        key TEXT PRIMARY KEY,
+        value BLOB NOT NULL,
+        expires_at TEXT NOT NULL
+    );
+    """,
 )
 
 

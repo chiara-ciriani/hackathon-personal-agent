@@ -230,28 +230,33 @@
     },
     "EvidenceLabel": {
       "type": "string",
-      "enum": ["measured", "reference_measured", "proxy", "unmeasured_candidate"],
-      "description": "What a city-layer record is. measured = sensor measurement (SFO CNEL monitors only); reference_measured = published measurement with a citation; proxy = permit or closure that hints at possible noise; unmeasured_candidate = place from a city inventory that nobody has measured. Synthetic demo scores exist only in the web demo and are never served."
+      "enum": ["measured", "measured_crowdsourced", "reference_measured", "proxy", "unmeasured_candidate"],
+      "description": "What a city-layer record is. measured = sensor measurement (SFO monitors only: CNEL and aircraft exceedance events); measured_crowdsourced = uncalibrated phone measurements from NoiseCapture volunteers (ODbL), aggregated into ~100 m cells; reference_measured = published measurement with a citation; proxy = permit, closure or complaint/dispatch count that hints at possible noise; unmeasured_candidate = place from a city inventory that nobody has measured. Synthetic demo scores exist only in the web demo and are never served."
     },
     "LayerPoint": {
       "type": "object",
-      "description": "One record of the SF city layers (MCP quiet_sf_layers). Never a phone reading: dB values here are CNEL from SFO monitors and are not comparable with level_dbfs_rel.",
+      "description": "One record of the SF city layers (MCP quiet_sf_layers). Never a phone reading: dB values here are CNEL or event levels from SFO monitors, or crowdsourced LAeq, and none is comparable with level_dbfs_rel.",
       "required": ["layer", "kind", "label", "lat", "lon", "evidence", "caveat", "dataset"],
       "additionalProperties": false,
       "properties": {
-        "layer": { "type": "string", "enum": ["quiet_candidates", "entertainment_permits", "night_noise_permits", "street_closures", "sfo_cnel"] },
-        "kind": { "type": "string", "examples": ["popos", "library", "entertainment_permit", "sfo_monitor"] },
+        "layer": { "type": "string", "enum": ["quiet_candidates", "entertainment_permits", "night_noise_permits", "street_closures", "sfo_cnel", "sfo_events", "cad_noise_calls", "noisecapture"] },
+        "kind": { "type": "string", "examples": ["popos", "library", "park", "entertainment_permit", "sfo_monitor", "sfo_exceedance_events", "noise_nuisance_calls", "noisecapture_cell"] },
         "label": { "type": "string" },
         "lat": { "type": "number" },
         "lon": { "type": "number" },
-        "evidence": { "enum": ["measured", "proxy", "unmeasured_candidate"] },
+        "evidence": { "enum": ["measured", "measured_crowdsourced", "proxy", "unmeasured_candidate"] },
         "caveat": { "type": "string" },
-        "dataset": { "type": "string", "description": "DataSF dataset id", "examples": ["65ik-7wqd"] },
+        "dataset": { "type": "string", "description": "DataSF dataset id (noisecapture: the Noise-Planet dump)", "examples": ["65ik-7wqd", "tiju-qyvs"] },
         "source": { "const": "seed", "description": "Present only on unmeasured candidates, mirroring Place.source = seed" },
         "detail": { "type": "string" },
         "cnel_db": { "type": "number", "description": "Daily CNEL (A-weighted dB, 24 h) at the monitor. Only on evidence = measured" },
         "observed_on": { "type": "string", "format": "date" },
-        "distance_m": { "type": "integer", "minimum": 0 }
+        "distance_m": { "type": "integer", "minimum": 0 },
+        "count": { "type": "integer", "minimum": 0, "description": "sfo_events: exceedance events in the last 365 days; cad_noise_calls: NOISE NUISANCE dispatches in the last 30 days at the masked intersection; noisecapture: independent 5-minute windows in the cell" },
+        "max_level_db": { "type": "number", "description": "sfo_events only: loudest event, dBA (source field max_level is text). Always read with observed_on" },
+        "median_level_db": { "type": "number", "description": "sfo_events: median of event max levels, dBA; noisecapture: median 5-minute LAeq of the cell, dB (uncalibrated)" },
+        "laeq_db": { "type": "number", "description": "noisecapture only: energy-mean LAeq of the cell's 5-minute windows, dB (uncalibrated, outlier-sensitive)" },
+        "quality": { "const": "measured_crowdsourced_uncalibrated", "description": "noisecapture only" }
       }
     },
     "ReferenceLevel": {

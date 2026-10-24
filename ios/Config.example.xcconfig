@@ -5,7 +5,7 @@
 // The empty $() expands to nothing and the app sees https://host.
 
 QC_SERVER_URL = https:/$()/quiet-compass.example.fly.dev
-QC_API_TOKEN = change-me
+// Enter the private server token inside the app; it is saved in Keychain.
 
 // Your Apple developer team id (Xcode > Settings > Accounts), needed to run on a device.
 DEVELOPMENT_TEAM =

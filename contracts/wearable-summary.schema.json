@@ -1,0 +1,81 @@
+{
+  "$defs": {
+    "HealthMetric": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "enum": [
+            "sleep_seconds",
+            "steps",
+            "resting_heart_rate_bpm",
+            "hrv_sdnn_ms",
+            "sleep_score",
+            "readiness_score"
+          ],
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "minimum": 0,
+          "title": "Value",
+          "type": "number"
+        },
+        "unit": {
+          "title": "Unit",
+          "type": "string"
+        },
+        "day": {
+          "format": "date",
+          "title": "Day",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "value",
+        "unit",
+        "day"
+      ],
+      "title": "HealthMetric",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "enum": [
+        "apple_health",
+        "oura"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "captured_at": {
+      "format": "date-time",
+      "title": "Captured At",
+      "type": "string"
+    },
+    "metrics": {
+      "items": {
+        "$ref": "#/$defs/HealthMetric"
+      },
+      "maxItems": 40,
+      "title": "Metrics",
+      "type": "array"
+    },
+    "note": {
+      "default": "Daily summaries; not live measurements.",
+      "maxLength": 300,
+      "title": "Note",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source",
+    "captured_at",
+    "metrics"
+  ],
+  "title": "HealthSnapshot",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

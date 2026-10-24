@@ -1,0 +1,40 @@
+# Team status: who is doing what
+
+Last updated: October 24, 2026, 15:35 PT. Update this file whenever you start or finish something, so two people don't build the same thing.
+
+## In progress right now
+
+| Area | Who | What | Files |
+| --- | --- | --- | --- |
+| iOS screens on top of Martin's app | Chiara | Adding what the current app lacks: minimap, arrival check and feedback, a Diagnostics screen with the hour-0 spike tests, an opt-in "share sound summaries" toggle that uploads `SharedContribution`, capture-mode selection, and Simulator mocks. It extends Martin's `CompassModel`, `PhoneSync` and outbox; it does not replace them. | `ios/QuietCompass/**` (additions), `ios/project.yml` (additions only) |
+| Background capture and noise alerts | Ana | Plan written; check with Ana before touching it | `docs/BACKGROUND_CAPTURE_AND_NOISE_ALERTS.md` |
+| Web map and venue view | Ana and Martin | Map-first redesign, DataSF layers, `/venue` 3D view | `apps/quiet-compass/**` |
+
+## Done and on `main`
+
+| Area | Status | Where |
+| --- | --- | --- |
+| Contracts | Phone ↔ server schema, HTTP API and MCP tool reference | `contracts/` |
+| Server: personal memory | Ingest API, the `quiet_*` MCP tools, scoring, guidance; tests pass | `server/quiet_compass/{api,db,scoring,mcp_server}.py` |
+| Server: shared sound layer | `query_sound_map`, `find_suitable_places`, `submit_observation`; `POST /v1/contributions`, `PUT /v1/areas/{id}`, public `GET /v1/map/aggregates`; release threshold, ~100 m cells, 5-minute buckets, 24 h retention | `server/quiet_compass/shared_*.py` |
+| Server: SF city layers | 311 noise and labelled DataSF layers (`quiet_sf_layers`) | `server/quiet_compass/{city,sf_layers}.py` |
+| Server: wearables | Apple Health summaries from the phone, Oura OAuth, kept private | `server/quiet_compass/{wearables,wearable_api}.py`, `docs/WEARABLES_AND_PHONE.md` |
+| iOS core | Audio features, direction of arrival (experimental), route back, `PhoneSync`, contracts | `ios/Packages/QuietCore` |
+| iOS app (Martin) | Mic capture and features, ARKit breadcrumbs, places, durable outbox, guidance polling, Health sharing | `ios/QuietCompass/App`, `Health` |
+| Hosting config | Render blueprint | `render.yaml`, `docs/AGENT_LEARNING_AND_HOSTING.md` |
+
+## Next up (unclaimed — put your name here before starting)
+
+1. **Deploy the server for free.** Option A: a teammate's laptop + `cloudflared tunnel --url http://localhost:8000` (free, no sleep, URL changes on restart). Option B: Render free plan without the disk (stable URL, sleeps when idle, data wiped on restart). The current `render.yaml` uses a paid disk.
+2. **Connect the agent.** Add `https://<host>/mcp` as a custom connector in the Claude app. Check whether it can send `Authorization: Bearer`; if not, set `QC_MCP_PATH_SECRET` and use `/mcp/<secret>`. Paste `server/agent_instructions.md` into the project instructions and connect a calendar.
+3. **Point the web map at real data.** Read `GET /v1/map/aggregates` instead of synthetic scores. Update the MCP panel in `apps/quiet-compass/app/page.tsx` to the implemented tool inputs listed in `contracts/README.md` (it still shows the brief's earlier draft parameters such as `bounds`, `zone_id` and `acoustic_summary`).
+4. **First iOS build on a Mac.** `cd ios && xcodegen generate`, fix compile errors, run in the Simulator, then run the hour-0 spike tests on the iPhone 16 Pro and record the chosen capture mode here.
+5. **End-to-end demo run.** "I need ten minutes of quiet and to be back before the demos." Label any seeded or synthetic data as such.
+
+## Decisions so far
+
+- Levels are relative dBFS from one capture profile; never label them dBA, and never merge capture profiles.
+- The shared layer releases a cohort only after `QC_RELEASE_MIN_CONTRIBUTIONS` contributions (2 by default; set it to 1 for the demo).
+- The map read endpoint is public because it serves only released aggregates; set `QC_MAP_ALLOWED_ORIGINS` to the map's URL in production.
+- Background capture is levels-only and owned by Ana; the AR route still needs the phone held camera-forward.
+- Work lands on `main` via small commits; pull and rebase before pushing, and never force-push.
