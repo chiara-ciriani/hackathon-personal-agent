@@ -8,6 +8,10 @@ CONTRIBUTION_REQUIRED = (
     "After expiry contribute a new measurement. Never invent readings or share health, routes or audio."
 )
 SHARED_INSTRUCTIONS = (
+    "To measure using the user's phone: call connect_phone, show its link to the user, then "
+    "request_phone_measurement after they connect. Poll phone_measurement_status. The phone "
+    "contributes with the owner's explicit consent and returns the 15-minute access_receipt. "
+    "Then find_suitable_places and send_phone_recommendation return advice to the phone. "
     "This endpoint contains only shared sound tools. First obtain the user's consent to share a "
     "coarse acoustic summary, then call submit_observation with share_consent=true. A valid, "
     "recent device summary without clipping returns access_receipt and access_expires_at, even "

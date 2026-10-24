@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {exchangeStatus, connectionGuide} from '../lib/mcp-exchange.mjs';
 
-const capabilities = {protocol:'contribution-window-v1',access_window_seconds:900,mcp_path:'/mcp/shared',shared_endpoint_enabled:true,tools:['submit_observation','query_sound_map','find_suitable_places']};
+const capabilities = {protocol:'contribution-window-v1',access_window_seconds:900,mcp_path:'/mcp/shared',shared_endpoint_enabled:true,tools:['connect_phone','request_phone_measurement','phone_measurement_status','send_phone_recommendation','submit_observation','query_sound_map','find_suitable_places']};
 test('connection requires configured URL and the exchange protocol', async()=>{
  let called=false;
  const fetcher=async()=>{called=true;return Response.json(capabilities)};
@@ -32,4 +32,9 @@ test('setup exposes only shared tools and placeholder credential',()=>{
  assert.deepEqual(guide.tools.map(t=>t.name),capabilities.tools);
  assert.equal(guide.headers.Authorization,'Bearer <QC_SHARED_API_TOKEN>');
  assert.match(guide.workflow,/Never invent/);
+});
+
+test('phone availability requires the deployed phone protocol', async()=>{
+ const result=await exchangeStatus('https://api.example',async()=>Response.json({...capabilities,phone_measurement:{protocol:'phone-bridge-v1'}}));
+ assert.equal(result.phoneReady,true);
 });

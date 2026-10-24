@@ -22,6 +22,7 @@ from .auth import BearerAuth
 from .city import CityNoiseLayer
 from .db import Store
 from .mcp_server import Service, build_mcp
+from .phone_bridge import PhoneBridge, build_phone_routes, register_phone_tools
 from .settings import Settings
 from .sf_layers import SfLayers
 from .shared_access import SHARED_INSTRUCTIONS
@@ -71,6 +72,9 @@ def create_app(
     register_shared_tools(mcp, shared)
     shared_mcp = MCPServer("quiet-compass-shared", instructions=SHARED_INSTRUCTIONS)
     register_shared_tools(shared_mcp, shared)
+    phone = PhoneBridge(shared, settings.phone_page_url)
+    register_phone_tools(mcp, phone)
+    register_phone_tools(shared_mcp, phone)
     security = TransportSecuritySettings(
         enable_dns_rebinding_protection=not settings.any_host_allowed,
         allowed_hosts=settings.mcp_hosts,
@@ -111,6 +115,7 @@ def create_app(
         *build_routes(store, settings.api_token),
         *build_wearable_routes(wearables, settings.api_token),
         *build_shared_routes(shared, settings),
+        *build_phone_routes(phone),
         Route("/mcp/shared", ExactMount(shared_endpoint), methods=["GET", "POST", "DELETE"]),
         Route(path, ExactMount(endpoint), methods=["GET", "POST", "DELETE"]),
     ]

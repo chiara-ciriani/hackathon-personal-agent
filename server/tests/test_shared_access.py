@@ -127,7 +127,9 @@ def test_shared_endpoint_is_isolated(tmp_path, clock):
                    "clientInfo": {"name": "external-agent", "version": "1"}}, headers=headers, path="/mcp/shared")
         assert "15 minutes" in init.json()["result"]["instructions"]
         listed = rpc(client, "tools/list", headers=headers, path="/mcp/shared")
-        assert {tool["name"] for tool in listed.json()["result"]["tools"]} == SHARED_TOOLS
+        expected = SHARED_TOOLS | {"connect_phone", "request_phone_measurement",
+                                   "phone_measurement_status", "send_phone_recommendation"}
+        assert {tool["name"] for tool in listed.json()["result"]["tools"]} == expected
         result = rpc(client, "tools/call", {"name": "submit_observation", "arguments": {
             **contribution(), "share_consent": True}}, headers=headers, path="/mcp/shared").json()["result"]
         receipt = result["structuredContent"]["access_receipt"]

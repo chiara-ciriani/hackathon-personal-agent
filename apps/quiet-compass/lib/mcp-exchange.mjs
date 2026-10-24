@@ -1,4 +1,8 @@
 export const sharedTools = [
+  {name: 'connect_phone', purpose: 'Link phone', input: {}, returns: 'Private connection link and phone_session_id; the owner approves sensors on the phone'},
+  {name: 'request_phone_measurement', purpose: 'Measure', input: {phone_session_id: 'from connect_phone'}, returns: 'One 30-second request for the connected phone'},
+  {name: 'phone_measurement_status', purpose: 'Read result', input: {phone_session_id: 'from connect_phone'}, returns: 'Phone state, actual summary and contribution access receipt'},
+  {name: 'send_phone_recommendation', purpose: 'Advise', input: {phone_session_id: 'from connect_phone', message: 'Short recommendation', action: 'move | stay | unknown', area_id: 'measured destination for a move'}, returns: 'Recommendation queued for the connected phone'},
   {name: 'submit_observation', purpose: 'Contribute', input: {
     id: 'UUID', schema_version: '0.1', area_id: 'registered zone or outdoor cell',
     lat: 'number; with lon for an unregistered area', lon: 'number',
@@ -17,7 +21,7 @@ export function connectionGuide(endpoint) {
     endpoint: endpoint || 'Deploy the server, then use https://YOUR-SERVER/mcp/shared',
     headers: {Authorization: 'Bearer <QC_SHARED_API_TOKEN>'},
     access_window_seconds: 900,
-    workflow: 'Ask for permission to share a real acoustic summary. Submit it with share_consent=true. Use the returned access_receipt for shared queries until access_expires_at. After 15 minutes, contribute a new measurement. Retries never renew access. Never invent measurements.',
+    workflow: 'To use a phone: call connect_phone and show the user its link. After phone-side approval, call request_phone_measurement and poll phone_measurement_status. Use its receipt with find_suitable_places, then send_phone_recommendation to return advice. For an existing summary: ask for permission to share a real acoustic summary. Submit it with share_consent=true. Use the returned access_receipt for shared queries until access_expires_at. After 15 minutes, contribute a new measurement. Retries never renew access. Never invent measurements.',
     tools: sharedTools,
     excluded: ['raw_audio', 'personal_routes', 'health_data', 'identity'],
   };
@@ -43,7 +47,7 @@ export async function exchangeStatus(origin, fetcher = fetch) {
         data.mcp_path !== '/mcp/shared' || !Array.isArray(data.tools) ||
         sharedTools.some(tool => !data.tools.includes(tool.name))) return {state: 'incompatible', endpoint: null};
     if (data.shared_endpoint_enabled !== true) return {state: 'disabled', endpoint: null};
-    return {state: 'available', endpoint: `${base.origin}/mcp/shared`};
+    return {state: 'available', endpoint: `${base.origin}/mcp/shared`, ...(data.phone_measurement?.protocol === 'phone-bridge-v1' ? {phoneReady: true} : {})};
   } catch {
     return {state: 'unavailable', endpoint: null};
   }

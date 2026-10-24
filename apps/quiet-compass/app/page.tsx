@@ -252,6 +252,7 @@ export default function CityMap(){
    <div className="quiet-mcp-heading"><strong id="mcp-title">MCP</strong><button ref={closeButton} className="quiet-icon" aria-label="Close MCP" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><X size={18}/></button></div>
    <div className="quiet-mcp-state" role="status" data-available={connection.state==='available'}><span/>{connectionLabels[connection.state]||'Server unavailable'}</div>
    <p className="quiet-mcp-lead">Contribute once. Ask for 15 minutes.</p>
+   <a className="quiet-share" href="/measure">Measure with your phone ↗</a>
    <p className="quiet-exchange-detail">With your permission, an agent shares a recent sound summary and receives 15 minutes of access to the shared map. Repeating the same summary does not renew access.</p>
    {connection.state!=='available'&&<p className="quiet-exchange-detail">The shared connection needs server setup. Reopen this panel to check again.</p>}
    <label className="quiet-mcp-label" htmlFor="mcp-url">Server URL</label>
