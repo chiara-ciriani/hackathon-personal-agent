@@ -13,21 +13,21 @@ import './map.css';
 
 type LayerKey='device'|'measured'|'sfoEvents'|'crowd'|'proxies'|'cad'|'candidates'|'reports';
 const layerRows:{key:LayerKey;label:string;tag:string;swatch:string;mapIds:string[];hint:string}[]=[
- {key:'device',label:'Shared device readings',tag:'last 24 hours',swatch:'measured',mapIds:['device-readings'],hint:'Real device readings only; relative dBFS, never combined across capture profiles.'},
- {key:'measured',label:'Airport monitors',tag:'measured · dated',swatch:'measured',mapIds:['measured-sfo'],hint:'Daily CNEL at the monitor. Published monthly; not live.'},
- {key:'crowd',label:'NoiseCapture cells',tag:'historical · uncalibrated',swatch:'crowd',mapIds:['crowd-cells'],hint:'Archived volunteer phone measurements from 2017–2025; not live or dBA.'},
- {key:'sfoEvents',label:'Airport loud events',tag:'measured · last year',swatch:'events',mapIds:['measured-sfo-events'],hint:'Only events above the monitor threshold, not the typical sound level.'},
- {key:'candidates',label:'Parks, POPOS & libraries',tag:'no measurement',swatch:'candidate',mapIds:['candidate-places'],hint:'Real city locations. No sound measurement at these places.'},
- {key:'reports',label:'311 complaints',tag:'reports · no measurement',swatch:'report',mapIds:['noise-reports'],hint:'Violet shows the density of complaints from the last 30 days, not sound levels.'},
- {key:'cad',label:'Noise-nuisance calls',tag:'reports · last 30 days',swatch:'cad',mapIds:['cad-calls'],hint:'Violet shows the density of real calls at masked intersections over 30 days, not sound levels.'},
- {key:'proxies',label:'Permits & closures',tag:'context · no measurement',swatch:'proxy',mapIds:['proxy-context'],hint:'Entertainment, night work, street work permitted today and active closures. Context, not sound levels.'},
+ {key:'device',label:'Phone measurements',tag:'Shared in the last 24 hours',swatch:'measured',mapIds:['device-readings'],hint:'Sound levels people measured with this app and chose to share.'},
+ {key:'measured',label:'Airport noise monitors',tag:'Real decibels, updated monthly',swatch:'measured',mapIds:['measured-sfo'],hint:'Permanent SFO microphones. Daily average at the monitor, published about a month late.'},
+ {key:'crowd',label:'Volunteer recordings',tag:'Older phone recordings, rough',swatch:'crowd',mapIds:['crowd-cells'],hint:'NoiseCapture app recordings from 2017–2025. Useful as a hint, not exact.'},
+ {key:'sfoEvents',label:'Loud planes',tag:'Over the noise limit, past year',swatch:'events',mapIds:['measured-sfo-events'],hint:'Only planes louder than the monitor limit are counted, so this shows the loudest moments.'},
+ {key:'candidates',label:'Possible quiet spots',tag:'Parks, plazas and libraries',swatch:'candidate',mapIds:['candidate-places'],hint:'Places that might be calm. Nobody has measured them, so check before you go.'},
+ {key:'reports',label:'Noise complaints',tag:'Reported to 311, last 30 days',swatch:'report',mapIds:['noise-reports'],hint:'Complaints people filed with the city. They show where noise bothers people, not how loud it is.'},
+ {key:'cad',label:'Police noise calls',tag:'Last 30 days',swatch:'cad',mapIds:['cad-calls'],hint:'Calls police logged as a noise nuisance, shown at the nearest intersection.'},
+ {key:'proxies',label:'Construction and events',tag:'Permits and street closures today',swatch:'proxy',mapIds:['proxy-context'],hint:'Street work, night work, music venues and street closures. Noise is likely, not certain.'},
 ];
 type Properties={label?:string;name?:string;id?:string;evidence?:string;kind?:string;detail?:string;caveat?:string;observedOn?:string;dataset?:string;dbfs?:number;cnel?:number;medianDb?:number;maxDb?:number;count?:number;captureProfile?:string};
 type PointFeature=Feature<Properties>;
 type MapData=Record<LayerKey,PointCollection<Properties>>&{failed:string[];fetchedAt:string;deviceState:string};
 type McpConnection={state:string;endpoint:string|null};
 const connectionLabels:Record<string,string>={checking:'Checking server…',available:'Shared MCP available',not_configured:'Server setup needed',invalid_config:'Check server address',unavailable:'Server unavailable',disabled:'Shared access setup needed',incompatible:'Server update needed'};
-const deviceLabels:Record<string,string>={available:'Device measurements available',empty:'No published device readings in the last 24 hours',access_required:'Device readings require a contribution and authorized access',invalid_config:'Device server setup needed',unavailable:'Device readings unavailable'};
+const deviceLabels:Record<string,string>={available:'Phone measurements are on the map',empty:'No one has shared a phone measurement in the last 24 hours',access_required:'Share a measurement of your own to see other people’s',invalid_config:"Phone measurements aren't set up on the server yet",unavailable:"Couldn't load phone measurements right now"};
 // Flat, north-up overview of the whole city.
 const home={center:[-122.443,37.762] as [number,number],zoom:12.3,pitch:0,bearing:0};
 type ViewOptions={center?:[number,number];zoom?:number;pitch?:number;bearing?:number;duration?:number};
@@ -35,8 +35,21 @@ type MapControls={zoomIn:()=>unknown;zoomOut:()=>unknown;getZoom:()=>number;flyT
 const measured=(p:Properties)=>['measured','measured_crowdsourced','measured_device'].includes(p.evidence||'');
 // Alpha rises with density and there is no pale opaque band, so the two fields blend instead of drawing light rings.
 const heatRamp:import('maplibre-gl').ExpressionSpecification=['interpolate',['linear'],['heatmap-density'],0,'rgba(138,69,232,0)',.1,'rgba(138,69,232,0)',.22,'rgba(160,110,240,.2)',.42,'rgba(138,69,232,.38)',.7,'rgba(112,44,214,.56)',.9,'rgba(86,22,176,.7)',1,'rgba(64,14,140,.8)'];
-// One field for 311 reports (weight 1) and police noise calls (weight = calls at the intersection, capped so one corner can't dominate).
-const heatFeatures=(reports:PointFeature[],cad:PointFeature[])=>[...reports.map(f=>({...f,properties:{w:1}})),...cad.map(f=>({...f,properties:{w:Math.min(Number(f.properties.count)||1,4)}}))];
+// Every layer that points to noise always feeds one field (the checkboxes only show or hide dots); quiet-spot
+// candidates don't, since they mark possible calm.
+// Weights keep weak hints (thousands of street permits) from drowning out complaints and measurements.
+const clamp=(v:number,lo:number,hi:number)=>Math.min(hi,Math.max(lo,v));
+const proxyWeight:Record<string,number>={'Night-work permit':.8,'Entertainment permit':.6,'Street closure':.6,'Street work permit':.2};
+const heatWeight:Partial<Record<LayerKey,(p:Properties)=>number>>={
+ reports:()=>1,
+ cad:p=>Math.min(Number(p.count)||1,4),
+ proxies:p=>proxyWeight[p.kind||'']??.3,
+ crowd:p=>clamp(((p.medianDb??50)-45)/8,.2,2.5),
+ measured:p=>clamp(((p.cnel??55)-50)/5,.3,2.5),
+ sfoEvents:()=>1,
+ device:()=>1,
+};
+const heatFeatures=(layers:[LayerKey,PointFeature[]][])=>layers.flatMap(([k,fs])=>{const w=heatWeight[k];return w?fs.map(f=>({...f,properties:{w:w(f.properties)}})):[]});
 const mapStyle:StyleSpecification={
  version:8,
  glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
@@ -53,7 +66,7 @@ const mapStyle:StyleSpecification={
   {id:'structures',type:'fill-extrusion',source:'city','source-layer':'building',minzoom:15,filter:['!=',['get','hide_3d'],true],paint:{'fill-extrusion-color':'#f7f6f9','fill-extrusion-height':['interpolate',['linear'],['zoom'],15,0,16,['coalesce',['get','render_height'],0]],'fill-extrusion-base':['coalesce',['get','render_min_height'],0],'fill-extrusion-opacity':1,'fill-extrusion-vertical-gradient':true}},
   {id:'place-labels',type:'symbol',source:'city','source-layer':'place',minzoom:11,filter:['in',['get','class'],['literal',['suburb','neighbourhood','quarter']]],layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':['interpolate',['linear'],['zoom'],11,10,15,13],'text-letter-spacing':.08,'text-transform':'uppercase'},paint:{'text-color':'#6b6b73','text-halo-color':'#ffffff','text-halo-width':1.5}},
   // Density of published reports; never an acoustic level or inferred measurement.
-  {id:'noise-heat',type:'heatmap',source:'heat',paint:{'heatmap-weight':['get','w'],'heatmap-intensity':['interpolate',['linear'],['zoom'],10,.1,12,.16,14,.32,16,.6],'heatmap-radius':['interpolate',['linear'],['zoom'],10,14,12,24,14,44,16,76],'heatmap-opacity':.95,'heatmap-color':heatRamp}},
+  {id:'noise-heat',type:'heatmap',source:'heat',paint:{'heatmap-weight':['get','w'],'heatmap-intensity':['interpolate',['linear'],['zoom'],10,.07,12,.11,14,.22,16,.42],'heatmap-radius':['interpolate',['linear'],['zoom'],10,14,12,24,14,44,16,76],'heatmap-opacity':.95,'heatmap-color':heatRamp}},
   {id:'venue-points',type:'circle',source:'venuepts',paint:{'circle-color':'#a1a1aa','circle-radius':['interpolate',['linear'],['zoom'],11,7,15,10],'circle-stroke-color':'#171717','circle-stroke-width':2.2}},
   {id:'venue-labels',type:'symbol',source:'venuepts',minzoom:12,layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':12,'text-offset':[0,1.5],'text-anchor':'top'},paint:{'text-color':'#171717','text-halo-color':'#ffffff','text-halo-width':1.6}},
   {id:'proxy-context',type:'circle',source:'proxies',minzoom:13,layout:{visibility:'none'},paint:{'circle-color':'#a1a1aa','circle-radius':['interpolate',['linear'],['zoom'],13,1.8,17,4],'circle-stroke-color':'#ffffff','circle-stroke-width':1,'circle-opacity':.85}},
@@ -74,7 +87,7 @@ export default function CityMap(){
  const [ready,setReady]=useState(false),[failed,setFailed]=useState(false),[fallback,setFallback]=useState(false);
  const [data,setData]=useState<MapData|null>(null),[loading,setLoading]=useState(true),[dataError,setDataError]=useState(false);
  const [shown,setShown]=useState<Record<LayerKey,boolean>>({device:true,measured:true,sfoEvents:false,crowd:true,proxies:false,cad:true,candidates:false,reports:true});
- const [filter,setFilter]=useState<'all'|'measured'|'unmeasured'>('all'),[layersOpen,setLayersOpen]=useState(false);
+ const [layersOpen,setLayersOpen]=useState(false);
  const [selection,setSelection]=useState<Properties|null>(null),[hist,setHist]=useState(false),[mcp,setMcp]=useState(false);
  const [connection,setConnection]=useState<McpConnection>({state:'checking',endpoint:null}),[copied,setCopied]=useState<string|null>(null),[tab,setTab]=useState<'code'|'app'|'json'|'prompt'>('code');
  const MCP_URL=connection.endpoint||'https://YOUR-SERVER/mcp/shared';
@@ -120,7 +133,7 @@ export default function CityMap(){
    const instance=new lib.Map({container:container.current,style:mapStyle,...home,minZoom:10,maxZoom:19,attributionControl:false,canvasContextAttributes:{antialias:true}});
    map.current=instance;glMap.current=instance;
    instance.addControl(new lib.AttributionControl({compact:true,customAttribution:'NoiseCapture / Noise-Planet community (ODbL 1.0) · DataSF'}),'bottom-right');
-   instance.getCanvas().setAttribute('aria-label','San Francisco map. Violet fields show real noise-report density, not measured sound levels. Dark points have dated measurements. Gray locations have no data or no sound measurement.');
+   instance.getCanvas().setAttribute('aria-label','San Francisco map. Violet shows where noise is likely, from complaints, police calls, permits and measurements. Black dots were measured. Gray dots were not.');
    instance.on('load',()=>{if(!disposed){setReady(true);setFailed(false)}});
    instance.on('error',()=>{if(!disposed&&!instance.isStyleLoaded())setFailed(true)});
    const ids=[...layerRows.flatMap(r=>r.mapIds).filter(id=>!id.endsWith('-heat')),'venue-points'];
@@ -138,17 +151,15 @@ export default function CityMap(){
   const features:PointFeature[]=[];
   for(const row of layerRows){
    const collection=data?.[row.key]||emptyCollection();
-   const visible=shown[row.key]&&(filter==='all'||(filter==='measured')===['device','measured','sfoEvents','crowd'].includes(row.key));
+   const visible=shown[row.key];
    (gl?.getSource(row.key) as GeoJSONSource|undefined)?.setData(collection as PointCollection);
    for(const id of row.mapIds)if(gl?.getLayer(id))gl.setLayoutProperty(id,'visibility',visible?'visible':'none');
    if(visible)features.push(...collection.features as PointFeature[]);
   }
-  const on=(k:LayerKey)=>shown[k]&&filter!=='measured';
-  (gl?.getSource('heat') as GeoJSONSource|undefined)?.setData({type:'FeatureCollection',features:heatFeatures(on('reports')?data?.reports.features as PointFeature[]||[]:[],on('cad')?data?.cad.features as PointFeature[]||[]:[])} as PointCollection);
-  for(const id of ['venue-points','venue-labels'])if(gl?.getLayer(id))gl.setLayoutProperty(id,'visibility',filter==='measured'?'none':'visible');
-  if(filter!=='measured')features.push(...venues.map(v=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:[v.lng,v.lat]},properties:{id:v.id,label:v.name,evidence:'unmeasured_candidate',kind:'Venue',caveat:'No acoustic measurements or verified indoor plan are available.'}})));
+  (gl?.getSource('heat') as GeoJSONSource|undefined)?.setData({type:'FeatureCollection',features:heatFeatures(layerRows.map(r=>[r.key,(data?.[r.key].features||[]) as PointFeature[]]))} as PointCollection);
+  features.push(...venues.map(v=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:[v.lng,v.lat]},properties:{id:v.id,label:v.name,evidence:'unmeasured_candidate',kind:'Venue',caveat:'No acoustic measurements or verified indoor plan are available.'}})));
   fallbackUpdate.current?.(features);
- },[data,ready,shown,filter,fallback]);
+ },[data,ready,shown,fallback]);
  useEffect(()=>{
   const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){setSelection(null);setHist(false);if(mcp){setMcp(false);mcpButton.current?.focus()}}};
   document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key);
@@ -160,7 +171,7 @@ export default function CityMap(){
  },[mcp]);
  const entries=data?.device.features||[];
  const count=data?['device','measured','sfoEvents','crowd'].reduce((sum,key)=>sum+data[key as LayerKey].features.length,0):0;
- function reset(){map.current?.flyTo({...home,duration:1000});setSelection(null);setFilter('all')}
+ function reset(){map.current?.flyTo({...home,duration:1000});setSelection(null)}
  async function copyText(key:string,text:string){try{await navigator.clipboard.writeText(text);setCopied(key);setTimeout(()=>setCopied(c=>c===key?null:c),1800)}catch{setCopied(null)}}
  return <main className="quiet-map-only">
   <div className="quiet-map-canvas" ref={container}/>
@@ -188,16 +199,13 @@ export default function CityMap(){
   <div className="quiet-map-controls"><button className="quiet-icon" title="Refresh real data" aria-label="Refresh real data" disabled={loading} onClick={()=>void refresh()}><RefreshCw size={18}/></button><button className="quiet-icon" aria-label="Zoom in" onClick={()=>map.current?.zoomIn()}><Plus size={20}/></button><button className="quiet-icon" aria-label="Zoom out" onClick={()=>map.current?.zoomOut()}><Minus size={20}/></button></div>
   <section className="quiet-layers" aria-label="Map layers">
    <button className="quiet-layers-head" aria-expanded={layersOpen} onClick={()=>setLayersOpen(!layersOpen)}><Layers size={14}/>Layers</button>
-   {layersOpen&&<p className="quiet-data-status" role="status">{loading?'Fetching real data…':dataError?'Data unavailable · no measurements shown':`${count} measurement points · dated records`}</p>}
-   {layersOpen&&<>
-  <div className="quiet-filters quiet-layer-filters" role="group" aria-label="Filter by measurement availability">{(['all','measured','unmeasured'] as const).map(f=><button key={f} className={filter===f?'is-active':''} aria-pressed={filter===f} onClick={()=>{setFilter(f);setSelection(null)}}>{f==='all'?'All':f==='measured'?'Measured':'No measurement'}</button>)}</div>
-   </>}
+   {layersOpen&&<p className="quiet-data-status" role="status">{loading?'Loading city data…':dataError?"Couldn't load the city data. Try refresh.":`${count} places with real measurements`}</p>}
    {layersOpen&&<ul>{layerRows.map(r=><li key={r.key}><label title={r.hint}><input type="checkbox" checked={shown[r.key]} onChange={()=>setShown(s=>({...s,[r.key]:!s[r.key]}))}/><i className={'quiet-swatch swatch-'+r.swatch} aria-hidden="true"/><span>{r.label} {data&&<small>({data[r.key].features.length})</small>}</span><em>{r.tag}</em></label></li>)}</ul>}
-   {layersOpen&&data&&<div className="quiet-layers-note"><p>{deviceLabels[data.deviceState]}</p>{data.failed.length>0&&<p role="status">Unavailable: {data.failed.join(', ')}.</p>}<p>Fetched {new Date(data.fetchedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}. Open a point for its date. Violet fields show report density; they do not fill gaps in sound measurements.</p><p>NoiseCapture / Noise-Planet community · ODbL 1.0. Historical, uncalibrated phone data.</p></div>}
+   {layersOpen&&data&&<div className="quiet-layers-note"><p>{deviceLabels[data.deviceState]}</p>{data.failed.length>0&&<p role="status">Some layers didn’t load: {data.failed.map(k=>layerRows.find(r=>r.key===k)?.label||k).join(', ')}.</p>}<p>Updated {new Date(data.fetchedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}. Tap any dot to see what it is and when it’s from.</p><p>The violet glow always combines complaints, police calls, construction, events and the measurements above, even when their dots are hidden. It shows where noise is likely, not exact decibels.</p><p>Volunteer recordings: NoiseCapture / Noise-Planet community, ODbL 1.0.</p></div>}
   </section>
-  <div className="quiet-intensity quiet-real-legend" aria-label="Violet means noise-report density, not measured sound. Gray means no data.">
-   <div className="quiet-report-scale"><em>Fewer reports</em><span/><em>More reports</em></div>
-   <div className="quiet-legend-context"><em><i className="measurement-key"/>Dated measurement</em><em><i/>No data</em></div>
+  <div className="quiet-intensity quiet-real-legend" aria-label="Violet shows where noise is likely, from complaints, permits and measurements. Black dots were measured. Gray dots were not.">
+   <div className="quiet-report-scale"><em>Calmer</em><span/><em>Noisier</em></div>
+   <div className="quiet-legend-context"><em><i className="measurement-key"/>Measured here</em><em><i/>Not measured</em></div>
   </div>
   {mcp&&<div className="quiet-mcp-overlay" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><div className="quiet-mcp-panel" ref={dialog} role="dialog" aria-modal="true" aria-labelledby="mcp-title" onClick={e=>e.stopPropagation()}>
    <div className="quiet-mcp-heading"><strong id="mcp-title">MCP</strong><button ref={closeButton} className="quiet-icon" aria-label="Close MCP" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><X size={18}/></button></div>
