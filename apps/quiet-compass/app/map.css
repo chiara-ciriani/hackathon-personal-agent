@@ -114,3 +114,9 @@
 .quiet-history li time{color:#737373}
 .quiet-card-level.quiet{color:#6b3fb5}
 @media(max-width:600px){.quiet-intensity{left:17px;bottom:56px;transform:none}}
+
+/* Contributions feed */
+.quiet-history-note{font-size:12px;line-height:18px;color:#737373;margin:8px 0 0}
+.quiet-history li span{display:flex;align-items:center;gap:7px;text-transform:none}.quiet-history li span .quiet-dot{width:6px;height:6px;border-radius:50%;background:#b07be1;margin-left:2px}
+.quiet-dot.loud{background:#6720c4!important}.quiet-dot.quiet{background:#d9c7fa!important}
+.quiet-history li code{color:#171717;font-weight:500}

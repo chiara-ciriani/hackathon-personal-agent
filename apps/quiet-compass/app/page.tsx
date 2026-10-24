@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
-import {Check,Compass,Copy,Plug,Cuboid,Layers2,HelpCircle,History,Lock,Minus,Pause,Play,Plus,RotateCcw,Volume1,Volume2,X} from 'lucide-react';
+import {Check,Compass,Copy,Plug,Cuboid,Layers2,HelpCircle,Users,Lock,Minus,Pause,Play,Plus,RotateCcw,Volume1,Volume2,X} from 'lucide-react';
 import type {StyleSpecification} from 'maplibre-gl';
 import 'ol/ol.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -69,9 +69,10 @@ const mapStyle:StyleSpecification={
   {id:'noise-reports',type:'circle',source:'reports',paint:{'circle-color':'#3f3f46','circle-radius':['interpolate',['linear'],['zoom'],11,2.5,16,5],'circle-stroke-color':'#ffffff','circle-stroke-width':1,'circle-opacity':.8}},
  ]
 };
-type Entry={id:number;t:number;tool:'view_place'|'find_suitable_places'|'submit_observation';place?:string;detail:string};
-const HISTORY_KEY='quiet-compass-history';
-const ago2=(t:number)=>{const m=Math.round((Date.now()-t)/60000);return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'};
+// Anonymous by design: a contribution carries only a coarse zone, a level and a rounded time. No agent id, no audio, no route.
+type Entry={id:number;t:number;zone:string;level:Level};
+const bucket=(t:number)=>{const m=Math.max(0,Math.round((Date.now()-t)/300000))*5;return m<5?'just now':m<60?m+' min ago':Math.round(m/60)+' h ago'};
+const makeEntry=(i:number,ago=0):Entry=>({id:Date.now()+Math.random(),t:Date.now()-ago*60000,zone:points[i].name,level:levelOf(points[i].score)});
 type Level='quiet'|'moderate'|'loud';
 const levelOf=(score:number):Level=>score>.65?'loud':score>.35?'moderate':'quiet';
 const filters:{id:Level|'all';label:string}[]=[{id:'all',label:'All'},{id:'quiet',label:'Quiet'},{id:'moderate',label:'Moderate'},{id:'loud',label:'Loud'}];
@@ -82,7 +83,7 @@ type MapControls={zoomIn:()=>unknown;zoomOut:()=>unknown;getZoom:()=>number;flyT
 export default function CityMap(){
  const container=useRef<HTMLDivElement>(null),map=useRef<MapControls|null>(null),markers=useRef<{marker:{remove:()=>unknown};button:HTMLButtonElement}[]>([]),playRef=useRef(true);
  const mcpButton=useRef<HTMLButtonElement>(null),closeButton=useRef<HTMLButtonElement>(null),dialog=useRef<HTMLDivElement>(null);
- const [ready,setReady]=useState(false),[failed,setFailed]=useState(false),[playing,setPlaying]=useState(true),[supports3D,setSupports3D]=useState(true),[threeD,setThreeD]=useState(false),[mcp,setMcp]=useState(false),[help,setHelp]=useState(false),[copied,setCopied]=useState(false),[copyFallback,setCopyFallback]=useState(false),[selected,setSelected]=useState<number|null>(null),[hist,setHist]=useState(false),[entries,setEntries]=useState<Entry[]>([]),[shared,setShared]=useState<number[]>([]),loaded=useRef(false),[filter,setFilter]=useState<Level|'all'>('all');
+ const [ready,setReady]=useState(false),[failed,setFailed]=useState(false),[playing,setPlaying]=useState(true),[supports3D,setSupports3D]=useState(true),[threeD,setThreeD]=useState(false),[mcp,setMcp]=useState(false),[help,setHelp]=useState(false),[copied,setCopied]=useState(false),[copyFallback,setCopyFallback]=useState(false),[selected,setSelected]=useState<number|null>(null),[hist,setHist]=useState(false),[entries,setEntries]=useState<Entry[]>(()=>[3,9,17,27,41,64].map((a,k)=>makeEntry((k*5+3)%points.length,a))),[shared,setShared]=useState<number[]>([]),[filter,setFilter]=useState<Level|'all'>('all');
  useEffect(()=>{playRef.current=playing},[playing]);
  useEffect(()=>{
   let disposed=false,index=0,interval:ReturnType<typeof setInterval>;
@@ -93,7 +94,7 @@ export default function CityMap(){
    const result=await createCanvasMap(container.current,points,()=>disposed,()=>{if(!disposed){setReady(true);setFailed(false)}});
    if(!result)return;
    map.current=result.controls;markers.current=result.markers;setSupports3D(false);
-   interval=setInterval(()=>{if(!playRef.current||disposed)return;const next=markers.current[(index*7+2)%points.length];index++;next.button.classList.add('is-contributing');const timer=setTimeout(()=>{next.button.classList.remove('is-contributing');timeouts.delete(timer)},2300);timeouts.add(timer)},1300);
+   interval=setInterval(()=>{if(!playRef.current||disposed)return;const at=(index*7+2)%points.length,next=markers.current[at];index++;if(index%4===0)addEntry(at);next.button.classList.add('is-contributing');const timer=setTimeout(()=>{next.button.classList.remove('is-contributing');timeouts.delete(timer)},2300);timeouts.add(timer)},1300);
   };
   const start=async()=>{try{
    const lib=await import('maplibre-gl');
@@ -123,7 +124,7 @@ export default function CityMap(){
    });
    interval=setInterval(()=>{
     if(!playRef.current||disposed)return;
-    const next=markers.current[(index*7+2)%points.length];index++;
+    const at=(index*7+2)%points.length,next=markers.current[at];index++;if(index%4===0)addEntry(at);
     next.button.classList.add('is-contributing');
     const timer=setTimeout(()=>{next.button.classList.remove('is-contributing');timeouts.delete(timer)},2300);timeouts.add(timer);
    },1300);
@@ -131,10 +132,7 @@ export default function CityMap(){
   void start();
   return()=>{disposed=true;clearInterval(interval);timeouts.forEach(clearTimeout);markers.current.forEach(m=>m.marker.remove());markers.current=[];map.current?.remove();map.current=null};
  },[]);
- useEffect(()=>{try{const raw=localStorage.getItem(HISTORY_KEY);if(raw)setEntries(JSON.parse(raw))}catch{}loaded.current=true},[]);
- useEffect(()=>{if(!loaded.current)return;try{localStorage.setItem(HISTORY_KEY,JSON.stringify(entries))}catch{}},[entries]);
- const log=(tool:Entry['tool'],detail:string,place?:string)=>setEntries(e=>[{id:Date.now()+Math.random(),t:Date.now(),tool,place,detail},...e].slice(0,50));
- useEffect(()=>{if(selected!==null)log('view_place','Viewed on the map',points[selected].name)},[selected]);
+ const addEntry=(i:number)=>setEntries(e=>[makeEntry(i),...e].slice(0,40));
  useEffect(()=>{if(!hist)return;const key=(e:KeyboardEvent)=>{if(e.key==='Escape')setHist(false)};document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key)},[hist]);
  useEffect(()=>{markers.current.forEach((m,n)=>{const on=n===selected;m.button.classList.toggle('is-selected',on);m.button.setAttribute('aria-pressed',String(on));m.button.classList.toggle('is-dimmed',filter!=='all'&&levelOf(points[n].score)!==filter)})},[selected,filter,ready]);
  useEffect(()=>{if(selected===null||mcp||help)return;const key=(e:KeyboardEvent)=>{if(e.key==='Escape')setSelected(null)};document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key)},[selected,mcp,help]);
@@ -155,7 +153,7 @@ export default function CityMap(){
   <button className="quiet-home quiet-icon" onClick={reset} title="Reset San Francisco view" aria-label="Reset San Francisco view"><Compass size={25} strokeWidth={1.4}/></button>
   <button className="quiet-mcp" ref={mcpButton} onClick={()=>{setMcp(true);setHelp(false);setCopied(false);setCopyFallback(false)}} aria-haspopup="dialog"><Plug size={14} strokeWidth={1.5}/>MCP</button>
   <button className="quiet-help quiet-icon" aria-label="How to use the map" title="How it works" onClick={()=>{setHelp(true);setMcp(false)}}><HelpCircle size={19} strokeWidth={1.5}/></button>
-  <div className="quiet-filters" role="group" aria-label="Filter places by sound level">{filters.map(f=><button key={f.id} className={filter===f.id?'is-active':''} aria-pressed={filter===f.id} onClick={()=>{setFilter(f.id);if(f.id!=='all')log('find_suitable_places','Looked for '+f.id+' places')}}>{f.label}</button>)}</div>
+  <div className="quiet-filters" role="group" aria-label="Filter places by sound level">{filters.map(f=><button key={f.id} className={filter===f.id?'is-active':''} aria-pressed={filter===f.id} onClick={()=>setFilter(f.id)}>{f.label}</button>)}</div>
   {selected!==null&&<aside className="quiet-card" key={selected} aria-live="polite">
    <button className="quiet-icon quiet-card-close" aria-label="Close place details" onClick={()=>setSelected(null)}><X size={16}/></button>
    <span className={'quiet-card-level '+levelOf(points[selected].score)}>{levelOf(points[selected].score)}</span>
@@ -163,14 +161,13 @@ export default function CityMap(){
    <p>{points[selected].landmark?'Landmark':'Neighborhood or park'} · simulated sound level</p>
    <div className="quiet-card-bar" role="img" aria-label={'Simulated level '+Math.round(points[selected].score*100)+' out of 100'}><span style={{width:Math.round(points[selected].score*100)+'%'}}/></div>
    <small>{Math.round(points[selected].score*100)} / 100</small>
-   <button className="quiet-share" disabled={shared.includes(selected)} onClick={()=>{setShared(a=>[...a,selected]);log('submit_observation','Shared a rounded summary, no audio',points[selected].name)}}>{shared.includes(selected)?<><Check size={14}/>Saved to your history</>:'Contribute an observation'}</button>
+   <button className="quiet-share" disabled={shared.includes(selected)} onClick={()=>{setShared(a=>[...a,selected]);addEntry(selected)}}>{shared.includes(selected)?<><Check size={14}/>Sent anonymously</>:'Contribute an observation'}</button>
   </aside>}
-  <button className="quiet-history-btn quiet-icon" aria-label="Open private history" title="Private history" aria-expanded={hist} onClick={()=>setHist(v=>!v)}><History size={18} strokeWidth={1.5}/></button>
-  {hist&&<aside className="quiet-history" aria-label="Private history">
-   <div className="quiet-history-head"><strong>History</strong><span><Lock size={11}/>Only on this device</span><button className="quiet-icon" aria-label="Close history" onClick={()=>setHist(false)}><X size={16}/></button></div>
-   {entries.length===0?<div className="quiet-history-empty"><History size={22} strokeWidth={1.3}/><strong>Nothing here yet</strong><p>Select a place or filter the map. What you and your agent look up or contribute shows up here, privately.</p></div>
-   :<ul>{entries.map((e,i)=><li key={e.id} style={{animationDelay:Math.min(i,6)*40+'ms'}}><code>{e.tool}</code><span>{e.place?e.place+' · ':''}{e.detail}</span><time>{ago2(e.t)}</time></li>)}</ul>}
-   {entries.length>0&&<button className="quiet-history-clear" onClick={()=>{setEntries([]);setShared([])}}>Clear history</button>}
+  <button className="quiet-history-btn quiet-icon" aria-label="Open agent contributions" title="Agent contributions" aria-expanded={hist} onClick={()=>setHist(v=>!v)}><Users size={18} strokeWidth={1.5}/></button>
+  {hist&&<aside className="quiet-history" aria-label="Anonymous agent contributions">
+   <div className="quiet-history-head"><strong>Contributions</strong><span><Lock size={11}/>Anonymous</span><button className="quiet-icon" aria-label="Close contributions" onClick={()=>setHist(false)}><X size={16}/></button></div>
+   <p className="quiet-history-note">Agents report new noise so the map keeps improving. You see where and how loud, never who.</p>
+   <ul>{entries.map((e,i)=><li key={e.id} style={{animationDelay:Math.min(i,6)*40+'ms'}}><code>Anonymous agent</code><span>{e.zone}<b className={'quiet-dot '+e.level}/>{e.level} noise</span><time>{bucket(e.t)}</time></li>)}</ul>
   </aside>}
   <div className="quiet-map-controls">
    <button className="quiet-icon" title={playing?'Pause demo':'Play demo'} aria-label={playing?'Pause simulated contributions':'Play simulated contributions'} onClick={()=>setPlaying(!playing)}>{playing?<Pause size={17}/>:<Play size={17}/>}</button>
