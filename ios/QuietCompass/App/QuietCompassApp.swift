@@ -20,6 +20,7 @@ struct QuietCompassApp: App {
 private struct CompassView: View {
     @Bindable var model: CompassModel
     @Environment(\.openURL) private var openURL
+    @State private var arrivalGuidance: Guidance?
     var body: some View {
         NavigationStack {
             Form {
@@ -60,23 +61,32 @@ private struct CompassView: View {
                     }
                     if let alert = model.lastAlert { Text(alert).font(.callout) }
                 }
+                if !model.running {
+                    CaptureSettingsSection(companion: model.companion, disabled: model.starting)
+                }
                 if model.running {
+                    LevelInWordsSection(companion: model.companion)
+                    Section {
+                        NavigationLink("Map of your walk") { MinimapView(model: model) }
+                    }
                     Section("Mark a place") {
                         TextField("Place name", text: $model.placeLabel)
                         Toggle("Seating available", isOn: $model.seating)
                         Toggle("Step-free access verified", isOn: $model.stepFree)
                         Button("Mark here") { Task { await model.markPlace() } }
-                        ForEach(model.places) { place in Text(place.label) }
                     }
+                    PlaceLevelsSection(model: model)
                 }
                 if let guidance = model.guidance {
                     Section("Walk to \(guidance.targetLabel)") {
                         if let reason = guidance.reason { Text(reason) }
                         Text(model.direction)
-                        Button("I've arrived") { Task { await model.finishGuidance(.arrived) } }
+                        NavigationLink("Show on the map") { MinimapView(model: model) }
+                        Button("I've arrived") { arrivalGuidance = guidance }
                         Button("Cancel route", role: .cancel) { Task { await model.finishGuidance(.cancelled) } }
                     }
                 }
+                ShareSection(companion: model.companion)
                 Section("Apple Health") {
                     Text("Read yesterday's sleep, steps, resting heart rate and HRV from Apple Health, including supported watches. Preview before sharing with your server and agent.").font(.footnote)
                     Button("Choose access and preview") { Task { await model.previewHealth() } }
@@ -109,7 +119,21 @@ private struct CompassView: View {
                 }
             }
             .navigationTitle("Quiet Compass")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink { DiagnosticsView(model: model) } label: {
+                        Label("Diagnostics", systemImage: "stethoscope")
+                    }
+                }
+            }
+            .sheet(item: $arrivalGuidance) { guidance in
+                ArrivalCheckView(model: model, guidance: guidance)
+            }
             .task { await model.sync(); await model.refreshWearables() }
         }
     }
+}
+
+extension Guidance: @retroactive Identifiable {
+    public var id: String { "\(sessionId.uuidString)/\(targetPlaceId.uuidString)/\(updatedAt.timeIntervalSince1970)" }
 }
