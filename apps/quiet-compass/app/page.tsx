@@ -5,7 +5,7 @@ import type {StyleSpecification} from 'maplibre-gl';
 import 'ol/ol.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './map.css';
-import {loadSfLayers} from '../lib/sf-layers.mjs';
+import {loadSfLayers,REFERENCE_LEVELS,REFERENCE_NOTE} from '../lib/sf-layers.mjs';
 
 // Illustrative locations and synthetic acoustic scores; no real noise measurements.
 type MapPoint={name:string;lng:number;lat:number;score:number;landmark?:boolean};
@@ -61,7 +61,7 @@ const noiseRamp:import('maplibre-gl').ExpressionSpecification=['interpolate',['l
 const mapStyle:StyleSpecification={
  version:8,
  glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
- sources:{city:{type:'vector',url:'https://tiles.openfreemap.org/planet'},focus:{type:'geojson',data:{type:'FeatureCollection',features:[]}},sound:{type:'geojson',data:soundData},reports:{type:'geojson',data:{type:'FeatureCollection',features:[]}},measured:{type:'geojson',data:{type:'FeatureCollection',features:[]}},proxies:{type:'geojson',data:{type:'FeatureCollection',features:[]}},candidates:{type:'geojson',data:{type:'FeatureCollection',features:[]}}},
+ sources:{city:{type:'vector',url:'https://tiles.openfreemap.org/planet'},focus:{type:'geojson',data:{type:'FeatureCollection',features:[]}},sound:{type:'geojson',data:soundData},reports:{type:'geojson',data:{type:'FeatureCollection',features:[]}},measured:{type:'geojson',data:{type:'FeatureCollection',features:[]}},sfoEvents:{type:'geojson',data:{type:'FeatureCollection',features:[]}},crowd:{type:'geojson',data:{type:'FeatureCollection',features:[]}},cad:{type:'geojson',data:{type:'FeatureCollection',features:[]}},proxies:{type:'geojson',data:{type:'FeatureCollection',features:[]}},candidates:{type:'geojson',data:{type:'FeatureCollection',features:[]}}},
  light:{anchor:'viewport',color:'#ffffff',intensity:.4,position:[1.5,205,40]},
  layers:[
   {id:'background',type:'background',paint:{'background-color':'#ffffff'}},
@@ -80,17 +80,24 @@ const mapStyle:StyleSpecification={
   {id:'proxy-context',type:'circle',source:'proxies',minzoom:13,layout:{visibility:'none'},paint:{'circle-color':'#a1a1aa','circle-radius':['interpolate',['linear'],['zoom'],13,1.8,17,4],'circle-stroke-color':'#ffffff','circle-stroke-width':1,'circle-opacity':.85}},
   {id:'candidate-places',type:'circle',source:'candidates',minzoom:12,paint:{'circle-color':'#ffffff','circle-radius':['interpolate',['linear'],['zoom'],12,3,17,6],'circle-stroke-color':'#171717','circle-stroke-width':1.5}},
   {id:'noise-reports',type:'circle',source:'reports',minzoom:13,paint:{'circle-color':'#52525b','circle-radius':['interpolate',['linear'],['zoom'],13,1.6,17,3.4],'circle-opacity':.6}},
+  {id:'cad-calls',type:'circle',source:'cad',minzoom:12,paint:{'circle-color':'#ffffff00','circle-radius':['interpolate',['linear'],['zoom'],12,['+',2,['*',.25,['min',['get','count'],16]]],17,['+',3,['*',.6,['min',['get','count'],16]]]],'circle-stroke-color':'#71717a','circle-stroke-width':1.4,'circle-opacity':.8}},
+  {id:'crowd-cells',type:'circle',source:'crowd',paint:{'circle-color':'#17171799','circle-radius':['interpolate',['linear'],['zoom'],11,4,16,9],'circle-stroke-color':'#171717','circle-stroke-width':1.5}},
+  {id:'measured-sfo-events',type:'circle',source:'sfoEvents',paint:{'circle-color':'#ffffff00','circle-radius':['interpolate',['linear'],['zoom'],11,9,16,15],'circle-stroke-color':'#171717','circle-stroke-width':2.2}},
   {id:'measured-sfo',type:'circle',source:'measured',paint:{'circle-color':'#171717','circle-radius':['interpolate',['linear'],['zoom'],11,5,16,9],'circle-stroke-color':'#ffffff','circle-stroke-width':2}},
  ]
 };
 // A contribution carries only a coarse zone, a level and a rounded time. No agent id, no audio, no route.
-type LayerKey='demo'|'measured'|'proxies'|'candidates'|'reports';
+// Evidence labels stay separate: measured / measured crowdsourced / proxy / unmeasured candidate / synthetic. Unknown is not quiet.
+type LayerKey='demo'|'measured'|'sfoEvents'|'crowd'|'proxies'|'cad'|'candidates'|'reports';
 const layerRows:{key:LayerKey;label:string;tag:string;swatch:string;mapIds:string[];hint:string}[]=[
- {key:'measured',label:'Airport monitors',tag:'measured',swatch:'measured',mapIds:['measured-sfo'],hint:'Daily CNEL in dB at 6 monitors inside SF. Not live, not at your spot.'},
+ {key:'measured',label:'Airport monitors',tag:'measured',swatch:'measured',mapIds:['measured-sfo'],hint:'Daily CNEL in dB at 6 SFO monitors inside SF. Not live, not at your spot.'},
+ {key:'sfoEvents',label:'Airport loud events',tag:'measured',swatch:'events',mapIds:['measured-sfo-events'],hint:'Aircraft noise exceedance events per SFO monitor, last 365 days: count, median and max dBA, latest date. Only events above each monitor threshold are published. No license declared.'},
+ {key:'crowd',label:'NoiseCapture cells',tag:'crowdsourced, uncalibrated',swatch:'crowd',mapIds:['crowd-cells'],hint:'About 20 cells of ~100 m with 3+ volunteer tracks, 2017-2025. Uncalibrated phones, several dB of error, not dBA. ODbL, NoiseCapture / Noise-Planet.'},
  {key:'proxies',label:'Permits & closures',tag:'indirect',swatch:'proxy',mapIds:['proxy-context'],hint:'Entertainment permits, night work today or tomorrow, street closures now. Possible noise, not levels.'},
- {key:'candidates',label:'Parks & libraries',tag:'unmeasured',swatch:'candidate',mapIds:['candidate-places'],hint:'Places from city inventories that might be calm. Nobody has measured them.'},
+ {key:'cad',label:'Noise-nuisance calls',tag:'indirect',swatch:'cad',mapIds:['cad-calls'],hint:'Police dispatches classified NOISE NUISANCE per masked intersection, last 30 days. Complaints, not measurements.'},
+ {key:'candidates',label:'Parks, POPOS & libraries',tag:'unmeasured',swatch:'candidate',mapIds:['candidate-places'],hint:'Places from city inventories that might be calm (parks and playgrounds can be loud). Nobody has measured them.'},
  {key:'reports',label:'311 complaints',tag:'reports',swatch:'report',mapIds:['noise-reports'],hint:'Recent reports. A complaint is not a measurement.'},
- {key:'demo',label:'Simulated noise',tag:'demo',swatch:'demo',mapIds:['sound-fields'],hint:'Invented scores for illustration. Not measurements.'},
+ {key:'demo',label:'Simulated noise',tag:'synthetic demo',swatch:'demo',mapIds:['sound-fields'],hint:'Invented scores for illustration. Not measurements.'},
 ];
 type Entry={id:number;t:number;zone:string;level:Level};
 const bucket=(t:number)=>{const m=Math.max(0,Math.round((Date.now()-t)/300000))*5;return m<5?'just now':m<60?m+' min ago':Math.round(m/60)+' h ago'};
@@ -99,13 +106,13 @@ type Level='quiet'|'moderate'|'loud';
 const levelOf=(score:number):Level=>score>.65?'loud':score>.35?'moderate':'quiet';
 const filters:{id:Level|'all';label:string}[]=[{id:'all',label:'All'},{id:'quiet',label:'Quiet'},{id:'moderate',label:'Moderate'},{id:'loud',label:'Loud'}];
 const home={center:[-122.44,37.768] as [number,number],zoom:12.6,pitch:48,bearing:-12};
-const contract={name:'quiet-compass',status:'proposal',connected:false,data:'synthetic-demo + real DataSF layers (labelled measured / proxy / unmeasured candidate)',tools:[{name:'quiet_sf_layers',input:{lat:'number',lon:'number',radius_m:'50-2000',include:'quiet_candidates | entertainment_permits | night_noise_permits | street_closures | sfo_cnel',include_references:'boolean'},returns:'points with evidence = measured | proxy | unmeasured_candidate (source seed), optional reference_measured table'},{name:'query_sound_map',input:{bounds:'[west,south,east,north]',max_age_minutes:'number'}},{name:'find_suitable_places',input:{area:'coarse zone',preference:'user-selected acoustic preference'}},{name:'submit_observation',input:{zone_id:'coarse zone',time_bucket:'rounded time',acoustic_summary:'aggregated calibrated indicators'},requires:'explicit contribution consent'}],excluded:['raw_audio','personal_routes','health_data']};
+const contract={name:'quiet-compass',status:'proposal',connected:false,data:'synthetic-demo + real DataSF layers (labelled measured / measured crowdsourced / proxy / unmeasured candidate)',tools:[{name:'quiet_sf_layers',input:{lat:'number',lon:'number',radius_m:'50-2000',include:'quiet_candidates | entertainment_permits | night_noise_permits | street_closures | sfo_cnel | sfo_events | cad_noise_calls | noisecapture',include_references:'boolean'},returns:'points with evidence = measured | measured_crowdsourced | proxy | unmeasured_candidate (source seed), optional reference_measured table'},{name:'query_sound_map',input:{bounds:'[west,south,east,north]',max_age_minutes:'number'}},{name:'find_suitable_places',input:{area:'coarse zone',preference:'user-selected acoustic preference'}},{name:'submit_observation',input:{zone_id:'coarse zone',time_bucket:'rounded time',acoustic_summary:'aggregated calibrated indicators'},requires:'explicit contribution consent'}],excluded:['raw_audio','personal_routes','health_data']};
 type ViewOptions={center?:[number,number];zoom?:number;pitch?:number;bearing?:number;duration?:number};
 type MapControls={zoomIn:()=>unknown;zoomOut:()=>unknown;getZoom:()=>number;flyTo:(o:ViewOptions)=>unknown;easeTo:(o:ViewOptions)=>unknown;remove:()=>unknown};
 export default function CityMap(){
  const container=useRef<HTMLDivElement>(null),map=useRef<MapControls|null>(null),markers=useRef<{marker:{remove:()=>unknown};button:HTMLButtonElement}[]>([]),focusRef=useRef<(i:number|null)=>void>(()=>{}),glMap=useRef<import('maplibre-gl').Map|null>(null),filterRef=useRef<(f:Level|'all')=>void>(()=>{});
  const mcpButton=useRef<HTMLButtonElement>(null),closeButton=useRef<HTMLButtonElement>(null),dialog=useRef<HTMLDivElement>(null);
- const [ready,setReady]=useState(false),[failed,setFailed]=useState(false),[mcp,setMcp]=useState(false),[shown,setShown]=useState<Record<LayerKey,boolean>>({demo:true,measured:true,proxies:false,candidates:true,reports:true}),[failedLayers,setFailedLayers]=useState<string[]>([]),[layersOpen,setLayersOpen]=useState(false),[copied,setCopied]=useState(false),[copyFallback,setCopyFallback]=useState(false),[selected,setSelected]=useState<number|null>(null),[hist,setHist]=useState(false),[entries,setEntries]=useState<Entry[]>(()=>[3,9,17,27,41,64].map((a,k)=>makeEntry((k*5+3)%points.length,a))),[shared,setShared]=useState<number[]>([]),[filter,setFilter]=useState<Level|'all'>('all');
+ const [ready,setReady]=useState(false),[failed,setFailed]=useState(false),[mcp,setMcp]=useState(false),[shown,setShown]=useState<Record<LayerKey,boolean>>({demo:true,measured:true,sfoEvents:true,crowd:true,proxies:false,cad:false,candidates:true,reports:true}),[failedLayers,setFailedLayers]=useState<string[]>([]),[layersOpen,setLayersOpen]=useState(false),[copied,setCopied]=useState(false),[copyFallback,setCopyFallback]=useState(false),[selected,setSelected]=useState<number|null>(null),[hist,setHist]=useState(false),[entries,setEntries]=useState<Entry[]>(()=>[3,9,17,27,41,64].map((a,k)=>makeEntry((k*5+3)%points.length,a))),[shared,setShared]=useState<number[]>([]),[filter,setFilter]=useState<Level|'all'>('all');
  const addEntry=(i:number)=>setEntries(e=>[makeEntry(i),...e].slice(0,40));
  useEffect(()=>{
   let disposed=false,index=0,interval:ReturnType<typeof setInterval>;
@@ -125,10 +132,10 @@ export default function CityMap(){
    const instance=new lib.Map({container:container.current,style:mapStyle,...home,minZoom:10,maxZoom:19,attributionControl:false,canvasContextAttributes:{antialias:true}});
    map.current=instance;glMap.current=instance;
    instance.addControl(new lib.AttributionControl({compact:true}),'bottom-right');
-   instance.getCanvas().setAttribute('aria-label','Map of San Francisco. Drag to explore. Darker violet means higher simulated sound levels. Ripples represent fictional contributions. Gray marks are live DataSF layers: 311 noise reports, street events, entertainment venues and street construction.');
+   instance.getCanvas().setAttribute('aria-label','Map of San Francisco. Drag to explore. Darker violet means higher simulated sound levels, not measurements. Ripples represent fictional contributions. Real layers, labelled by what they are: filled and ringed dark dots are SFO noise monitors (measured), semi-filled dark dots are NoiseCapture phone cells (crowdsourced, uncalibrated), small gray dots are permits and closures and gray rings are noise-nuisance call counts (proxies), white rings are unmeasured candidate places, tiny gray dots are 311 noise complaints.');
    instance.on('load',()=>{
     if(disposed)return;setReady(true);setFailed(false);
-    void loadSfLayers().then(r=>{if(disposed)return;const set=(id:string,data:unknown)=>(instance.getSource(id) as import('maplibre-gl').GeoJSONSource|undefined)?.setData(data as Parameters<import('maplibre-gl').GeoJSONSource['setData']>[0]);set('candidates',r.candidates);set('proxies',r.proxies);set('measured',r.measured);setFailedLayers(r.failed)}).catch(()=>{if(!disposed)setFailedLayers(['measured','proxies','candidates'])});
+    void loadSfLayers().then(r=>{if(disposed)return;const set=(id:string,data:unknown)=>(instance.getSource(id) as import('maplibre-gl').GeoJSONSource|undefined)?.setData(data as Parameters<import('maplibre-gl').GeoJSONSource['setData']>[0]);set('candidates',r.candidates);set('proxies',r.proxies);set('measured',r.measured);set('sfoEvents',r.sfoEvents);set('crowd',r.crowd);set('cad',r.cad);setFailedLayers(r.failed)}).catch(()=>{if(!disposed)setFailedLayers(['measured','sfoEvents','crowd','proxies','cad','candidates'])});
     loadReports().then(data=>{
      if(disposed)return;
      (instance.getSource('reports') as import('maplibre-gl').GeoJSONSource|undefined)?.setData(data);
@@ -136,11 +143,11 @@ export default function CityMap(){
      (instance.getSource('sound') as import('maplibre-gl').GeoJSONSource|undefined)?.setData({type:'FeatureCollection',features:[...soundData.features,...data.features.map(f=>({...f,properties:{score:.85}}))]});
     }).catch(()=>{});
    });
-   const ids=['measured-sfo','proxy-context','candidate-places','noise-reports'];
+   const ids=['measured-sfo','measured-sfo-events','crowd-cells','cad-calls','proxy-context','candidate-places','noise-reports'];
    instance.on('click','noise-reports',e=>{const f=e.features?.[0];if(!f)return;const p=f.properties as {kind:string;place:string;at:string};new lib.Popup({closeButton:false,className:'report-popup'}).setLngLat(e.lngLat).setText('311 noise report · '+p.kind+(p.place?' · '+p.place:'')+' · '+ago(p.at)).addTo(instance)});
-   for(const id of ['measured-sfo','proxy-context','candidate-places']){
-    instance.on('click',id,e=>{const f=e.features?.[0];if(!f)return;const p=f.properties as {evidence:string;kind:string;label:string;detail?:string;cnel?:number;observedOn?:string;caveat:string};
-     const head=p.evidence==='measured'?'MEASURED · '+p.kind+' · CNEL '+p.cnel+' dB ('+p.observedOn+')':p.evidence==='proxy'?'PROXY · '+p.kind:'UNMEASURED CANDIDATE · '+p.kind;
+   for(const id of ['measured-sfo','measured-sfo-events','crowd-cells','cad-calls','proxy-context','candidate-places']){
+    instance.on('click',id,e=>{const f=e.features?.[0];if(!f)return;const p=f.properties as {evidence:string;kind:string;label:string;detail?:string;cnel?:number;count?:number;medianDb?:number;maxDb?:number;laeqDb?:number;observedOn?:string;caveat:string};
+     const head=p.evidence==='measured_crowdsourced'?'MEASURED, CROWDSOURCED, UNCALIBRATED · '+p.kind+' · median 5-min '+p.medianDb+' dB (energy mean '+p.laeqDb+')':p.evidence==='measured'?(p.cnel!==undefined?'MEASURED · '+p.kind+' · CNEL '+p.cnel+' dB ('+p.observedOn+')':'MEASURED · '+p.kind+' · '+p.count+' events, median '+p.medianDb+' dBA, max '+p.maxDb+' dBA, latest '+p.observedOn):p.evidence==='proxy'?'PROXY · '+p.kind:'UNMEASURED CANDIDATE · '+p.kind;
      new lib.Popup({closeButton:false,className:'report-popup',maxWidth:'280px'}).setLngLat(e.lngLat).setText(head+' · '+p.label+(p.detail?' · '+p.detail:'')+' · '+p.caveat).addTo(instance)});
     instance.on('mouseenter',id,()=>{instance.getCanvas().style.cursor='pointer'});
     instance.on('mouseleave',id,()=>{instance.getCanvas().style.cursor=''});
@@ -207,9 +214,10 @@ export default function CityMap(){
   <section className="quiet-layers" aria-label="Map layers">
    <button className="quiet-layers-head" aria-expanded={layersOpen} onClick={()=>setLayersOpen(!layersOpen)}><Layers size={14}/>Layers</button>
    {layersOpen&&<ul>{layerRows.map(r=><li key={r.key}><label title={r.hint}><input type="checkbox" checked={shown[r.key]} onChange={()=>setShown({...shown,[r.key]:!shown[r.key]})}/><i className={'quiet-swatch swatch-'+r.swatch} aria-hidden="true"/><span>{r.label}</span><em>{r.tag}</em></label></li>)}</ul>}
-   {layersOpen&&failedLayers.length>0&&<p className="quiet-layers-warn" role="status">Couldn&apos;t load {failedLayers.join(', ')}</p>}
+   {layersOpen&&failedLayers.length>0&&<p className="quiet-layers-warn" role="status">Couldn&apos;t load {failedLayers.join(', ')}. Unknown, not quiet.</p>}
+   {layersOpen&&<div className="quiet-layers-note"><p>Complaints and calls are not measurements. NoiseCapture values are uncalibrated and are not dBA. Contains information from the NoiseCapture / Noise-Planet community, ODbL 1.0.</p><details><summary>Published reference levels</summary><p>{REFERENCE_NOTE}</p><ul className="quiet-refs">{REFERENCE_LEVELS.map((r:{location:string;ldn:number;note:string;date:string})=><li key={r.location}><b>{r.ldn}</b> dBA Ldn · {r.location} · {r.note} · {r.date}</li>)}</ul><a href={REFERENCE_LEVELS[0].sourceUrl} target="_blank" rel="noreferrer">Central SoMa Plan Draft EIR, Dec 2016</a></details></div>}
   </section>
-  <span className="quiet-demo" title="Violet is synthetic. No agents are connected. Black, gray and ringed marks are real DataSF layers, labelled by what they are.">Demo data</span>
+  <span className="quiet-demo" title="Violet is synthetic. No agents are connected. Dark, gray and ringed marks are real data (DataSF, NoiseCapture), labelled by what they are.">Demo data</span>
   <div className="quiet-intensity" role="img" aria-label="Simulated sound intensity: lighter violet means lower levels; darker violet means higher levels. White has no observations." title="Simulated sound intensity · darker violet = higher levels · white = no observations"><em>Quiet</em><span/><em>Loud</em></div>
   {mcp&&<div className="quiet-mcp-overlay" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><div className="quiet-mcp-panel" ref={dialog} role="dialog" aria-modal="true" aria-labelledby="mcp-title" onClick={e=>e.stopPropagation()}>
    <div className="quiet-mcp-heading"><strong id="mcp-title">MCP</strong><button ref={closeButton} className="quiet-icon" aria-label="Close MCP" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><X size={18}/></button></div>

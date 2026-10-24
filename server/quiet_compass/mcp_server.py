@@ -187,7 +187,7 @@ class LayerPointOut(Lean):
     label: str
     lat: float
     lon: float
-    evidence: Literal["unmeasured_candidate", "proxy", "measured"]
+    evidence: Literal["unmeasured_candidate", "proxy", "measured", "measured_crowdsourced"]
     caveat: str
     dataset: str
     source: str | None = None
@@ -195,6 +195,11 @@ class LayerPointOut(Lean):
     cnel_db: float | None = None
     observed_on: str | None = None
     distance_m: int | None = None
+    count: int | None = None
+    max_level_db: float | None = None
+    median_level_db: float | None = None
+    laeq_db: float | None = None
+    quality: str | None = None
 
 
 class ReferenceOut(Lean):
@@ -666,13 +671,24 @@ def build_mcp(
         ) -> SfLayersResult:
             """Real San Francisco layers near a point (DataSF), each labelled by evidence.
 
-            quiet_candidates: POPOS and public libraries, evidence=unmeasured_candidate,
-            source=seed. Nobody measured their sound; never call them quiet, mention
+            quiet_candidates: POPOS, public libraries and Rec & Park parks/play areas,
+            evidence=unmeasured_candidate, source=seed (parks can be loud too).
+            Nobody measured their sound; never call them quiet, mention
             hours must be checked. entertainment_permits, night_noise_permits (today or
             tomorrow) and street_closures (in effect now): evidence=proxy, they hint that
             something may be loud, they are not levels. sfo_cnel: the nearest SFO
             community noise monitors, evidence=measured, daily CNEL in A-weighted dB at the
             monitor (not at the point, not live; see observed_on and distance_m).
+            sfo_events: per SFO monitor, count / median / max of aircraft noise exceedance
+            events in the last 365 days (evidence=measured, max_level_db in dBA, always
+            quote observed_on; only events above that monitor's threshold are published, so
+            it is not the typical level; the dataset has no declared license).
+            cad_noise_calls: NOISE NUISANCE police dispatches per masked intersection, last
+            30 days (evidence=proxy, count): complaints, not levels.
+            noisecapture: ~100 m cells of crowdsourced, mostly uncalibrated phone
+            measurements 2017-2025 (evidence=measured_crowdsourced, quality=
+            measured_crowdsourced_uncalibrated; median_level_db is the median 5-minute
+            LAeq; ODbL, attribute NoiseCapture / Noise-Planet; sparse, about 20 cells).
             include_references=true adds published Central SoMa Ldn dBA measurements
             (evidence=reference_measured, with source_url; 2014, area-specific).
             Never compare these dB values with the phone's relative dBFS levels.
@@ -692,7 +708,10 @@ def build_mcp(
                 unavailable=s.unavailable or None,
                 references=[ReferenceOut(**r.__dict__) for r in REFERENCE_LEVELS] if include_references else None,
                 reference_note=REFERENCE_NOTE if include_references else None,
-                note="Only sfo_cnel is a sensor measurement. Missing data is unknown, not quiet.",
+                note=(
+                    "Only sfo_cnel and sfo_events are sensor measurements; noisecapture is crowdsourced and "
+                    "uncalibrated. Missing data is unknown, not quiet."
+                ),
             )
 
     return mcp
