@@ -52,7 +52,9 @@ targets:
         UIRequiredDeviceCapabilities: [arkit]
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSMicrophoneUsageDescription: >-
-          Quiet Compass measures how loud it is around you, on this phone. It never records or stores audio.
+          Quiet Compass measures how loud it is around you, on this phone, including in the background
+          during a session you start, so it can tell you when it gets too loud. It never records or stores audio.
+        UIBackgroundModes: [audio]
         NSCameraUsageDescription: >-
           The camera is used only to track the path you walk, so Quiet Compass can guide you back. No images are stored.
         NSHealthShareUsageDescription: >-

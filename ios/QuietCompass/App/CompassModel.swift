@@ -21,6 +21,8 @@ import enum QuietCore.PlaceTag
 import enum QuietCore.RouteBack
 import enum QuietCore.ContractJSON
 import class QuietCore.ObservationAggregator
+import struct QuietCore.NoiseAlertMonitor
+import struct QuietCore.NoiseAlert
 import UIKit
 
 @MainActor @Observable
@@ -44,6 +46,21 @@ final class CompassModel {
     var wearableBusy = false
     var canConnectOura = false
     var ouraConnected = false
+    // Noise alerts (docs/BACKGROUND_CAPTURE_AND_NOISE_ALERTS.md).
+    var alertsOn = UserDefaults.standard.object(forKey: "alertsOn") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(alertsOn, forKey: "alertsOn") }
+    }
+    /// How many dB above the comfortable level counts as too loud.
+    var sensitivityDb = UserDefaults.standard.object(forKey: "sensitivityDb") as? Double ?? 10 {
+        didSet { UserDefaults.standard.set(sensitivityDb, forKey: "sensitivityDb"); monitor.settings.offsetDb = sensitivityDb }
+    }
+    var lastAlert: String?
+    var hasBaseline = false
+    /// True after the app went to the background: sound keeps being measured, path tracking has ended.
+    var levelsOnly = false
+    private var monitor = NoiseAlertMonitor()
+    private var lastObservationLevel: Double?
+    private let notifier = NoiseNotifier()
     private var server: PhoneServer?
     private var outbox: PhoneOutbox?
     private let health = HealthReader()
@@ -100,6 +117,10 @@ final class CompassModel {
                 try Task.checkCancellation()
                 guard await AVCaptureDevice.requestAccess(for: .video) else { throw PhoneError.message("Allow camera access in Settings to track the walked path.") }
                 try Task.checkCancellation()
+                if alertsOn { _ = await notifier.requestPermission() }
+                var settings = NoiseAlertMonitor.Settings(); settings.offsetDb = sensitivityDb
+                monitor = NoiseAlertMonitor(settings: settings); hasBaseline = false; lastAlert = nil
+                lastObservationLevel = nil; levelsOnly = false
                 let source = MonoFeatureSource(classifier: SoundClassifier())
                 self.source = source
                 let frames = source.frames()
@@ -114,12 +135,11 @@ final class CompassModel {
                 recorder = BreadcrumbRecorder(sessionId: session.id)
                 guidance = nil; route = nil; direction = ""; level = nil; lastNormal = Date()
                 let tracker = PathTracker(onPose: { [weak self] pose in self?.received(pose) }, onFailure: { [weak self] text in
-                    self?.message = text
-                    Task { await self?.stop() }
+                    self?.trackingFailed(text)
                 })
                 self.tracker = tracker
                 try tracker.start()
-                running = true; message = "Measuring. Keep this app open; raw audio and images stay off disk."
+                running = true; message = "Measuring. You can lock the phone or switch apps and sound keeps being measured; path tracking needs the app open. Raw audio and images stay off disk."
                 let aggregator = ObservationAggregator(sessionId: session.id)
                 frameTask = Task {
                     for await frame in frames {
@@ -130,6 +150,8 @@ final class CompassModel {
                         if var observation = await aggregator.ingest(frame) {
                             observation.placeId = PlaceLocator(places: places).nearestPlace(to: observation.position)?.id
                             observation.crumbId = observation.position == nil ? nil : crumbs.last?.id
+                            lastObservationLevel = NoiseAlertMonitor.level(of: observation)
+                            handle(monitor.ingest(observation))
                             do { try await outbox.enqueue(ObservationBatch(observations: [observation]), path: "/v1/observations", server: server) }
                             catch { message = error.localizedDescription; Task { await self.stop() }; break }
                         }
@@ -164,8 +186,58 @@ final class CompassModel {
         await frameTask?.value; frameTask = nil
         await syncTask?.value; syncTask = nil
         AudioSessionConfigurator.deactivate()
+        levelsOnly = false
         tracking = "Stopped"; pose = nil; route = nil; direction = "Recording stopped. Start a new session before following a route."
         await sync()
+    }
+
+    // MARK: Background capture and noise alerts
+
+    /// The app went to the background. ARKit can't run there, so the path ends; the mic keeps measuring.
+    func enterBackground() async {
+        guard running else { await stop(); return }
+        endTracking("Measuring sound in the background. Path tracking ended; start a new recording to track a path again.")
+        source?.setClassifierPaused(true)
+    }
+
+    func enterForeground() {
+        source?.setClassifierPaused(false)
+    }
+
+    /// ARKit is interrupted when the app leaves the foreground. That ends the path, not the session.
+    private func trackingFailed(_ text: String) {
+        if UIApplication.shared.applicationState != .active {
+            endTracking("Measuring sound in the background. Path tracking ended; start a new recording to track a path again.")
+        } else {
+            message = text
+            Task { await stop() }
+        }
+    }
+
+    private func endTracking(_ text: String) {
+        guard running, !levelsOnly else { return }
+        tracker?.stop(); tracker = nil; pose = nil
+        levelsOnly = true; tracking = "Ended (sound only)"; message = text
+        updateDirection()
+    }
+
+    private func handle(_ alert: NoiseAlert?) {
+        hasBaseline = monitor.baselineDb != nil
+        guard alertsOn, let alert else { return }
+        lastAlert = NoiseNotifier.text(for: alert)
+        notifier.post(alert)
+    }
+
+    /// "This feels comfortable": the latest 5 s level becomes the baseline.
+    func markComfortable() {
+        guard let lastObservationLevel else { message = "Wait a few seconds for the first measurement."; return }
+        monitor.setBaseline(lastObservationLevel); hasBaseline = true
+        message = "Got it. You'll be alerted when it gets about \(Int(sensitivityDb)) dB louder than this for a while."
+    }
+
+    func snoozeAlerts() {
+        monitor.snooze(until: Date().addingTimeInterval(30 * 60))
+        message = "Noise alerts snoozed for 30 minutes."
     }
 
     private func received(_ pose: PoseSample) {

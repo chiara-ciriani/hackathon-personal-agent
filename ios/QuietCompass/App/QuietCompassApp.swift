@@ -9,8 +9,9 @@ struct QuietCompassApp: App {
         WindowGroup {
             CompassView(model: model)
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .background { Task { await model.stop() } }
-                    if phase == .active { Task { await model.refreshWearables() } }
+                    // Keep measuring sound in the background; only path tracking stops.
+                    if phase == .background { Task { await model.enterBackground() } }
+                    if phase == .active { model.enterForeground(); Task { await model.refreshWearables() } }
                 }
         }
     }
@@ -39,7 +40,7 @@ private struct CompassView: View {
                     } else { Text("No measurement yet") }
                     Text("Path: \(model.tracking)")
                     Text("\(model.pending) uploads pending")
-                    Text("The microphone extracts sound levels on this phone. The camera tracks your path. Only summaries and path points go to your private server. Keep the app open while measuring.")
+                    Text("The microphone extracts sound levels on this phone. The camera tracks your path. Only summaries and path points go to your private server. Sound keeps being measured if you lock the phone or switch apps; path tracking needs the app open.")
                         .font(.footnote)
                     if model.running || model.starting {
                         Button("Stop measuring", role: .destructive) { Task { await model.stop() } }
@@ -47,6 +48,17 @@ private struct CompassView: View {
                         Button("Start measuring") { model.start() }
                     }
                     Button("Retry pending uploads") { Task { await model.sync() } }
+                }
+                Section("Noise alerts") {
+                    Toggle("Alert me when it's too loud", isOn: $model.alertsOn)
+                    Stepper("Too loud = \(Int(model.sensitivityDb)) dB above comfortable", value: $model.sensitivityDb, in: 4...20, step: 2)
+                    Text(model.hasBaseline ? "Alerts compare against your comfortable level." :
+                         "Your first measurement counts as comfortable until you mark one.").font(.footnote)
+                    if model.running {
+                        Button("This feels comfortable") { model.markComfortable() }
+                        Button("Snooze alerts for 30 minutes") { model.snoozeAlerts() }
+                    }
+                    if let alert = model.lastAlert { Text(alert).font(.callout) }
                 }
                 if model.running {
                     Section("Mark a place") {
