@@ -59,6 +59,7 @@ class Settings:
     contribution_retention_hours: float = 24.0
     map_allowed_origins: tuple[str, ...] = ("*",)
     shared_api_token: str | None = field(default=None, repr=False)
+    public_venue_field: bool = False
 
     def __post_init__(self) -> None:
         if not self.api_token:
@@ -113,6 +114,7 @@ class Settings:
             contribution_retention_hours=_number(env.get("QC_CONTRIBUTION_RETENTION_HOURS"), 24.0, float),
             map_allowed_origins=_csv(env.get("QC_MAP_ALLOWED_ORIGINS")) or ("*",),
             shared_api_token=_optional(env.get("QC_SHARED_API_TOKEN")),
+            public_venue_field=_flag(env.get("QC_PUBLIC_VENUE_FIELD")),
         )
 
     @property

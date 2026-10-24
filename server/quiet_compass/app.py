@@ -21,6 +21,7 @@ from .api import build_routes, healthz
 from .auth import BearerAuth
 from .city import CityNoiseLayer
 from .db import Store
+from .field_api import build_field_routes
 from .mcp_server import Service, build_mcp
 from .settings import Settings
 from .sf_layers import SfLayers
@@ -65,7 +66,8 @@ def create_app(
     if layers is None and settings.city_layer_enabled:
         layers = SfLayers(settings.socrata_app_token)
     wearables = WearableService(store, settings, wearable_transport)
-    mcp = build_mcp(Service(store, settings, clock=store.clock), city, layers, wearables)
+    service = Service(store, settings, clock=store.clock)
+    mcp = build_mcp(service, city, layers, wearables)
     shared = SharedLayer(SharedStore(store.path, clock=store.clock), settings, clock=store.clock)
     shared.store.migrate_shared()
     register_shared_tools(mcp, shared)
@@ -112,6 +114,7 @@ def create_app(
         *build_wearable_routes(wearables, settings.api_token),
         *build_shared_routes(shared, settings),
         Route("/mcp/shared", ExactMount(shared_endpoint), methods=["GET", "POST", "DELETE"]),
+        *build_field_routes(service, settings),
         Route(path, ExactMount(endpoint), methods=["GET", "POST", "DELETE"]),
     ]
     if settings.mcp_path_secret:
