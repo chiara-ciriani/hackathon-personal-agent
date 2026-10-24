@@ -167,3 +167,4 @@ a.quiet-icon{text-decoration:none}
 .quiet-refs{margin:8px 0;padding:0;list-style:none;font-size:11px;line-height:16px;color:#525252}.quiet-refs li{padding:2px 0}.quiet-layers-note a{color:#171717}
 .quiet-card-none{text-transform:none;color:#737373}
 @media(max-width:600px){.quiet-venue .quiet-card{bottom:112px}}
+@media(max-width:600px){.quiet-note{bottom:100px;left:17px}}
