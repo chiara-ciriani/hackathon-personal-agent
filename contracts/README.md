@@ -23,6 +23,7 @@ Every request carries `Authorization: Bearer $QC_API_TOKEN`. Bodies are JSON.
 | `POST /v1/feedback` | `FeedbackBatch` | `200 IngestResult` |
 | `GET /v1/sessions/{session_id}/guidance` | none | `200 Guidance`, or `204` when nothing is active |
 | `POST /v1/sessions/{session_id}/guidance/status` | `GuidanceStatusUpdate` | `200 Guidance` |
+| `GET /v1/sessions/{session_id}/sound_field` | none | `200` floor-plane grid of the session's readings (see "Sound field"), `404` unknown session |
 | `GET /healthz` | none | `200 {"ok": true}` (no auth) |
 
 The phone polls guidance every 2 s while the map screen is open, and every 10 s otherwise.
@@ -37,8 +38,20 @@ These are served at `/mcp` (Streamable HTTP, stateless, JSON responses).
 | `quiet_find_space(goal, duration_minutes, return_by, needs?)` | Up to 3 ranked places with evidence, or `{no_fit, closest, relax}` | read-only |
 | `quiet_start_guidance(place_id, reason?)` | Upserts the active guidance row the phone polls | idempotent, not destructive |
 | `quiet_record_feedback(place_id, goal, verdict, feel?)` | Stores an explicit rating | not destructive |
+| `quiet_get_sound_map()` | Up to 3 quiet spots on the walked floor (x/z, relative level, confidence, age, distance), readings count and covered area | read-only |
 | `quiet_city_noise_reports(lat, lon, radius_m, hours)` | Optional: SF 311 noise report counts by subtype | read-only, open world |
 | `quiet_sf_layers(lat, lon, radius_m?, include?, include_references?)` | Optional (same flag as above): real SF layers near a point, each labelled with an `EvidenceLabel` | read-only, open world |
+
+## Sound field
+
+`server/quiet_compass/sound_field.py` turns every positioned reading of a session into a grid of
+0.5 m cells on the AR floor plane (x/z metres). A reading without its own position borrows its
+crumb's, then its place's. Each cell blends nearby readings with a Gaussian weight on distance
+(σ 1.5 m) times exp(−age/20 min), so newer readings win; `confidence = 1 − exp(−Σw)`. Cells
+more than 3 m from every reading have `level_db: null` (unknown, never quiet). Quiet spots are
+the quietest cells within 1 m of a real reading. `GET /v1/venue/sound_field` serves the active
+session's grid to the venue page without a token only when `QC_PUBLIC_VENUE_FIELD=1` (it reveals
+where the user walked); otherwise it answers 404.
 
 The MCP tools act on the **active session**: the one named by `QC_ACTIVE_SESSION_ID` if set, otherwise the most recently updated session.
 

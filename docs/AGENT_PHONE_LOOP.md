@@ -2,6 +2,16 @@
 
 The mobile page is `/measure`. It is a sensor connection, not a manual measuring/export form.
 
+## Alongside the native apps
+
+`/measure` remains available after integrating Alex’s `feat/sound-field` branch.
+The existing `ios/` app uploads private observations and handles agent guidance.
+`ios-walk/` is the standalone QC Walk Map app: it records and replays walks locally,
+with no agent connection or background upload. Its export tool accepts the app's
+elapsed-second timestamps. These modes coexist; a local walk is not silently published.
+The new private `quiet_get_sound_map` tool reads positioned observations already in the
+server. It is not exposed on the shared MCP endpoint.
+
 ## User flow
 
 1. The authenticated agent calls `connect_phone` and shows the returned `connect_url`.

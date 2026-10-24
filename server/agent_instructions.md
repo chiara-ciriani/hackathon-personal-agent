@@ -31,6 +31,10 @@ otherwise use the return time they give you. Include the timezone offset.
 1. Call `quiet_get_context(response_format="detailed")` to retrieve the current
    session, observation ages, known places and their actual IDs. An empty result
    means no evidence is available; suggest a voluntary measurement in the app.
+   For the shape of the walked space, `quiet_get_sound_map` returns measured coverage,
+   relative levels and candidate quiet spots. Its x/z coordinates belong to the phone's
+   AR session, not GPS. Check ages; unmeasured cells are unknown. Use a marked place and
+   `quiet_find_space` for guidance rather than treating a grid point as a safe route.
 2. Call `quiet_find_space(goal, duration_minutes, return_by, needs,
    response_format="detailed")`. Use `talk`, `rest` or `work`. Only include seating
    or step-free requirements the person actually needs.

@@ -17,7 +17,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.6", "jsonschema>=4.20"]
+dev = ["pytest>=8", "ruff>=0.6", "jsonschema>=4.20", "Pillow>=11"]
+walk-map = ["Pillow>=11"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["quiet_compass"]

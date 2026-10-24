@@ -11,12 +11,30 @@ It was built for an SF hackathon on personal agents for everyday life. The first
 3. **The agent decides.** The Claude app, connected through a custom MCP connector, reads your calendar and the sound memory, suggests a place, and asks the phone to guide you back along the path you walked.
 
 ```
-apps/quiet-compass/  Next.js web app: SF noise map (real DataSF and archived NoiseCapture measurements; unmeasured places stay gray) and Oura integration
+apps/quiet-compass/  Next.js web app: SF noise map, Oura integration and agent-controlled phone mode at /measure
 ios/                 SwiftUI app (QuietCompass) + QuietCore Swift package (DSP, route logic, contracts)
+ios-walk/            Alex’s standalone QC Walk Map app: local walk map, radar, compass and replay
 server/              Starlette ingest API + MCP Python SDK + scoring + optional SF 311 city layer
 contracts/           JSON Schema shared by phone and server, plus the HTTP API and MCP tool reference
 docs/                Implementation plan and product brief
 ```
+
+## Choose a mode
+
+- **Quiet Compass app (`ios/`):** measures while walking, uploads private summaries and
+  the walked route, and receives guidance from the connected agent. The existing app stays available.
+- **QC Walk Map (`ios-walk/`):** Alex’s standalone app from `feat/sound-field`, now included
+  in `main`. Walk, see the local sound map, save and replay walks, and export summaries.
+  It works without a server; it does not upload to or receive commands from the agent.
+  Start with [the iPhone setup](ios-walk/START_HERE.md).
+- **Agent mode (`/measure`):** open the link supplied by the connected agent on your phone,
+  approve microphone/location/sharing once, and keep the page visible. The agent requests
+  measurements, receives summaries and sends recommendations back to the phone.
+  See [the phone loop](docs/AGENT_PHONE_LOOP.md).
+
+The private MCP also includes `quiet_get_sound_map`, which uses positioned observations
+uploaded by the connected Quiet Compass app. Unmeasured floor cells remain unknown.
+QC Walk Map exports stay local; merging its code does not connect that app or Dot automatically.
 
 ## Quick start
 
@@ -41,9 +59,9 @@ xcodegen generate && open QuietCompass.xcodeproj
 ```
 
 Enter the server URL and token inside the app. The token is stored in Keychain.
-The app currently uses mono sound features plus ARKit (mode C). It queues uploads
-offline and polls for guidance. The Simulator can open the app but does not run
-mock audio or a scripted walk; live sensors need a device.
+The app defaults to mono sound features plus ARKit (mode C). It queues uploads
+offline and polls for guidance. The Simulator uses explicitly simulated audio and
+a scripted walk; live sensors need a device.
 
 **Wearables.** The phone previews Apple Health daily summaries before sharing.
 Oura connects directly to the Python server, which encrypts credentials, refreshes
@@ -61,7 +79,7 @@ See [the deployment guide](server/README.md) and
 
 ## Team workflow
 
-- Work on short-lived branches and open PRs into `main`. CI runs the server lint and tests and the QuietCore tests.
+- Work on short-lived branches and open PRs into `main`. CI runs server and web tests, QuietCore integration tests and the walk-map math checks.
 - Contracts change only by agreement across tracks. Update the schema and both model files in the same PR.
 - See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for the hour-by-hour plan, the cut line and the walkthrough script.
 

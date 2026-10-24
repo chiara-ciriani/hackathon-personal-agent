@@ -18,7 +18,7 @@ HEADERS = {
 }
 TOOLS = {
     "quiet_get_context", "quiet_find_space", "quiet_start_guidance", "quiet_record_feedback",
-    "quiet_get_personal_context",
+    "quiet_get_personal_context", "quiet_get_sound_map",
 }
 TOOLS |= {"query_sound_map", "find_suitable_places", "submit_observation"}  # shared sound layer
 TOOLS |= {"connect_phone", "request_phone_measurement", "phone_measurement_status", "send_phone_recommendation"}
