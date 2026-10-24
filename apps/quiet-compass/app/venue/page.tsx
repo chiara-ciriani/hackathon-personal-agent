@@ -31,7 +31,7 @@ const frame=(z:Zone)=>feat({type:'Polygon',coordinates:[rect(z.x[0]+INSET,z.y[0]
 const floors=fc(zones.map(z=>feat({type:'Polygon',coordinates:rect(z.x[0]+INSET,z.y[0]+INSET,z.x[1]-INSET,z.y[1]-INSET)},{id:z.id,name:z.name,score:z.score??-1})));
 const labelData=fc(zones.map(z=>feat({type:'Point',coordinates:ll((z.x[0]+z.x[1])/2,(z.y[0]+z.y[1])/2)} as unknown as Poly,{name:z.name})));
 // Walls are thin boxes with doorway gaps. The courtyard is open air, so its outer walls are low.
-const WALL=2.2,LOW=.9;
+const WALL=1.8,LOW=.7;
 const wall=(horizontal:boolean,pos:number,a:number,b:number,gaps:[number,number][],h=WALL,t=.4)=>{
  const out:ReturnType<typeof feat>[]=[];let cursor=a;
  const seg=(s0:number,s1:number)=>{if(s1-s0>.05)out.push(horizontal?box(s0,pos-t/2,s1,pos+t/2,{h}):box(pos-t/2,s0,pos+t/2,s1,{h}))};
@@ -43,7 +43,7 @@ const walls=fc([
  ...wall(true,14,0,60,[[8,12],[26,30],[46,52]]),...wall(true,22,0,35,[[8,12],[26,30]]),
  ...wall(false,21,0,14,[[6,9]]),...wall(false,21,22,40,[]),...wall(false,35,14,40,[[17,21]]),
 ]);
-const slab=fc([box(-1,-1,61,41,{})]);
+const slab=fc([box(-1.2,-1.2,61.2,41.2,{})]);
 // Sound sources: nested translucent domes, tallest and darkest at the centre. Heights are metres.
 const sources:{zone:string;x:number;y:number;rings:[number,number,number][]}[]=[
  {zone:'stage',x:48,y:28,rings:[[4.5,.95,6.5],[8.5,.8,4.2],[12.5,.6,2.2]]},
@@ -55,15 +55,15 @@ const domes=fc(sources.flatMap(src=>{const z=zones.find(q=>q.id===src.zone)!;ret
 const prop=(x0:number,y0:number,x1:number,y1:number,h:number,color:string,base=.12)=>box(x0,y0,x1,y1,{h,color,base});
 const props=fc([
  prop(38,34,58,39,1.2,'#3f3f46'),prop(38,38.6,58,39.2,4.4,'#171717'),prop(38.4,34.6,40.4,36.6,3.2,'#27272a',1.2),prop(55.6,34.6,57.6,36.6,3.2,'#27272a',1.2),
- ...Array.from({length:6},(_,r)=>Array.from({length:11},(_,c)=>prop(39.6+c*1.7,17+r*2.4,40.6+c*1.7,18+r*2.4,.6,'#d0d0d8'))).flat(),
- prop(24,10.6,56,11.8,1.1,'#52525b'),
- ...Array.from({length:5},(_,i)=>prop(25+i*6.6,3.4,27+i*6.6,5.4,.8,'#d9d9df')),
- prop(3.5,9,8,10,1.1,'#52525b'),
+ ...Array.from({length:6},(_,r)=>Array.from({length:11},(_,c)=>prop(39.6+c*1.7,17+r*2.4,40.6+c*1.7,18+r*2.4,.6,'#c9c9d1'))).flat(),
+ prop(24,10.6,56,11.8,1.1,'#27272a'),
+ ...Array.from({length:5},(_,i)=>prop(25+i*6.6,3.4,27+i*6.6,5.4,.8,'#d4d4da')),
+ prop(3.5,9,8,10,1.1,'#27272a'),
  ...[[3,25],[3,36],[9,38],[15,26],[16,36]].map(([x,y])=>feat({type:'Polygon',coordinates:disc(x,y,1.3,12)},{h:3.2,base:1.1,color:'#d4d4da'})),
  ...[[3,25],[3,36],[9,38],[15,26],[16,36]].map(([x,y])=>feat({type:'Polygon',coordinates:disc(x,y,.35,8)},{h:1.2,base:.12,color:'#a1a1aa'})),
- prop(7,30,13,30.8,.5,'#d0d0d8'),prop(24,25,27,28,.8,'#d9d9df'),prop(29,31,32,34,.8,'#d9d9df'),
+ prop(7,30,13,30.8,.5,'#c9c9d1'),prop(24,25,27,28,.8,'#d4d4da'),prop(29,31,32,34,.8,'#d4d4da'),
 ]);
-const noiseRamp:ExpressionSpecification=['case',['<',['get','score'],0],'#e8e8ec',['interpolate',['linear'],['get','score'],0,'#e6dcff',.3,'#b996f5',.55,'#8a45e8',.8,'#5a14b0',1,'#2b0a63']];
+const noiseRamp:ExpressionSpecification=['case',['<',['get','score'],0],'#ececf0',['interpolate',['linear'],['get','score'],0,'#efe9ff',.3,'#dccbfb',.55,'#b996f5',.8,'#8a45e8',1,'#5a14b0']];
 const domeRamp:ExpressionSpecification=['interpolate',['linear'],['get','score'],0,'#e6dcff',.3,'#b996f5',.55,'#8a45e8',.8,'#5a14b0',1,'#2b0a63'];
 const empty={type:'FeatureCollection' as const,features:[]};
 const style:StyleSpecification={
@@ -71,14 +71,16 @@ const style:StyleSpecification={
  glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
  sources:{floors:{type:'geojson',data:floors},labels:{type:'geojson',data:labelData},walls:{type:'geojson',data:walls},slab:{type:'geojson',data:slab},props:{type:'geojson',data:props},domes:{type:'geojson',data:domes},sel:{type:'geojson',data:empty}},
  layers:[
-  {id:'bg',type:'background',paint:{'background-color':'#f7f7f9'}},
-  {id:'slab',type:'fill-extrusion',source:'slab',paint:{'fill-extrusion-color':'#ffffff','fill-extrusion-height':.12}},
+  {id:'bg',type:'background',paint:{'background-color':'#f4f4f6'}},
+  {id:'slab',type:'fill-extrusion',source:'slab',paint:{'fill-extrusion-color':'#fbfbfc','fill-extrusion-height':.12}},
   {id:'zones',type:'fill-extrusion',source:'floors',paint:{'fill-extrusion-color':noiseRamp,'fill-extrusion-height':.2,'fill-extrusion-base':.12}},
-  {id:'sel',type:'fill-extrusion',source:'sel',paint:{'fill-extrusion-color':'#171717','fill-extrusion-height':.45,'fill-extrusion-base':.2}},
+  {id:'zone-edge',type:'line',source:'floors',paint:{'line-color':'#171717','line-width':1,'line-opacity':.55}},
+  {id:'sel',type:'fill-extrusion',source:'sel',paint:{'fill-extrusion-color':'#5a14b0','fill-extrusion-height':.5,'fill-extrusion-base':.2}},
   {id:'props',type:'fill-extrusion',source:'props',paint:{'fill-extrusion-color':['get','color'],'fill-extrusion-height':['get','h'],'fill-extrusion-base':['coalesce',['get','base'],.12],'fill-extrusion-vertical-gradient':true}},
-  {id:'walls',type:'fill-extrusion',source:'walls',paint:{'fill-extrusion-color':'#f7f7fa','fill-extrusion-height':['get','h'],'fill-extrusion-base':.12,'fill-extrusion-vertical-gradient':false}},
-  {id:'domes',type:'fill-extrusion',source:'domes',paint:{'fill-extrusion-color':domeRamp,'fill-extrusion-height':['+',.12,['get','h']],'fill-extrusion-base':.12,'fill-extrusion-opacity':.3}},
-  {id:'zone-labels',type:'symbol',source:'labels',layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':12,'text-allow-overlap':true},paint:{'text-color':'#171717','text-halo-color':'#ffffff','text-halo-width':1.5}},
+  {id:'walls',type:'fill-extrusion',source:'walls',paint:{'fill-extrusion-color':'#1c1c21','fill-extrusion-height':['get','h'],'fill-extrusion-base':.12,'fill-extrusion-vertical-gradient':false}},
+  {id:'domes-edge',type:'line',source:'domes',paint:{'line-color':'#8a45e8','line-width':1,'line-opacity':.55}},
+  {id:'domes',type:'fill-extrusion',source:'domes',paint:{'fill-extrusion-color':domeRamp,'fill-extrusion-height':['+',.12,['get','h']],'fill-extrusion-base':.12,'fill-extrusion-opacity':.28}},
+  {id:'zone-labels',type:'symbol',source:'labels',layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':11,'text-letter-spacing':.1,'text-transform':'uppercase','text-allow-overlap':true},paint:{'text-color':'#171717','text-halo-color':'#ffffff','text-halo-width':1.6}},
  ],
 };
 const home=()=>({center:[0,0] as [number,number],zoom:typeof window!=='undefined'&&window.innerWidth<600?18.85:20.1,pitch:62,bearing:-32});
@@ -94,7 +96,7 @@ export default function Venue(){
    lib.setWorkerUrl('/maplibre-gl-worker.mjs');
    const map=new lib.Map({container:container.current,style,...home(),minZoom:18.2,maxZoom:22,maxPitch:70,attributionControl:false,canvasContextAttributes:{antialias:true}});
    mapRef.current=map;
-   map.getCanvas().setAttribute('aria-label','3D model of a demo event venue. Taller, darker zones are louder. Grey zones have no observations. All levels are simulated.');
+   map.getCanvas().setAttribute('aria-label','3D model of an event venue. Taller, darker zones are louder. Grey zones have no observations. All levels are simulated.');
    map.on('load',()=>{if(!disposed){setReady(true);setFailed(false)}});
    map.on('error',()=>{if(!disposed&&!map.isStyleLoaded())setFailed(true)});
    map.on('click','zones',e=>{const id=e.features?.[0]?.properties?.id as string|undefined;if(id)setSelected(id)});
@@ -141,7 +143,7 @@ export default function Venue(){
    <button className="quiet-icon" title="Zoom in" aria-label="Zoom in" onClick={()=>mapRef.current?.zoomIn()}><Plus size={20}/></button>
    <button className="quiet-icon" title="Zoom out" aria-label="Zoom out" onClick={()=>mapRef.current?.zoomOut()}><Minus size={20}/></button>
   </div>
-  <span className="quiet-demo" title="A fictional venue with simulated sound levels. Taller and darker means louder; grey means no observations.">Demo venue</span>
+  <span className="quiet-note" title="Simulated sound levels. Darker violet and taller domes mean louder; grey means no observations.">Simulated levels</span>
   <div className="quiet-intensity" role="img" aria-label="Quiet to loud: lighter violet and shorter is quieter, darker and taller is louder."><em>Quiet</em><span/><em>Loud</em></div>
  </main>;
 }

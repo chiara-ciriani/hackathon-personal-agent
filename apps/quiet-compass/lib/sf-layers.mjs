@@ -31,7 +31,7 @@ export const REFERENCE_LEVELS=[
  {location:'Bluxome St east of Fifth St (interior alley)',ldn:66,note:'10 min, p.m. peak',date:'2014-05-20'},
  {location:'Clementina St, Fifth to Sixth (interior alley)',ldn:63,note:'41 h',date:'2011-09-27',table:'Table IV.E-3'},
 ].map(r=>({...r,evidence:'reference_measured',source:`Central SoMa Plan Draft EIR (Dec 2016), ${r.table||'Table IV.E-2'}`,sourceUrl:EIR_URL}));
-export const REFERENCE_NOTE='Ldn in dBA from a 2016 environmental review, Central SoMa only (main streets averaged 75, alleys 63-67). Old, area-specific context: not today\'s level and not comparable to the demo scores.';
+export const REFERENCE_NOTE='Ldn in dBA from a 2016 environmental review, Central SoMa only (main streets averaged 75, alleys 63-67). Old, area-specific context: not today\'s level and not comparable to the simulated scores.';
 
 const num=v=>{const n=Number.parseFloat(String(v));return Number.isFinite(n)?n:null};
 const inSf=(lat,lng)=>lat!==null&&lng!==null&&lat>=37.6&&lat<=37.85&&lng>=-122.55&&lng<=-122.3;
