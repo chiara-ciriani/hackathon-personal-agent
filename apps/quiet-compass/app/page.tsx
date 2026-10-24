@@ -1,10 +1,11 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
-import {Check,Compass,Copy,Plug,Users,Lock,Minus,Plus,RotateCcw,X} from 'lucide-react';
+import {Check,Compass,Copy,Layers,Plug,Users,Minus,Plus,RotateCcw,X} from 'lucide-react';
 import type {StyleSpecification} from 'maplibre-gl';
 import 'ol/ol.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './map.css';
+import {REFERENCE_NOTE,loadSfLayers} from '../lib/sf-layers.mjs';
 
 // Illustrative locations and synthetic acoustic scores; no real noise measurements.
 type MapPoint={name:string;lng:number;lat:number;score:number;landmark?:boolean};
@@ -47,38 +48,20 @@ const rand=rng(7);
 const field=points.flatMap(p=>Array.from({length:16},()=>{const a=rand()*6.283,d=.0006+rand()*.0068;return{lng:p.lng+Math.cos(a)*d*1.25,lat:p.lat+Math.sin(a)*d,score:Math.min(1,Math.max(.05,p.score+(rand()-.5)*.4))}})).filter(q=>q.lng<-122.3885&&q.lng>-122.512);
 const toFeatures=(rows:{lng:number;lat:number;score:number}[])=>rows.map(p=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:[p.lng,p.lat]},properties:{score:p.score}}));
 const soundData={type:'FeatureCollection' as const,features:toFeatures([...points,...field])};
-// Real DataSF layers. These are reports, permits, and venues, not measurements, so they stay gray and never use the violet scale.
-// SODA rows are untyped JSON from DataSF.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Row=Record<string,any>;
-type Feature={type:'Feature';geometry:{type:string;coordinates:unknown};properties:{text:string}};
-const sf=(o:Intl.DateTimeFormatOptions)=>(d:Date)=>d.toLocaleString('en-US',{timeZone:'America/Los_Angeles',...o});
-const sfDay=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/Los_Angeles'});
-const when=sf({weekday:'short',hour:'numeric',minute:'2-digit'}),day=sf({month:'short',day:'numeric'});
-const soda=(id:string,q:Record<string,string>)=>`https://data.sf.gov/resource/${id}.json?`+new URLSearchParams(q);
-const point=(lng:unknown,lat:unknown)=>Number(lng)&&Number(lat)?{type:'Point',coordinates:[Number(lng),Number(lat)]}:null;
-function ago(at:string){const m=Math.round((Date.now()-new Date(at+'-07:00').getTime())/60000);return m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'}
-const workTypes:Record<string,string>={Excavation:'Excavation',ExcStreet:'Street excavation',Boring:'Boring',StrtImprov:'Street improvement',SideSewer:'Sewer work',NightNoise:'Night work'};
-const dataLayers=[
- {id:'reports',label:'Noise reports',url:()=>soda('vw6y-z8j6',{$where:"service_name in ('Noise','Noise Report')",$order:'requested_datetime DESC',$limit:'100'}),
-  feature:(x:Row)=>[point(x.long,x.lat),'Noise report · '+(x.service_subtype||'noise').replace(/_/g,' ')+(x.neighborhoods_sffind_boundaries?' · '+x.neighborhoods_sffind_boundaries:'')+' · '+ago(x.requested_datetime)] as const},
- {id:'events',label:'Street events',url:()=>soda('v9cz-kk5i',{$where:`type='Special Event' and end_utc>='${new Date().toISOString().slice(0,19)}'`,$order:'start_utc',$limit:'500'}),
-  feature:(x:Row)=>[x.shape,'Street event · '+x.case_name+' · '+when(new Date(x.start_utc+'Z'))+' – '+when(new Date(x.end_utc+'Z'))] as const},
- {id:'venues',label:'Entertainment venues',url:()=>soda('76g9-59eq',{$where:"permit_status='Active'",$limit:'1000'}),
-  feature:(x:Row)=>[x.point,'Entertainment venue · '+x.dba_name+(/Extended Hours/.test(x.license_type)?' · late hours':'')] as const},
- {id:'work',label:'Street construction',url:()=>soda('x8nh-xzn6',{$where:`permit_type in (${Object.keys(workTypes).map(t=>`'${t}'`)}) and permit_start_date<='${sfDay()}' and permit_end_date>='${sfDay()}'`,$limit:'5000'}),
-  feature:(x:Row)=>[x.location,workTypes[x.permit_type]+' · '+x.streetname+' · until '+day(new Date(x.permit_end_date))] as const},
-];
-async function loadLayer(l:typeof dataLayers[number]){
- const r=await fetch(l.url());if(!r.ok)throw new Error(l.id+' unavailable');
- const rows=await r.json() as Row[];
- return {type:'FeatureCollection' as const,features:rows.flatMap(x=>{const [geometry,text]=l.feature(x);return geometry?[{type:'Feature',geometry,properties:{text}} as Feature]:[]})};
+// Real SF 311 noise complaints (DataSF). These are reports, not measurements, so they get their own neutral style.
+const reportsUrl="https://data.sf.gov/resource/vw6y-z8j6.json?$where=service_name in ('Noise','Noise Report')&$order=requested_datetime DESC&$limit=100";
+type NoiseReport={service_request_id:string;requested_datetime:string;service_subtype?:string;neighborhoods_sffind_boundaries?:string;lat?:string;long?:string};
+async function loadReports(){
+ const r=await fetch(encodeURI(reportsUrl));if(!r.ok)throw new Error('311 unavailable');
+ const rows=await r.json() as NoiseReport[];
+ return {type:'FeatureCollection' as const,features:rows.filter(x=>Number(x.lat)&&Number(x.long)).map(x=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:[Number(x.long),Number(x.lat)]},properties:{kind:(x.service_subtype||'noise').replace(/_/g,' '),place:x.neighborhoods_sffind_boundaries||'',at:x.requested_datetime}}))};
 }
+function ago(at:string){const m=Math.round((Date.now()-new Date(at+'-07:00').getTime())/60000);return m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'}
 const noiseRamp:import('maplibre-gl').ExpressionSpecification=['interpolate',['linear'],['get','score'],0,'#e6dcff',.3,'#b996f5',.55,'#8a45e8',.8,'#5a14b0',1,'#2b0a63'];
 const mapStyle:StyleSpecification={
  version:8,
  glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
- sources:{city:{type:'vector',url:'https://tiles.openfreemap.org/planet'},focus:{type:'geojson',data:{type:'FeatureCollection',features:[]}},sound:{type:'geojson',data:soundData},...Object.fromEntries(dataLayers.map(l=>[l.id,{type:'geojson' as const,data:{type:'FeatureCollection' as const,features:[]}}]))},
+ sources:{city:{type:'vector',url:'https://tiles.openfreemap.org/planet'},focus:{type:'geojson',data:{type:'FeatureCollection',features:[]}},sound:{type:'geojson',data:soundData},reports:{type:'geojson',data:{type:'FeatureCollection',features:[]}},measured:{type:'geojson',data:{type:'FeatureCollection',features:[]}},proxies:{type:'geojson',data:{type:'FeatureCollection',features:[]}},candidates:{type:'geojson',data:{type:'FeatureCollection',features:[]}}},
  light:{anchor:'viewport',color:'#ffffff',intensity:.4,position:[1.5,205,40]},
  layers:[
   {id:'background',type:'background',paint:{'background-color':'#ffffff'}},
@@ -93,13 +76,22 @@ const mapStyle:StyleSpecification={
   {id:'sound-fields',type:'circle',source:'sound',paint:{'circle-color':noiseRamp,'circle-radius':['interpolate',['linear'],['zoom'],11,14,13,36,16,100,19,190],'circle-blur':1,'circle-opacity':.5,'circle-pitch-alignment':'map'}},
   {id:'place-labels',type:'symbol',source:'city','source-layer':'place',minzoom:11,filter:['in',['get','class'],['literal',['suburb','neighbourhood','quarter']]],layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':['interpolate',['linear'],['zoom'],11,10,15,13],'text-letter-spacing':.08,'text-transform':'uppercase'},paint:{'text-color':'#6b6b73','text-halo-color':'#ffffff','text-halo-width':1.5}},
   {id:'focus-ring',type:'circle',source:'focus',paint:{'circle-radius':16,'circle-color':'#ffffff00','circle-stroke-color':'#171717','circle-stroke-width':2,'circle-pitch-alignment':'viewport'}},
-  {id:'work',type:'circle',source:'work',minzoom:14,layout:{visibility:'none'},paint:{'circle-color':'#a49ead','circle-radius':2,'circle-stroke-color':'#fffffff0','circle-stroke-width':2}},
-  {id:'events',type:'line',source:'events',layout:{'line-cap':'round'},paint:{'line-color':'#88818e','line-width':3,'line-dasharray':[1,1.5]}},
-  {id:'venues',type:'circle',source:'venues',layout:{visibility:'none'},paint:{'circle-color':'#ffffff','circle-radius':3,'circle-stroke-color':'#88818e','circle-stroke-width':1}},
-  {id:'reports',type:'circle',source:'reports',paint:{'circle-color':'#625b6a','circle-radius':['interpolate',['linear'],['zoom'],12,1.6,17,3.6],'circle-stroke-color':'#fffffff0','circle-stroke-width':1.5}},
+  // Real layers stay out of the violet scale: ink for measured, grays for the rest. Violet is reserved for the synthetic sound score.
+  {id:'proxy-context',type:'circle',source:'proxies',minzoom:13,layout:{visibility:'none'},paint:{'circle-color':'#a1a1aa','circle-radius':['interpolate',['linear'],['zoom'],13,1.8,17,4],'circle-stroke-color':'#ffffff','circle-stroke-width':1,'circle-opacity':.85}},
+  {id:'candidate-places',type:'circle',source:'candidates',minzoom:12,paint:{'circle-color':'#ffffff','circle-radius':['interpolate',['linear'],['zoom'],12,3,17,6],'circle-stroke-color':'#171717','circle-stroke-width':1.5}},
+  {id:'noise-reports',type:'circle',source:'reports',minzoom:13,paint:{'circle-color':'#52525b','circle-radius':['interpolate',['linear'],['zoom'],13,1.6,17,3.4],'circle-opacity':.6}},
+  {id:'measured-sfo',type:'circle',source:'measured',paint:{'circle-color':'#171717','circle-radius':['interpolate',['linear'],['zoom'],11,5,16,9],'circle-stroke-color':'#ffffff','circle-stroke-width':2}},
  ]
 };
-// Anonymous by design: a contribution carries only a coarse zone, a level and a rounded time. No agent id, no audio, no route.
+// A contribution carries only a coarse zone, a level and a rounded time. No agent id, no audio, no route.
+type LayerKey='demo'|'measured'|'proxies'|'candidates'|'reports';
+const layerRows:{key:LayerKey;label:string;tag:string;swatch:string;mapIds:string[];hint:string}[]=[
+ {key:'measured',label:'SFO noise monitors',tag:'measured',swatch:'measured',mapIds:['measured-sfo'],hint:'Daily CNEL in dB at 6 monitors inside SF. Not live, not at your spot.'},
+ {key:'proxies',label:'Permits and closures',tag:'proxy',swatch:'proxy',mapIds:['proxy-context'],hint:'Entertainment permits, night work today or tomorrow, street closures now. Possible noise, not levels.'},
+ {key:'candidates',label:'POPOS and libraries',tag:'unmeasured candidate',swatch:'candidate',mapIds:['candidate-places'],hint:'Places from city inventories that might be calm. Nobody has measured them.'},
+ {key:'reports',label:'311 noise complaints',tag:'complaints',swatch:'report',mapIds:['noise-reports'],hint:'Recent reports. A complaint is not a measurement.'},
+ {key:'demo',label:'Violet demo places',tag:'synthetic',swatch:'demo',mapIds:['sound-fields'],hint:'Invented scores for illustration. Not measurements.'},
+];
 type Entry={id:number;t:number;zone:string;level:Level};
 const bucket=(t:number)=>{const m=Math.max(0,Math.round((Date.now()-t)/300000))*5;return m<5?'just now':m<60?m+' min ago':Math.round(m/60)+' h ago'};
 const makeEntry=(i:number,ago=0):Entry=>({id:Date.now()+Math.random(),t:Date.now()-ago*60000,zone:points[i].name,level:levelOf(points[i].score)});
@@ -107,13 +99,13 @@ type Level='quiet'|'moderate'|'loud';
 const levelOf=(score:number):Level=>score>.65?'loud':score>.35?'moderate':'quiet';
 const filters:{id:Level|'all';label:string}[]=[{id:'all',label:'All'},{id:'quiet',label:'Quiet'},{id:'moderate',label:'Moderate'},{id:'loud',label:'Loud'}];
 const home={center:[-122.44,37.768] as [number,number],zoom:12.6,pitch:48,bearing:-12};
-const contract={name:'quiet-compass',status:'proposal',connected:false,data:'synthetic-demo',tools:[{name:'query_sound_map',input:{bounds:'[west,south,east,north]',max_age_minutes:'number'}},{name:'find_suitable_places',input:{area:'coarse zone',preference:'user-selected acoustic preference'}},{name:'submit_observation',input:{zone_id:'coarse zone',time_bucket:'rounded time',acoustic_summary:'aggregated calibrated indicators'},requires:'explicit contribution consent'}],excluded:['raw_audio','personal_routes','health_data']};
+const contract={name:'quiet-compass',status:'proposal',connected:false,data:'synthetic-demo + real DataSF layers (labelled measured / proxy / unmeasured candidate)',tools:[{name:'quiet_sf_layers',input:{lat:'number',lon:'number',radius_m:'50-2000',include:'quiet_candidates | entertainment_permits | night_noise_permits | street_closures | sfo_cnel',include_references:'boolean'},returns:'points with evidence = measured | proxy | unmeasured_candidate (source seed), optional reference_measured table'},{name:'query_sound_map',input:{bounds:'[west,south,east,north]',max_age_minutes:'number'}},{name:'find_suitable_places',input:{area:'coarse zone',preference:'user-selected acoustic preference'}},{name:'submit_observation',input:{zone_id:'coarse zone',time_bucket:'rounded time',acoustic_summary:'aggregated calibrated indicators'},requires:'explicit contribution consent'}],excluded:['raw_audio','personal_routes','health_data']};
 type ViewOptions={center?:[number,number];zoom?:number;pitch?:number;bearing?:number;duration?:number};
 type MapControls={zoomIn:()=>unknown;zoomOut:()=>unknown;getZoom:()=>number;flyTo:(o:ViewOptions)=>unknown;easeTo:(o:ViewOptions)=>unknown;remove:()=>unknown};
 export default function CityMap(){
- const container=useRef<HTMLDivElement>(null),map=useRef<MapControls|null>(null),markers=useRef<{marker:{remove:()=>unknown};button:HTMLButtonElement}[]>([]),focusRef=useRef<(i:number|null)=>void>(()=>{}),gl=useRef<import('maplibre-gl').Map|null>(null),filterRef=useRef<(f:Level|'all')=>void>(()=>{});
+ const container=useRef<HTMLDivElement>(null),map=useRef<MapControls|null>(null),markers=useRef<{marker:{remove:()=>unknown};button:HTMLButtonElement}[]>([]),focusRef=useRef<(i:number|null)=>void>(()=>{}),glMap=useRef<import('maplibre-gl').Map|null>(null),filterRef=useRef<(f:Level|'all')=>void>(()=>{});
  const mcpButton=useRef<HTMLButtonElement>(null),closeButton=useRef<HTMLButtonElement>(null),dialog=useRef<HTMLDivElement>(null);
- const [ready,setReady]=useState(false),[failed,setFailed]=useState(false),[mcp,setMcp]=useState(false),[hidden,setHidden]=useState<string[]>(['venues','work']),[hasGl,setHasGl]=useState(false),[copied,setCopied]=useState(false),[copyFallback,setCopyFallback]=useState(false),[selected,setSelected]=useState<number|null>(null),[hist,setHist]=useState(false),[entries,setEntries]=useState<Entry[]>(()=>[3,9,17,27,41,64].map((a,k)=>makeEntry((k*5+3)%points.length,a))),[shared,setShared]=useState<number[]>([]),[filter,setFilter]=useState<Level|'all'>('all');
+ const [ready,setReady]=useState(false),[failed,setFailed]=useState(false),[mcp,setMcp]=useState(false),[shown,setShown]=useState<Record<LayerKey,boolean>>({demo:true,measured:true,proxies:false,candidates:true,reports:true}),[failedLayers,setFailedLayers]=useState<string[]>([]),[layersOpen,setLayersOpen]=useState(false),[copied,setCopied]=useState(false),[copyFallback,setCopyFallback]=useState(false),[selected,setSelected]=useState<number|null>(null),[hist,setHist]=useState(false),[entries,setEntries]=useState<Entry[]>(()=>[3,9,17,27,41,64].map((a,k)=>makeEntry((k*5+3)%points.length,a))),[shared,setShared]=useState<number[]>([]),[filter,setFilter]=useState<Level|'all'>('all');
  const addEntry=(i:number)=>setEntries(e=>[makeEntry(i),...e].slice(0,40));
  useEffect(()=>{
   let disposed=false,index=0,interval:ReturnType<typeof setInterval>;
@@ -131,22 +123,29 @@ export default function CityMap(){
    if(disposed||!container.current)return;
    lib.setWorkerUrl('/maplibre-gl-worker.mjs');
    const instance=new lib.Map({container:container.current,style:mapStyle,...home,minZoom:10,maxZoom:19,attributionControl:false,canvasContextAttributes:{antialias:true}});
-   map.current=instance;gl.current=instance;
+   map.current=instance;glMap.current=instance;
    instance.addControl(new lib.AttributionControl({compact:true}),'bottom-right');
    instance.getCanvas().setAttribute('aria-label','Map of San Francisco. Drag to explore. Darker violet means higher simulated sound levels. Ripples represent fictional contributions. Gray marks are live DataSF layers: 311 noise reports, street events, entertainment venues and street construction.');
    instance.on('load',()=>{
-    if(disposed)return;setReady(true);setHasGl(true);setFailed(false);
-    dataLayers.forEach(l=>loadLayer(l).then(data=>{
+    if(disposed)return;setReady(true);setFailed(false);
+    void loadSfLayers().then(r=>{if(disposed)return;const set=(id:string,data:unknown)=>(instance.getSource(id) as import('maplibre-gl').GeoJSONSource|undefined)?.setData(data as Parameters<import('maplibre-gl').GeoJSONSource['setData']>[0]);set('candidates',r.candidates);set('proxies',r.proxies);set('measured',r.measured);setFailedLayers(r.failed)}).catch(()=>{if(!disposed)setFailedLayers(['measured','proxies','candidates'])});
+    loadReports().then(data=>{
      if(disposed)return;
-     (instance.getSource(l.id) as import('maplibre-gl').GeoJSONSource|undefined)?.setData(data);
+     (instance.getSource('reports') as import('maplibre-gl').GeoJSONSource|undefined)?.setData(data);
      // Real complaints raise the field around them, so live data shapes what you see.
-     if(l.id==='reports')(instance.getSource('sound') as import('maplibre-gl').GeoJSONSource|undefined)?.setData({type:'FeatureCollection',features:[...soundData.features,...data.features.filter(f=>f.geometry.type==='Point').map(f=>({...f,properties:{score:.85}}))]});
-    }).catch(()=>{}));
+     (instance.getSource('sound') as import('maplibre-gl').GeoJSONSource|undefined)?.setData({type:'FeatureCollection',features:[...soundData.features,...data.features.map(f=>({...f,properties:{score:.85}}))]});
+    }).catch(()=>{});
    });
-   const ids=dataLayers.map(l=>l.id);
-   instance.on('click',ids,e=>{const f=e.features?.[0];if(f)new lib.Popup({closeButton:false,className:'report-popup'}).setLngLat(e.lngLat).setText(f.properties.text).addTo(instance)});
-   instance.on('mouseenter',ids,()=>{instance.getCanvas().style.cursor='pointer'});
-   instance.on('mouseleave',ids,()=>{instance.getCanvas().style.cursor=''});
+   const ids=['measured-sfo','proxy-context','candidate-places','noise-reports'];
+   instance.on('click','noise-reports',e=>{const f=e.features?.[0];if(!f)return;const p=f.properties as {kind:string;place:string;at:string};new lib.Popup({closeButton:false,className:'report-popup'}).setLngLat(e.lngLat).setText('311 noise report · '+p.kind+(p.place?' · '+p.place:'')+' · '+ago(p.at)).addTo(instance)});
+   for(const id of ['measured-sfo','proxy-context','candidate-places']){
+    instance.on('click',id,e=>{const f=e.features?.[0];if(!f)return;const p=f.properties as {evidence:string;kind:string;label:string;detail?:string;cnel?:number;observedOn?:string;caveat:string};
+     const head=p.evidence==='measured'?'MEASURED · '+p.kind+' · CNEL '+p.cnel+' dB ('+p.observedOn+')':p.evidence==='proxy'?'PROXY · '+p.kind:'UNMEASURED CANDIDATE · '+p.kind;
+     new lib.Popup({closeButton:false,className:'report-popup',maxWidth:'280px'}).setLngLat(e.lngLat).setText(head+' · '+p.label+(p.detail?' · '+p.detail:'')+' · '+p.caveat).addTo(instance)});
+    instance.on('mouseenter',id,()=>{instance.getCanvas().style.cursor='pointer'});
+    instance.on('mouseleave',id,()=>{instance.getCanvas().style.cursor=''});
+   }
+   for(const id of ids){instance.on('mouseenter',id,()=>{instance.getCanvas().style.cursor='pointer'});instance.on('mouseleave',id,()=>{instance.getCanvas().style.cursor=''})}
    instance.on('error',()=>{if(!disposed&&!instance.isStyleLoaded())setFailed(true)});
    focusRef.current=i=>(instance.getSource('focus') as import('maplibre-gl').GeoJSONSource|undefined)?.setData({type:'FeatureCollection',features:i===null?[]:toFeatures([points[i]])});
    filterRef.current=f=>{if(instance.getLayer('sound-fields'))instance.setFilter('sound-fields',f==='all'?null:f==='quiet'?['<=',['get','score'],.35]:f==='moderate'?['all',['>',['get','score'],.35],['<=',['get','score'],.65]]:['>',['get','score'],.65])};
@@ -168,6 +167,7 @@ export default function CityMap(){
   return()=>{disposed=true;clearInterval(interval);timeouts.forEach(clearTimeout);markers.current.forEach(m=>m.marker.remove());markers.current=[];map.current?.remove();map.current=null};
  },[]);
  useEffect(()=>{if(!hist)return;const key=(e:KeyboardEvent)=>{if(e.key==='Escape')setHist(false)};document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key)},[hist]);
+ useEffect(()=>{const gl=glMap.current;for(const row of layerRows){for(const id of row.mapIds){if(gl?.getLayer(id))gl.setLayoutProperty(id,'visibility',shown[row.key]?'visible':'none')}}},[shown,ready]);
  useEffect(()=>{focusRef.current(selected)},[selected,ready]);
  useEffect(()=>{filterRef.current(filter)},[filter,ready]);
  useEffect(()=>{if(selected===null||mcp)return;const key=(e:KeyboardEvent)=>{if(e.key==='Escape')setSelected(null)};document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key)},[selected,mcp]);
@@ -178,7 +178,6 @@ export default function CityMap(){
    if(e.key==='Tab'){const buttons=dialog.current?.querySelectorAll<HTMLButtonElement>('button');if(!buttons?.length)return;const first=buttons[0],last=buttons[buttons.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}
   };document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key);
  },[mcp]);
- function toggleLayer(id:string){const off=!hidden.includes(id);setHidden(off?[...hidden,id]:hidden.filter(h=>h!==id));gl.current?.setLayoutProperty(id,'visibility',off?'none':'visible')}
  function reset(){map.current?.flyTo({...home,duration:1000});setSelected(null);setFilter('all')}
  async function copy(){try{await navigator.clipboard.writeText(JSON.stringify(contract,null,2));setCopied(true)}catch{setCopied(false);setCopyFallback(true)}}
  return <main className="quiet-map-only">
@@ -195,21 +194,26 @@ export default function CityMap(){
    <p>{points[selected].landmark?'Landmark':'Neighborhood or park'} · simulated sound level</p>
    <div className="quiet-card-bar" role="img" aria-label={'Simulated level '+Math.round(points[selected].score*100)+' out of 100'}><span style={{width:Math.round(points[selected].score*100)+'%'}}/></div>
    <small>{Math.round(points[selected].score*100)} / 100</small>
-   <button className="quiet-share" disabled={shared.includes(selected)} onClick={()=>{setShared(a=>[...a,selected]);addEntry(selected)}}>{shared.includes(selected)?<><Check size={14}/>Sent anonymously</>:'Contribute an observation'}</button>
+   <button className="quiet-share" disabled={shared.includes(selected)} onClick={()=>{setShared(a=>[...a,selected]);addEntry(selected)}}>{shared.includes(selected)?<><Check size={14}/>Sent</>:'Contribute an observation'}</button>
   </aside>}
   <button className="quiet-history-btn quiet-icon" aria-label="Open agent contributions" title="Agent contributions" aria-expanded={hist} onClick={()=>setHist(v=>!v)}><Users size={18} strokeWidth={1.5}/></button>
-  {hist&&<aside className="quiet-history" aria-label="Anonymous agent contributions">
-   <div className="quiet-history-head"><strong>Contributions</strong><span><Lock size={11}/>Anonymous</span><button className="quiet-icon" aria-label="Close contributions" onClick={()=>setHist(false)}><X size={16}/></button></div>
-   <p className="quiet-history-note">Agents report new noise so the map keeps improving. You see where and how loud, never who. Gray marks on the map are live DataSF data.</p>
-   <ul>{entries.map((e,i)=><li key={e.id} style={{animationDelay:Math.min(i,6)*40+'ms'}}><code>Anonymous agent</code><span>{e.zone}<b className={'quiet-dot '+e.level}/>{e.level} noise</span><time>{bucket(e.t)}</time></li>)}</ul>
+  {hist&&<aside className="quiet-history" aria-label="Agent contributions">
+   <div className="quiet-history-head"><strong>Contributions</strong><button className="quiet-icon" aria-label="Close contributions" onClick={()=>setHist(false)}><X size={16}/></button></div>
+   <p className="quiet-history-note">Agents report new noise so the map keeps improving. Each entry shows the area, how loud, and when. Gray marks on the map are live DataSF data.</p>
+   <ul>{entries.map((e,i)=><li key={e.id} style={{animationDelay:Math.min(i,6)*40+'ms'}}><code>Agent</code><span>{e.zone}<b className={'quiet-dot '+e.level}/>{e.level} noise</span><time>{bucket(e.t)}</time></li>)}</ul>
   </aside>}
   <div className="quiet-map-controls">
    <button className="quiet-icon" title="Zoom in" aria-label="Zoom in" onClick={()=>map.current?.zoomIn()}><Plus size={20}/></button>
    <button className="quiet-icon" title="Zoom out" aria-label="Zoom out" onClick={()=>map.current?.zoomOut()}><Minus size={20}/></button>
   </div>
-  {ready&&hasGl&&<div className="quiet-layers" role="group" aria-label="Live DataSF layers">{dataLayers.map(l=><button key={l.id} aria-pressed={!hidden.includes(l.id)} onClick={()=>toggleLayer(l.id)}><i className={'swatch-'+l.id}/>{l.label}</button>)}</div>}
-  <span className="quiet-demo" title="Simulated contributions and noise. No agents are connected and nothing is measured.">DEMO</span>
-  <div className="quiet-intensity" role="img" aria-label="Simulated sound intensity: lighter violet means lower levels; darker violet means higher levels. White has no observations." title="Simulated sound intensity · darker violet = higher levels · white = no observations"><em>Quiet</em><span/><em>Loud</em></div>
+  <section className="quiet-layers" aria-label="Map layers">
+   <button className="quiet-layers-head" aria-expanded={layersOpen} onClick={()=>setLayersOpen(!layersOpen)}><Layers size={14}/>Layers</button>
+   {layersOpen&&<ul>{layerRows.map(r=><li key={r.key}><label title={r.hint}><input type="checkbox" checked={shown[r.key]} onChange={()=>setShown({...shown,[r.key]:!shown[r.key]})}/><i className={'quiet-swatch swatch-'+r.swatch} aria-hidden="true"/><span>{r.label}</span><em>{r.tag}</em></label></li>)}</ul>}
+   {layersOpen&&<p className="quiet-layers-note">{REFERENCE_NOTE}</p>}
+   {layersOpen&&failedLayers.length>0&&<p className="quiet-layers-warn" role="status">Could not load: {failedLayers.join(', ')}. Missing data is unknown, not quiet.</p>}
+  </section>
+  <span className="quiet-demo" title="Violet is synthetic. No agents are connected. Black, gray and ringed marks are real DataSF layers, labelled by what they are.">DEMO · VIOLET IS SYNTHETIC</span>
+  <div className="quiet-intensity" role="img" aria-label="Simulated sound intensity: lighter violet means lower levels; darker violet means higher levels. White has no observations." title="Simulated sound intensity · darker violet = higher levels · white = no observations"><em>Quiet</em><span/><em>Loud</em><small>synthetic</small></div>
   {mcp&&<div className="quiet-mcp-overlay" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><div className="quiet-mcp-panel" ref={dialog} role="dialog" aria-modal="true" aria-labelledby="mcp-title" onClick={e=>e.stopPropagation()}>
    <div className="quiet-mcp-heading"><strong id="mcp-title">MCP</strong><button ref={closeButton} className="quiet-icon" aria-label="Close MCP" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><X size={18}/></button></div>
    <><div className="quiet-mcp-state"><span/>Proposed contract · not connected</div>

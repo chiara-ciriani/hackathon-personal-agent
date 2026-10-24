@@ -11,7 +11,7 @@ It was built for an SF hackathon on personal agents for everyday life. The first
 3. **The agent decides.** The Claude app, connected through a custom MCP connector, reads your calendar and the sound memory, suggests a place, and asks the phone to guide you back along the path you walked.
 
 ```
-apps/quiet-compass/  Next.js web app: SF noise map (live 311 reports) and Oura integration
+apps/quiet-compass/  Next.js web app: SF noise map (live 311 reports plus labelled DataSF layers; violet demo scores are synthetic) and Oura integration
 ios/                 SwiftUI app (QuietCompass) + QuietCore Swift package (DSP, route logic, contracts)
 server/              FastAPI ingest API + MCP server (FastMCP) + scoring + optional SF 311 city layer
 contracts/           JSON Schema shared by phone and server, plus the HTTP API and MCP tool reference
