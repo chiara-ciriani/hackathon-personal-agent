@@ -1,8 +1,24 @@
 # Background capture and noise alerts
 
-**Status:** plan, not implemented. Waiting on pending iOS app changes before any code lands.
+**Status:** in progress. Part of the code is written on Ana's machine and not pushed yet (see [Progress](#progress)).
 **Owner:** Ana Undurraga. Check with her before starting any of this, so two people don't build it twice.
 **Date:** 2026-10-24
+
+## Progress
+
+Built on top of Martin's app (`6b5d4c8`, "Connect phone capture…"), which already wires capture → 5 s observations → upload while the app is open.
+
+| Piece | File | State |
+| --- | --- | --- |
+| Alert logic: baseline, 30 s sustain, peaks, re-arm, 10 min cooldown, snooze, gap reset | `QuietCore/Audio/NoiseAlertMonitor.swift` | Written. 9 unit tests in `NoiseAlertTests.swift` pass, plus the existing suite (65 tests total) |
+| Restart capture after calls or Siri; pause the classifier in the background | `QuietCompass/Audio/MonoFeatureSource.swift` | Written, not built for device yet |
+| Local notifications, also shown while the app is open, plus a haptic | `QuietCompass/App/NoiseNotifier.swift` | Written, not built for device yet |
+| Keep the session alive in the background: end ARKit path tracking, keep the mic | `QuietCompassApp.swift` (today it calls `model.stop()` on background), `CompassModel.swift`, `PathTracker` failure handling | To do |
+| Feed observations to the monitor; settings (alerts on/off, sensitivity, "This feels comfortable", snooze) | `CompassModel.swift`, `CompassView` | To do |
+| `UIBackgroundModes: [audio]`, updated mic usage text | `ios/project.yml` | To do |
+| Device build and test on an iPhone | | To do |
+
+Martin is actively editing `CompassModel.swift` and `QuietCompassApp.swift`. Coordinate with him before the wiring step lands.
 
 ## Goal
 
