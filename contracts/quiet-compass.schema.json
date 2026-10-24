@@ -239,8 +239,8 @@
       "required": ["layer", "kind", "label", "lat", "lon", "evidence", "caveat", "dataset"],
       "additionalProperties": false,
       "properties": {
-        "layer": { "type": "string", "enum": ["quiet_candidates", "entertainment_permits", "night_noise_permits", "street_closures", "sfo_cnel", "sfo_events", "cad_noise_calls", "noisecapture"] },
-        "kind": { "type": "string", "examples": ["popos", "library", "park", "entertainment_permit", "sfo_monitor", "sfo_exceedance_events", "noise_nuisance_calls", "noisecapture_cell"] },
+        "layer": { "type": "string", "enum": ["quiet_candidates", "entertainment_permits", "night_noise_permits", "street_closures", "street_work_permits", "sfo_cnel", "sfo_events", "cad_noise_calls", "noisecapture"] },
+        "kind": { "type": "string", "examples": ["popos", "library", "park", "entertainment_permit", "street_work_permit", "sfo_monitor", "sfo_exceedance_events", "noise_nuisance_calls", "noisecapture_cell"] },
         "label": { "type": "string" },
         "lat": { "type": "number" },
         "lon": { "type": "number" },
