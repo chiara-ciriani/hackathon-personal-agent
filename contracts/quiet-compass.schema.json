@@ -231,7 +231,7 @@
     "EvidenceLabel": {
       "type": "string",
       "enum": ["measured", "measured_crowdsourced", "reference_measured", "proxy", "unmeasured_candidate"],
-      "description": "What a city-layer record is. measured = sensor measurement (SFO monitors only: CNEL and aircraft exceedance events); measured_crowdsourced = uncalibrated phone measurements from NoiseCapture volunteers (ODbL), aggregated into ~100 m cells; reference_measured = published measurement with a citation; proxy = permit, closure or complaint/dispatch count that hints at possible noise; unmeasured_candidate = place from a city inventory that nobody has measured. Synthetic demo scores exist only in the web demo and are never served."
+      "description": "What a city-layer record is. measured = sensor measurement (SFO monitors only: CNEL and aircraft exceedance events); measured_crowdsourced = uncalibrated phone measurements from NoiseCapture volunteers (ODbL), aggregated into ~100 m cells; reference_measured = published measurement with a citation; proxy = permit, closure or complaint/dispatch count that hints at possible noise; unmeasured_candidate = place from a city inventory that nobody has measured. The web map shows no synthetic scores; its violet field is a density of real reports (a count, not dB) and is never served as a measurement. Only the separate /venue page is a labelled demo."
     },
     "LayerPoint": {
       "type": "object",

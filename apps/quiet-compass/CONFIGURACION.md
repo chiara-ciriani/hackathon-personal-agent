@@ -86,3 +86,7 @@ La portada ahora ocupa toda la pantalla con cartografía vectorial real de San F
 Se aplicaron las superficies blancas, bordes neutros de 1 px, controles pequeños y sombras leves del documento de diseño Vercel aportado por el usuario. No se incorporaron logos ni assets de esa marca.
 
 MapLibre renderiza el mapa y las estructuras 3D en navegadores con WebGL2. OpenLayers ofrece un mapa vectorial 2D con el mismo proveedor OpenFreeMap si WebGL2 no está disponible; el control 3D se oculta en ese caso. Se mantienen atribuciones a OpenFreeMap, OpenMapTiles y OpenStreetMap. Los mapas requieren red; no se solicita geolocalización ni micrófono. No se envían datos Oura al proveedor cartográfico.
+
+## Mapa de San Francisco — solo datos reales (actualización)
+
+La portada `/` ya no muestra valores simulados, puntos escritos a mano ni contribuciones ficticias. El violeta es la densidad de reportes reales (quejas de ruido 311 + llamadas de policía NOISE NUISANCE, últimos 30 días, por área de ~280 m, en las ubicaciones publicadas): es un conteo de reportes, no dB ni volumen medido. Sin color = sin reportes = desconocido, no silencioso. El filtro Fewer/Mid/Most divide las áreas con reportes en tercios por conteo. Si DataSF no responde, el mapa lo dice y no muestra nada inventado. Las notas anteriores sobre valores ficticios aplican solo a `/venue`, que conserva su etiqueta "Demo venue".
