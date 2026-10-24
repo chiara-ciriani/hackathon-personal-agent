@@ -1,3 +1,4 @@
+import type {PointFeature} from './map-types';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
 import Overlay from 'ol/Overlay.js';
@@ -10,10 +11,9 @@ import Stroke from 'ol/style/Stroke.js';
 import Attribution from 'ol/control/Attribution.js';
 import {fromLonLat,toLonLat} from 'ol/proj.js';
 
-type Point={name:string;lng:number;lat:number;score:number;landmark?:boolean};
 type Options={center?:[number,number];zoom?:number;duration?:number};
-export async function createCanvasMap(container:HTMLDivElement,points:Point[],isDisposed:()=>boolean,onReady:()=>void){
- const response=await fetch('https://tiles.openfreemap.org/planet');
+export async function createCanvasMap(container:HTMLDivElement,isDisposed:()=>boolean,onReady:()=>void,onSelect:(p:Record<string,unknown>)=>void){
+ const response=await fetch('https://tiles.openfreemap.org/planet',{signal:AbortSignal.timeout(12000)});
  if(!response.ok)throw new Error('Map source unavailable');
  const json=await response.json() as {tiles:string[];maxzoom?:number};
  if(isDisposed())return null;
@@ -26,19 +26,24 @@ export async function createCanvasMap(container:HTMLDivElement,points:Point[],is
   transportation:new Style({stroke:new Stroke({color:'#dfdfe3',width:.8}),zIndex:3}),
  };
  const source=new VectorTileSource({format:new MVT(),url:json.tiles[0],maxZoom:json.maxzoom||14,attributions:'<a href="https://openfreemap.org/" target="_blank" rel="noreferrer">OpenFreeMap</a> · © <a href="https://openmaptiles.org/" target="_blank" rel="noreferrer">OpenMapTiles</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>'});
- const layer=new VectorTileLayer({source,background:'#fff',style:(feature)=>styles[feature.get('layer')]});
+ const layer=new VectorTileLayer({source,background:'#e9e9ec',style:(feature)=>styles[feature.get('layer')]});
  const view=new View({center:fromLonLat([-122.447,37.776]),zoom:13.75,minZoom:11,maxZoom:20});
  const instance=new Map({target:container,view,layers:[layer],controls:[new Attribution({collapsible:true,collapsed:true})]});
  instance.once('rendercomplete',onReady);
  const move=(o:Options)=>view.animate({center:fromLonLat(o.center||toLonLat(view.getCenter()!)),zoom:o.zoom===undefined?view.getZoom():o.zoom+1,duration:o.duration||700});
- const entries=points.map((p,i)=>{
-  const button=document.createElement('button');
-  button.className='sound-point'+(p.landmark?' landmark-point':'');button.type='button';button.setAttribute('aria-label',p.name+' · simulated observation');button.setAttribute('aria-pressed','false');button.title=p.name;
-  button.style.setProperty('--point-color',p.score>.75?'#6623bb':p.score>.5?'#9250d3':p.score>.3?'#b07be1':'#c5a2ed');
-  button.innerHTML='<span class="fallback-glow"></span><span class="point-ripple"></span><span class="point-core"></span><span class="point-label">'+p.name+'</span>';
-  const overlay=new Overlay({element:button,position:fromLonLat([p.lng,p.lat]),positioning:'center-center',stopEvent:true});instance.addOverlay(overlay);
-  button.addEventListener('click',()=>{entries.forEach((m,n)=>{m.button.classList.toggle('is-selected',i===n);m.button.setAttribute('aria-pressed',String(i===n))});move({center:[p.lng,p.lat],zoom:Math.max(view.getZoom()!-1,15.4)})});
-  return{button,marker:{remove:()=>instance.removeOverlay(overlay)}};
- });
- return{markers:entries,controls:{zoomIn:()=>view.animate({zoom:Math.min(20,view.getZoom()!+1),duration:250}),zoomOut:()=>view.animate({zoom:Math.max(11,view.getZoom()!-1),duration:250}),getZoom:()=>view.getZoom()!-1,flyTo:move,easeTo:move,remove:()=>instance.dispose()}};
+ let overlays:Overlay[]=[];
+ const setFeatures=(features:PointFeature[])=>{
+  overlays.forEach(overlay=>instance.removeOverlay(overlay));
+  overlays=features.map(f=>{
+   const p=f.properties,hasMeasurement=['measured','measured_crowdsourced','measured_device'].includes(String(p.evidence));
+   const button=document.createElement('button');button.className='sound-point';button.type='button';
+   button.setAttribute('aria-label',String(p.label||'Location')+(hasMeasurement?' · dated measurement':' · no measurement'));
+   button.title=button.getAttribute('aria-label')||'';
+   button.style.setProperty('--point-color',hasMeasurement?'#6720c4':'#a1a1aa');
+   const core=document.createElement('span');core.className='point-core';button.appendChild(core);
+   const overlay=new Overlay({element:button,position:fromLonLat(f.geometry.coordinates),positioning:'center-center',stopEvent:true});instance.addOverlay(overlay);
+   button.addEventListener('click',()=>onSelect(p));return overlay;
+  });
+ };
+ return{setFeatures,controls:{zoomIn:()=>view.animate({zoom:Math.min(20,view.getZoom()!+1),duration:250}),zoomOut:()=>view.animate({zoom:Math.max(11,view.getZoom()!-1),duration:250}),getZoom:()=>view.getZoom()!-1,flyTo:move,easeTo:move,remove:()=>instance.dispose()}};
 }

@@ -202,3 +202,33 @@ a.quiet-share{box-sizing:border-box}
 .quiet-exchange-detail{font-size:12px;line-height:1.6;color:#635c6b;margin:0 0 12px}
 .quiet-mcp-state[data-available="true"]>span{background:#35804b}
 .quiet-mcp-panel{max-height:calc(100dvh - 105px);overflow:auto}
+
+/* Real evidence only: missing readings stay neutral. */
+.quiet-map-only{background:#f0f0f1}
+.quiet-data-status{margin:0;padding:0 12px 11px;font-size:11px;line-height:16px;color:#62626c}
+.quiet-layers{max-height:calc(100dvh - 210px);overflow:auto}
+.quiet-layers li small{color:#737373}
+.swatch-measured{background:#171717}.swatch-crowd{background:#17171799;box-shadow:inset 0 0 0 1px #171717}.swatch-events{box-shadow:inset 0 0 0 2px #171717}.swatch-candidate{background:#b6b6bd;box-shadow:inset 0 0 0 1px #8b8b94}
+.quiet-evidence-legend{gap:18px}.quiet-evidence-legend em{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.quiet-evidence-legend i{width:9px;height:9px;border-radius:50%;background:#a1a1aa;display:block}.quiet-evidence-legend .measured-key{background:#6720c4}
+.quiet-source-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#52525b;text-decoration:underline;text-underline-offset:4px;margin-top:12px}
+.quiet-card.is-unmeasured{background:#f3f3f5}.quiet-card{max-height:calc(100dvh - 190px);overflow:auto}
+.quiet-map-controls button:disabled{color:#a1a1aa}
+.quiet-unavailable-page{min-height:100dvh;background:#eeeef0;color:#52525b;padding:32px;font-family:Arial,sans-serif}
+.quiet-back{display:inline-flex;align-items:center;gap:10px;font-size:13px;color:#52525b;text-decoration:none}
+.quiet-venue-picker{display:flex;align-items:center;gap:14px;margin:28px 0;font-size:13px}.quiet-venue-picker select{padding:10px;background:#f8f8f9;border:1px solid #d4d4d8;border-radius:7px;max-width:100%;color:#52525b}
+.quiet-unavailable-panel{max-width:750px;margin:10vh auto;text-align:center}.quiet-unavailable-panel>svg{color:#a1a1aa;margin:auto}.quiet-unavailable-panel h1{font-size:28px;font-weight:500;letter-spacing:-.6px;color:#52525b;margin:20px 0 10px}.quiet-unavailable-panel p{font-size:14px;line-height:1.65;max-width:490px;margin:16px auto;color:#71717a}.quiet-unavailable-panel>a{margin:16px}
+.quiet-empty-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:32px 0}.quiet-empty-grid article{display:flex;flex-direction:column;align-items:center;gap:12px;padding:24px 12px;background:#e4e4e7;border:1px solid #d4d4d8;border-radius:10px}.quiet-empty-grid strong{font-size:12px;font-weight:500}.quiet-empty-grid b{font-size:32px;font-weight:400;color:#a1a1aa}.quiet-empty-grid span{font-size:11px;line-height:16px;color:#71717a}
+@media(max-width:600px){.quiet-filters{top:76px;width:max-content;max-width:calc(100vw - 34px)}.quiet-filters button{padding:0 10px;font-size:11px}.quiet-layers{top:122px;max-height:calc(100dvh - 280px)}.quiet-evidence-legend{left:17px;transform:none;gap:12px}.quiet-evidence-legend em{font-size:10px}.quiet-unavailable-page{padding:24px 18px}.quiet-empty-grid{grid-template-columns:1fr}.quiet-unavailable-panel{margin:7vh auto}.quiet-card{bottom:140px;left:17px;max-width:calc(100vw - 90px);z-index:901}.quiet-history{z-index:902}}
+
+/* Main's violet fields describe real report density; unmeasured places stay neutral. */
+.quiet-real-legend{flex-direction:column;gap:10px}
+.quiet-report-scale{display:flex;align-items:center;gap:12px}
+.quiet-report-scale>span{display:block;width:150px;height:8px;border-radius:5px;background:linear-gradient(90deg,#e6dcff,#b996f5 30%,#8a45e8 55%,#5a14b0 80%,#2b0a63)}
+.quiet-legend-context{display:flex;align-items:center;justify-content:space-between;gap:20px;width:100%}
+.quiet-legend-context em{display:flex;align-items:center;gap:6px;font-size:10px;white-space:nowrap}
+.quiet-legend-context i{display:block;width:8px;height:8px;border-radius:50%;background:#a1a1aa}
+.quiet-legend-context .measurement-key{background:#171717}
+.quiet-layer-filters{position:static;transform:none;margin:0 10px 12px;box-shadow:none;background:#f3f3f5;width:auto;max-width:none}
+.quiet-layer-filters button{flex:1;padding:0 9px;font-size:11px}
+@media(max-width:600px){.quiet-layers{top:78px}.quiet-real-legend{left:17px;transform:none;gap:8px}.quiet-report-scale{gap:8px}.quiet-report-scale>span{width:82px}.quiet-layer-filters{position:static;transform:none;width:auto;max-width:none}}
