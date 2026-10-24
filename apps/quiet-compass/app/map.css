@@ -128,3 +128,13 @@
 .quiet-ripple{width:14px;height:14px;border-radius:50%;border:1.5px solid #5a14b0;pointer-events:none;animation:quiet-ripple 2.3s var(--ease-out) forwards}
 @keyframes quiet-ripple{0%{transform:scale(.4);opacity:.9}100%{transform:scale(6);opacity:0}}
 @media(max-width:600px){.quiet-history-btn{right:103px}.quiet-intensity>span{width:90px}}
+
+/* Live DataSF layer toggles */
+.quiet-layers{position:absolute;left:28px;top:92px;z-index:800;display:flex;flex-direction:column;gap:2px;padding:4px;background:#fffffff2;border:1px solid var(--map-border);border-radius:10px;box-shadow:0 0 0 1px #00000004,0 2px 2px #00000003,0 8px 16px -4px #00000006;backdrop-filter:blur(8px)}
+.quiet-layers button{display:flex;align-items:center;gap:8px;background:none;border:0;border-radius:7px;padding:5px 8px;font-size:11px;color:#625b6a;cursor:pointer;text-align:left;transition:color .2s var(--ease),background .2s var(--ease)}
+.quiet-layers button:hover{background:#f6f5f7}.quiet-layers button[aria-pressed=false]{color:#b5b0ba}.quiet-layers button[aria-pressed=false] i{opacity:.3}
+.quiet-layers i{flex:none;width:9px;height:9px;border-radius:50%}
+@media(max-width:600px){.quiet-layers{left:17px;top:116px}}
+.swatch-reports{background:#625b6a;box-shadow:0 0 0 2px #fff,0 0 0 2.5px #e7e5eb}.swatch-venues{background:#fff;box-shadow:inset 0 0 0 1px #88818e}.swatch-work{background:#a49ead;transform:scale(.75)}
+.quiet-layers i.swatch-events{width:12px;height:0;border-radius:0;border-top:3px dotted #88818e}
+.quiet-layers{top:92px;bottom:auto;left:28px}@media(max-width:600px){.quiet-layers{left:17px;top:116px}}
