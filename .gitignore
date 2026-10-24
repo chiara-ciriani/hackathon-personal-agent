@@ -1,0 +1,35 @@
+# macOS / editors
+.DS_Store
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# Server runtime data and secrets
+server/data/
+*.db
+*.db-wal
+*.db-shm
+.env
+
+# iOS / Xcode
+ios/Config.xcconfig
+ios/*.xcodeproj/
+ios/*.xcworkspace/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+.build/
+.swiftpm/

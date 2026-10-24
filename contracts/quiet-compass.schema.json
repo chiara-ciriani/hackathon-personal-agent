@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quiet-compass.local/contracts/quiet-compass.schema.json",
+  "title": "Quiet Compass shared contracts",
+  "description": "Single source of truth for data exchanged between the iOS app and the memory service. Version 1. Change only by agreement of all tracks; bump `contract_version` on breaking changes.",
+  "$defs": {
+    "ContractVersion": { "const": 1 },
+    "Uuid": { "type": "string", "format": "uuid" },
+    "Timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 in UTC with a Z suffix, e.g. 2026-10-24T20:15:03.120Z"
+    },
+    "CaptureMode": {
+      "type": "string",
+      "enum": ["A", "B", "C"],
+      "description": "A = FOA + ARKit, B = FOA + labelled zones, C = ARKit + mono levels"
+    },
+    "TrackingState": {
+      "type": "string",
+      "enum": ["normal", "limited", "not_available", "none"],
+      "description": "ARKit tracking state at measurement time; `none` in mode B (no AR session)"
+    },
+    "Goal": { "type": "string", "enum": ["talk", "rest", "work"] },
+    "Verdict": { "type": "string", "enum": ["good", "ok", "bad"] },
+    "Feel": { "type": "string", "enum": ["calm", "neutral", "chaotic"] },
+    "PlaceTag": { "type": "string", "enum": ["seating", "step_free", "authorized"] },
+    "Position": {
+      "type": "object",
+      "description": "Floor-plane position in metres in the AR session's world frame (gravity-aligned, arbitrary yaw). y is omitted on purpose.",
+      "required": ["x", "z"],
+      "additionalProperties": false,
+      "properties": { "x": { "type": "number" }, "z": { "type": "number" } }
+    },
+    "DeviceProfile": {
+      "type": "object",
+      "required": ["model", "os_version", "capture_mode", "audio_session_mode", "sample_rate_hz", "app_version"],
+      "additionalProperties": false,
+      "properties": {
+        "model": { "type": "string", "examples": ["iPhone17,1"] },
+        "os_version": { "type": "string", "examples": ["26.1"] },
+        "capture_mode": { "$ref": "#/$defs/CaptureMode" },
+        "audio_session_mode": { "type": "string", "examples": ["measurement", "default"] },
+        "sample_rate_hz": { "type": "integer", "examples": [48000] },
+        "app_version": { "type": "string" }
+      }
+    },
+    "Session": {
+      "type": "object",
+      "required": ["id", "started_at", "device_profile"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/Uuid" },
+        "name": { "type": ["string", "null"], "examples": ["SF hackathon, main hall"] },
+        "started_at": { "$ref": "#/$defs/Timestamp" },
+        "device_profile": { "$ref": "#/$defs/DeviceProfile" }
+      }
+    },
+    "SoundClass": {
+      "type": "object",
+      "required": ["label", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": "string", "examples": ["speech", "music", "crowd"] },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "DirectionEstimate": {
+      "type": "object",
+      "description": "Direction of arrival of the dominant coherent sound. Only present when the estimator did not abstain.",
+      "required": ["frame", "azimuth_deg", "sector", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "frame": { "type": "string", "enum": ["world", "device"], "description": "world in mode A (rotated with the ARKit pose), device in mode B" },
+        "azimuth_deg": { "type": "number", "minimum": -180, "maximum": 180 },
+        "elevation_deg": { "type": ["number", "null"], "minimum": -90, "maximum": 90 },
+        "sector": { "type": "integer", "minimum": 0, "maximum": 7, "description": "0 = ahead (−22.5°..22.5°), counting clockwise in 45° steps" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1, "description": "1 − diffuseness, after gating" }
+      }
+    },
+    "Observation": {
+      "type": "object",
+      "description": "A 5-second aggregate of 1 s feature frames. All levels are relative, uncalibrated dBFS from one device profile; never dBA or SPL.",
+      "required": ["id", "session_id", "t", "duration_s", "level_dbfs_rel", "spread_db", "peaks_per_min", "tracking"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/Uuid", "description": "Client-generated; the server ignores duplicates (idempotent retries)" },
+        "session_id": { "$ref": "#/$defs/Uuid" },
+        "t": { "$ref": "#/$defs/Timestamp", "description": "End of the 5 s window" },
+        "duration_s": { "type": "number", "exclusiveMinimum": 0 },
+        "position": { "oneOf": [{ "$ref": "#/$defs/Position" }, { "type": "null" }] },
+        "crumb_id": { "oneOf": [{ "$ref": "#/$defs/Uuid" }, { "type": "null" }] },
+        "place_id": { "oneOf": [{ "$ref": "#/$defs/Uuid" }, { "type": "null" }], "description": "Set while the user is within 2 m of a marked place, or inside a labelled zone" },
+        "level_dbfs_rel": { "type": "number", "maximum": 0 },
+        "level_aw_dbfs_rel": { "type": ["number", "null"], "maximum": 0 },
+        "spread_db": { "type": "number", "minimum": 0, "description": "L10 − L90 of 125 ms frames over a rolling 30 s" },
+        "peaks_per_min": { "type": "number", "minimum": 0, "description": "125 ms frames above rolling median + 10 dB, per minute, rolling 60 s" },
+        "bands_db": {
+          "type": ["array", "null"],
+          "description": "Octave bands centred 250, 500, 1k, 2k, 4k, 8k Hz, relative dBFS",
+          "items": { "type": "number" },
+          "minItems": 6,
+          "maxItems": 6
+        },
+        "speech_share": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Mean `speech` confidence from the built-in sound classifier" },
+        "classes": { "type": "array", "items": { "$ref": "#/$defs/SoundClass" }, "maxItems": 3 },
+        "doa": { "oneOf": [{ "$ref": "#/$defs/DirectionEstimate" }, { "type": "null" }] },
+        "tracking": { "$ref": "#/$defs/TrackingState" }
+      }
+    },
+    "Crumb": {
+      "type": "object",
+      "required": ["id", "session_id", "seq", "position", "heading_rad", "t", "tracking"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/Uuid" },
+        "session_id": { "$ref": "#/$defs/Uuid" },
+        "seq": { "type": "integer", "minimum": 0, "description": "Monotonic within a session; a gap in tracking starts a new segment" },
+        "segment": { "type": "integer", "minimum": 0, "default": 0 },
+        "position": { "$ref": "#/$defs/Position" },
+        "heading_rad": { "type": "number" },
+        "t": { "$ref": "#/$defs/Timestamp" },
+        "tracking": { "$ref": "#/$defs/TrackingState" }
+      }
+    },
+    "Place": {
+      "type": "object",
+      "required": ["id", "session_id", "label", "created_at", "source", "tags"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/Uuid" },
+        "session_id": { "$ref": "#/$defs/Uuid" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 80, "examples": ["Quiet corner by the windows"] },
+        "position": { "oneOf": [{ "$ref": "#/$defs/Position" }, { "type": "null" }], "description": "Null in mode B (zone only)" },
+        "crumb_id": { "oneOf": [{ "$ref": "#/$defs/Uuid" }, { "type": "null" }] },
+        "zone": { "type": ["string", "null"], "description": "User-given zone name in mode B" },
+        "tags": { "type": "array", "items": { "$ref": "#/$defs/PlaceTag" }, "uniqueItems": true },
+        "source": { "type": "string", "enum": ["user", "organizer", "seed"] },
+        "created_at": { "$ref": "#/$defs/Timestamp" }
+      }
+    },
+    "Feedback": {
+      "type": "object",
+      "required": ["id", "session_id", "place_id", "goal", "verdict", "t"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/Uuid" },
+        "session_id": { "$ref": "#/$defs/Uuid" },
+        "place_id": { "$ref": "#/$defs/Uuid" },
+        "goal": { "$ref": "#/$defs/Goal" },
+        "verdict": { "$ref": "#/$defs/Verdict" },
+        "feel": { "oneOf": [{ "$ref": "#/$defs/Feel" }, { "type": "null" }] },
+        "t": { "$ref": "#/$defs/Timestamp" }
+      }
+    },
+    "Guidance": {
+      "type": "object",
+      "description": "Written by the agent tool quiet_start_guidance; polled by the phone, which computes the route itself from its own breadcrumbs.",
+      "required": ["session_id", "target_place_id", "target_label", "status", "updated_at"],
+      "additionalProperties": false,
+      "properties": {
+        "session_id": { "$ref": "#/$defs/Uuid" },
+        "target_place_id": { "$ref": "#/$defs/Uuid" },
+        "target_label": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "arrived", "cancelled"] },
+        "reason": { "type": ["string", "null"], "description": "Short agent explanation shown on the phone, e.g. 'Quietest spot you measured 4 min ago'" },
+        "updated_at": { "$ref": "#/$defs/Timestamp" }
+      }
+    },
+    "SessionUpsert": {
+      "type": "object",
+      "required": ["contract_version", "session"],
+      "additionalProperties": false,
+      "properties": { "contract_version": { "$ref": "#/$defs/ContractVersion" }, "session": { "$ref": "#/$defs/Session" } }
+    },
+    "ObservationBatch": {
+      "type": "object",
+      "required": ["contract_version", "observations"],
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": { "$ref": "#/$defs/ContractVersion" },
+        "observations": { "type": "array", "items": { "$ref": "#/$defs/Observation" }, "maxItems": 500 }
+      }
+    },
+    "CrumbBatch": {
+      "type": "object",
+      "required": ["contract_version", "crumbs"],
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": { "$ref": "#/$defs/ContractVersion" },
+        "crumbs": { "type": "array", "items": { "$ref": "#/$defs/Crumb" }, "maxItems": 2000 }
+      }
+    },
+    "PlaceBatch": {
+      "type": "object",
+      "required": ["contract_version", "places"],
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": { "$ref": "#/$defs/ContractVersion" },
+        "places": { "type": "array", "items": { "$ref": "#/$defs/Place" }, "maxItems": 200 }
+      }
+    },
+    "FeedbackBatch": {
+      "type": "object",
+      "required": ["contract_version", "feedback"],
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": { "$ref": "#/$defs/ContractVersion" },
+        "feedback": { "type": "array", "items": { "$ref": "#/$defs/Feedback" }, "maxItems": 200 }
+      }
+    },
+    "GuidanceStatusUpdate": {
+      "type": "object",
+      "description": "Sent by the phone to mark guidance as arrived or cancelled.",
+      "required": ["contract_version", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": { "$ref": "#/$defs/ContractVersion" },
+        "status": { "type": "string", "enum": ["arrived", "cancelled"] }
+      }
+    },
+    "IngestResult": {
+      "type": "object",
+      "required": ["accepted", "duplicates"],
+      "additionalProperties": false,
+      "properties": {
+        "accepted": { "type": "integer", "minimum": 0 },
+        "duplicates": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}
