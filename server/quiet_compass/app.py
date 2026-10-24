@@ -46,7 +46,7 @@ def create_app(settings: Settings | None = None, store: Store | None = None) -> 
     store = store or Store(settings.db_path)
     store.migrate()
     city = CityNoiseLayer(settings.socrata_app_token) if settings.city_layer_enabled else None
-    mcp = build_mcp(Service(store, settings), city)
+    mcp = build_mcp(Service(store, settings, clock=store.clock), city)
     security = TransportSecuritySettings(
         enable_dns_rebinding_protection=not settings.any_host_allowed,
         allowed_hosts=settings.mcp_hosts,

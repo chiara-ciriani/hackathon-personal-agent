@@ -92,11 +92,22 @@ def test_find_space_ranks_quiet_corner_first(client: TestClient, venue: dict[str
 
 
 def test_find_space_no_fit_names_relax(client: TestClient, venue: dict[str, Any]) -> None:
+    # Remove the only step-free option to exercise an unsatisfied requirement.
+    hall = {**venue["hall"], "tags": []}
+    updated = client.post("/v1/places", json={"contract_version": 1, "places": [hall]}, headers=AUTH)
+    assert updated.status_code == 200
     result = call(client, "quiet_find_space", goal="rest", duration_minutes=10,
                   return_by="2026-10-24T21:30:00Z", needs=["step_free"])["structuredContent"]
     assert result["no_fit"] is True
     assert result["relax"] == "step_free"
     assert len(result["closest"]) <= 1
+
+
+def test_find_space_respects_available_step_free_option(client: TestClient, venue: dict[str, Any]) -> None:
+    result = call(client, "quiet_find_space", goal="rest", duration_minutes=10,
+                  return_by="2026-10-24T21:30:00Z", needs=["step_free"])["structuredContent"]
+    assert result["no_fit"] is False
+    assert result["results"][0]["place_id"] == venue["hall"]["id"]
 
 
 def test_find_space_past_return_by_is_error(client: TestClient, venue: dict[str, Any]) -> None:
@@ -144,7 +155,7 @@ def test_record_feedback_is_visible_in_context(client: TestClient, venue: dict[s
 def test_path_secret_mode(tmp_path: Any, secret_path_ok: bool) -> None:
     secret = "a" * 24
     settings = Settings(api_token=TOKEN, db_path=tmp_path / "s.db", mcp_path_secret=secret)
-    with TestClient(create_app(settings)) as c:
+    with TestClient(create_app(settings), base_url="http://localhost") as c:
         no_auth = {k: v for k, v in HEADERS.items() if k != "Authorization"}
         assert rpc(c, "tools/list", headers=no_auth, path=f"/mcp/{secret}").status_code == 200
         assert rpc(c, "tools/list", headers=HEADERS, path="/mcp").status_code == 404
@@ -152,6 +163,6 @@ def test_path_secret_mode(tmp_path: Any, secret_path_ok: bool) -> None:
 
 def test_city_tool_registered_only_when_enabled(tmp_path: Any) -> None:
     settings = Settings(api_token=TOKEN, db_path=tmp_path / "c.db", city_layer_enabled=True)
-    with TestClient(create_app(settings)) as c:
+    with TestClient(create_app(settings), base_url="http://localhost") as c:
         names = {t["name"] for t in rpc(c, "tools/list").json()["result"]["tools"]}
     assert names == TOOLS | {"quiet_city_noise_reports"}

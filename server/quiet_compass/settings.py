@@ -62,6 +62,9 @@ class Settings:
         fly_app = _optional(env.get("FLY_APP_NAME"))
         if fly_app:
             hosts = (*hosts, f"{fly_app}.fly.dev")
+        render_host = _optional(env.get("RENDER_EXTERNAL_HOSTNAME"))
+        if render_host:
+            hosts = (*hosts, render_host)
         return cls(
             api_token=(env.get("QC_API_TOKEN") or "").strip(),
             db_path=Path(env.get("QC_DB_PATH") or "./data/quiet_compass.db"),

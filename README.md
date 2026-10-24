@@ -13,7 +13,7 @@ It was built for an SF hackathon on personal agents for everyday life. The first
 ```
 apps/quiet-compass/  Next.js web app: SF noise map (live 311 reports) and Oura integration
 ios/                 SwiftUI app (QuietCompass) + QuietCore Swift package (DSP, route logic, contracts)
-server/              FastAPI ingest API + MCP server (FastMCP) + scoring + optional SF 311 city layer
+server/              Starlette ingest API + MCP Python SDK + scoring + optional SF 311 city layer
 contracts/           JSON Schema shared by phone and server, plus the HTTP API and MCP tool reference
 docs/                Implementation plan and product brief
 ```
@@ -27,7 +27,7 @@ cd server
 python -m venv .venv && source .venv/bin/activate
 pip install -e '.[dev]'
 cp .env.example .env            # set QC_API_TOKEN
-uvicorn quiet_compass.app:create_app --factory --reload
+uvicorn quiet_compass.app:create_app --factory --env-file .env --reload
 pytest -q
 ```
 
@@ -43,6 +43,13 @@ xcodegen generate && open QuietCompass.xcodeproj
 The Simulator runs the app with mock audio and a scripted walk. Real capture and AR tracking need a device.
 
 **Agent.** Deploy the server (see `server/README.md`), add `https://<your-app>/mcp` as a custom connector in the Claude app, and paste `server/agent_instructions.md` into the project instructions.
+
+**Hosting.** The [Render Blueprint](render.yaml) prepares the Python API/MCP with
+a persistent SQLite disk for a single-user demo. The web map stays on Sites and
+audio processing stays on the iPhone. Importing the Blueprint provisions paid
+resources; this repository configuration is not evidence of a live deployment.
+See [the deployment guide](server/README.md) and
+[capture, personal learning and hosting boundaries](docs/AGENT_LEARNING_AND_HOSTING.md).
 
 ## Team workflow
 
