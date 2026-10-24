@@ -33,7 +33,7 @@ inputs; a live deployment, real Oura account and physical iPhone are still pendi
    worker. It prepares a persistent SQLite disk and generates separate API and
    encryption keys. Creating this paid service needs account authorization.
 2. Set `QC_OURA_CLIENT_ID` and `QC_OURA_CLIENT_SECRET` in the service environment
-   after registering your application in the [Oura developer portal](https://cloud.ouraring.com/applications).
+   after registering your application in the [Oura developer portal](https://cloud.ouraring.com/oauth/applications).
    Register the **exact** callback `https://YOUR-ASSIGNED-HOST/oauth/oura/callback`.
 3. Render supplies the public URL. On another host, set `QC_PUBLIC_URL` to the
    HTTPS origin and include the host in `QC_ALLOWED_HOSTS`. Set `QC_ENCRYPTION_KEY`
