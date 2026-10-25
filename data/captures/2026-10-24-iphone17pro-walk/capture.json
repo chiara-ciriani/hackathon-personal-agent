@@ -1,0 +1,1878 @@
+{
+ "session": {
+  "id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+  "name": "Phone recording",
+  "started_at": "2026-10-24T23:31:52.923Z",
+  "device_profile": {
+   "model": "iPhone18,1",
+   "os_version": "26.6.1",
+   "capture_mode": "A",
+   "audio_session_mode": "measurement",
+   "sample_rate_hz": 48000,
+   "app_version": "0.2"
+  }
+ },
+ "crumbs": [
+  {
+   "id": "5809d5aa-4c6d-44b8-8a78-6c005c9c843e",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 0,
+   "segment": 0,
+   "position": {
+    "x": 0.025742096826434135,
+    "z": -0.002856835024431348
+   },
+   "heading_rad": 0.1223011850279932,
+   "t": "2026-10-24T23:31:54.800Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "85002a7d-22e6-4049-ade8-3e2e0698cd20",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 1,
+   "segment": 0,
+   "position": {
+    "x": -0.6735726594924927,
+    "z": 1.0980772972106934
+   },
+   "heading_rad": 2.8242852431230876,
+   "t": "2026-10-24T23:32:05.317Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "67f64de0-0167-4655-8385-d241a5702d94",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 2,
+   "segment": 0,
+   "position": {
+    "x": -0.24141113460063934,
+    "z": 2.0202889442443848
+   },
+   "heading_rad": 2.2794070659139454,
+   "t": "2026-10-24T23:32:07.317Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "1ed3faca-320c-4dcc-aa35-3ef5e8c44960",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 3,
+   "segment": 0,
+   "position": {
+    "x": 0.9788073301315308,
+    "z": 2.265657424926758
+   },
+   "heading_rad": 1.728560287356462,
+   "t": "2026-10-24T23:32:08.817Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "e0e7db1a-1b2a-4e1a-9bea-80b40f399a12",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 4,
+   "segment": 0,
+   "position": {
+    "x": 2.0817549228668213,
+    "z": 2.2737040519714355
+   },
+   "heading_rad": 1.2469358111864008,
+   "t": "2026-10-24T23:32:10.317Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "f8dfc28e-4532-458d-a306-00bcf2176107",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 5,
+   "segment": 0,
+   "position": {
+    "x": 3.0522611141204834,
+    "z": 1.710864782333374
+   },
+   "heading_rad": 0.8952704305853992,
+   "t": "2026-10-24T23:32:11.817Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "1721e51c-eb66-434f-a38a-0885dc0ca804",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 6,
+   "segment": 0,
+   "position": {
+    "x": 4.035199165344238,
+    "z": 1.0346040725708008
+   },
+   "heading_rad": 0.6194859930566927,
+   "t": "2026-10-24T23:32:13.317Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "5bfd524c-43a0-4012-954b-a536cf73d19a",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 7,
+   "segment": 0,
+   "position": {
+    "x": 4.999719619750977,
+    "z": 0.4932265877723694
+   },
+   "heading_rad": 0.6890045620072385,
+   "t": "2026-10-24T23:32:14.817Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "32a21f97-8b8d-4987-a740-11ce0a1a208d",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 8,
+   "segment": 0,
+   "position": {
+    "x": 5.624046802520752,
+    "z": -0.4966014325618744
+   },
+   "heading_rad": 0.6705197589254878,
+   "t": "2026-10-24T23:32:16.817Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "064f2684-6510-415a-84fd-ff831f34dadf",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 9,
+   "segment": 0,
+   "position": {
+    "x": 6.050595760345459,
+    "z": 0.5564432740211487
+   },
+   "heading_rad": 1.597795924156814,
+   "t": "2026-10-24T23:32:22.816Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "f4e8231e-0bbd-42ab-aec9-35d8cb38bd37",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 10,
+   "segment": 0,
+   "position": {
+    "x": 7.209140300750732,
+    "z": 0.5965031385421753
+   },
+   "heading_rad": 1.1549216226853227,
+   "t": "2026-10-24T23:32:24.316Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "7637c983-41c3-4d07-a85e-820408448719",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 11,
+   "segment": 0,
+   "position": {
+    "x": 8.300272941589355,
+    "z": -0.020682452246546745
+   },
+   "heading_rad": 0.7763680049779662,
+   "t": "2026-10-24T23:32:25.816Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "7e99357d-8f1d-448d-9f91-b3ef9786beb4",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 12,
+   "segment": 0,
+   "position": {
+    "x": 9.18472957611084,
+    "z": -0.5192685127258301
+   },
+   "heading_rad": 1.1534688408505809,
+   "t": "2026-10-24T23:32:27.316Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "fced3ca2-5211-40ce-ba84-f6a392389b0d",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 13,
+   "segment": 0,
+   "position": {
+    "x": 10.184470176696777,
+    "z": -0.7978382706642151
+   },
+   "heading_rad": 0.7940038618605861,
+   "t": "2026-10-24T23:32:30.816Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "4372920b-ae61-4120-bbe1-236d7a47e5b7",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 14,
+   "segment": 0,
+   "position": {
+    "x": 11.0673246383667,
+    "z": 0.0355696901679039
+   },
+   "heading_rad": 2.016437984018224,
+   "t": "2026-10-24T23:32:41.333Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "e64d4722-a2e0-4a56-a56d-d7360f03fad9",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 15,
+   "segment": 0,
+   "position": {
+    "x": 12.380599975585938,
+    "z": -0.15243683755397797
+   },
+   "heading_rad": 1.2316403747722948,
+   "t": "2026-10-24T23:32:42.833Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "377bbb58-0c13-45bf-a59e-dbc8b0b560f7",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 16,
+   "segment": 0,
+   "position": {
+    "x": 13.770763397216797,
+    "z": -0.5458275675773621
+   },
+   "heading_rad": 1.4493643566142709,
+   "t": "2026-10-24T23:32:44.333Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "3a631ac8-481e-46f7-8898-c3f5ea2aeb57",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 17,
+   "segment": 0,
+   "position": {
+    "x": 15.054553985595703,
+    "z": -0.09725028276443481
+   },
+   "heading_rad": 2.072892902266579,
+   "t": "2026-10-24T23:32:45.833Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "ac9c9891-bdb9-4b29-956f-a2dce31c6250",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 18,
+   "segment": 0,
+   "position": {
+    "x": 16.335296630859375,
+    "z": 0.600650429725647
+   },
+   "heading_rad": 2.2778082193456473,
+   "t": "2026-10-24T23:32:47.333Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "d542a564-9b66-47ae-86f1-840893492213",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 19,
+   "segment": 0,
+   "position": {
+    "x": 17.00212860107422,
+    "z": 1.7120062112808228
+   },
+   "heading_rad": 3.0431782356826296,
+   "t": "2026-10-24T23:32:48.833Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "32e2c139-f8c4-458a-8650-dbc4278ed61f",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 20,
+   "segment": 0,
+   "position": {
+    "x": 17.339059829711914,
+    "z": 3.0724120140075684
+   },
+   "heading_rad": -3.1173127567587766,
+   "t": "2026-10-24T23:32:50.333Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "341b3332-c562-407a-adad-bee9a2fd294d",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 21,
+   "segment": 0,
+   "position": {
+    "x": 17.416263580322266,
+    "z": 4.326419353485107
+   },
+   "heading_rad": 3.0956311499846256,
+   "t": "2026-10-24T23:32:51.833Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "c8e7f48f-4f7e-4a73-8e4c-e69773a83a27",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 22,
+   "segment": 0,
+   "position": {
+    "x": 17.339923858642578,
+    "z": 5.472634792327881
+   },
+   "heading_rad": -3.0126429639225565,
+   "t": "2026-10-24T23:32:53.333Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "b570e990-b7d8-40cf-b705-9ccb4213ab6d",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 23,
+   "segment": 0,
+   "position": {
+    "x": 16.331012725830078,
+    "z": 5.162114143371582
+   },
+   "heading_rad": -1.1781432436066264,
+   "t": "2026-10-24T23:32:55.833Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "2afbd23e-2ae8-4a58-98dc-348509c3f57d",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 24,
+   "segment": 0,
+   "position": {
+    "x": 15.014241218566895,
+    "z": 4.79761266708374
+   },
+   "heading_rad": -1.5101320472990125,
+   "t": "2026-10-24T23:32:57.333Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "89aa61ff-e717-4faa-9060-c534478ead74",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 25,
+   "segment": 0,
+   "position": {
+    "x": 13.711551666259766,
+    "z": 4.990513324737549
+   },
+   "heading_rad": -1.731905079332987,
+   "t": "2026-10-24T23:32:58.833Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "e3f64c27-a610-481d-9fa0-98f273949129",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 26,
+   "segment": 0,
+   "position": {
+    "x": 12.350977897644043,
+    "z": 4.969303607940674
+   },
+   "heading_rad": -1.5222689968577068,
+   "t": "2026-10-24T23:33:00.333Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "fa6ea7c8-ae2a-4e21-b109-3c2ff99c7711",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 27,
+   "segment": 0,
+   "position": {
+    "x": 11.503165245056152,
+    "z": 4.172332763671875
+   },
+   "heading_rad": -0.73382966086286,
+   "t": "2026-10-24T23:33:01.833Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "8f674676-1d6f-4d55-a8f9-1f444da8a1a5",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 28,
+   "segment": 0,
+   "position": {
+    "x": 10.529025077819824,
+    "z": 3.3875091075897217
+   },
+   "heading_rad": -0.9902329082115273,
+   "t": "2026-10-24T23:33:03.333Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "aab014f2-b320-4d96-a993-0bed932c808d",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 29,
+   "segment": 0,
+   "position": {
+    "x": 9.4940185546875,
+    "z": 2.547475814819336
+   },
+   "heading_rad": -0.7854556398889734,
+   "t": "2026-10-24T23:33:04.833Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "3caac4bb-82b2-4f80-9617-0f6bd52338bc",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 30,
+   "segment": 0,
+   "position": {
+    "x": 8.841937065124512,
+    "z": 1.4832426309585571
+   },
+   "heading_rad": -0.5905046025243048,
+   "t": "2026-10-24T23:33:06.333Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "b108ab46-fe73-4276-8bd2-2fa1180782c6",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 31,
+   "segment": 0,
+   "position": {
+    "x": 8.942719459533691,
+    "z": 0.18137061595916748
+   },
+   "heading_rad": 0.12085931986993176,
+   "t": "2026-10-24T23:33:08.333Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "65f2bbe0-3674-4e90-9c8f-1f841e26939d",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 32,
+   "segment": 0,
+   "position": {
+    "x": 9.197137832641602,
+    "z": -0.9029369950294495
+   },
+   "heading_rad": 0.4728463717129105,
+   "t": "2026-10-24T23:33:10.333Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "6a5d99ed-16f4-4119-8799-fef808d8d1f3",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 33,
+   "segment": 0,
+   "position": {
+    "x": 8.353755950927734,
+    "z": 0.14190737903118134
+   },
+   "heading_rad": -2.3455936253842298,
+   "t": "2026-10-24T23:33:17.849Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "c56e6105-e9d6-401b-972a-85e44ce0c27f",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 34,
+   "segment": 0,
+   "position": {
+    "x": 7.595948219299316,
+    "z": 0.9945774674415588
+   },
+   "heading_rad": -2.429215104605675,
+   "t": "2026-10-24T23:33:19.349Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "67436995-c3a7-48e4-ae0f-55a27f4f757f",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 35,
+   "segment": 0,
+   "position": {
+    "x": 6.611954212188721,
+    "z": 1.3472684621810913
+   },
+   "heading_rad": -1.9436493557107282,
+   "t": "2026-10-24T23:33:20.849Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "be89ff92-be14-4069-9f6c-83b143db1ad1",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 36,
+   "segment": 0,
+   "position": {
+    "x": 5.522286415100098,
+    "z": 1.744478464126587
+   },
+   "heading_rad": -1.7856836119841237,
+   "t": "2026-10-24T23:33:22.349Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "5ef3b69a-16b1-4907-be41-5d74ed7165b9",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 37,
+   "segment": 0,
+   "position": {
+    "x": 4.337358474731445,
+    "z": 1.7983441352844238
+   },
+   "heading_rad": -1.4631722074014837,
+   "t": "2026-10-24T23:33:23.849Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "a56af13e-bd21-4542-bb00-511760d98a54",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 38,
+   "segment": 0,
+   "position": {
+    "x": 3.1021134853363037,
+    "z": 1.7122429609298706
+   },
+   "heading_rad": -1.605189252758191,
+   "t": "2026-10-24T23:33:25.349Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "511de5dc-ff05-477b-a6b7-75237497895d",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 39,
+   "segment": 0,
+   "position": {
+    "x": 1.7868901491165161,
+    "z": 2.2420990467071533
+   },
+   "heading_rad": -2.0693130572137157,
+   "t": "2026-10-24T23:33:26.849Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "c6a9d721-2d0b-472b-b9f6-0c97d41c0309",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 40,
+   "segment": 0,
+   "position": {
+    "x": 0.36706143617630005,
+    "z": 2.3697705268859863
+   },
+   "heading_rad": -1.5738625492745275,
+   "t": "2026-10-24T23:33:28.349Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "ebb846d0-b834-4567-9528-6a8b22e48817",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 41,
+   "segment": 0,
+   "position": {
+    "x": -1.0267860889434814,
+    "z": 2.692993640899658
+   },
+   "heading_rad": -2.055114956640715,
+   "t": "2026-10-24T23:33:29.849Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "ae6f0d9c-6ad7-4c48-b911-90ffb3d5007e",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 42,
+   "segment": 0,
+   "position": {
+    "x": -2.4140756130218506,
+    "z": 2.952728748321533
+   },
+   "heading_rad": -1.5336674135808146,
+   "t": "2026-10-24T23:33:31.349Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "565d382e-4ffc-4143-a843-13cca10e5aa3",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 43,
+   "segment": 0,
+   "position": {
+    "x": -3.6567564010620117,
+    "z": 2.9203522205352783
+   },
+   "heading_rad": -0.9831923720822674,
+   "t": "2026-10-24T23:33:32.849Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "fbeb7379-efb9-428c-88bd-85980fdd2ea0",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 44,
+   "segment": 0,
+   "position": {
+    "x": -5.019188404083252,
+    "z": 2.8067474365234375
+   },
+   "heading_rad": -0.8196318652936899,
+   "t": "2026-10-24T23:33:34.349Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "833c571a-d51a-42b5-9524-2f3b9d215e16",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 45,
+   "segment": 0,
+   "position": {
+    "x": -6.361820697784424,
+    "z": 2.959899425506592
+   },
+   "heading_rad": -1.1998452175503391,
+   "t": "2026-10-24T23:33:35.849Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "4fe06bee-45c5-4c00-ad43-dc59873def7b",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 46,
+   "segment": 0,
+   "position": {
+    "x": -7.24418306350708,
+    "z": 3.442490577697754
+   },
+   "heading_rad": -1.8370380809947555,
+   "t": "2026-10-24T23:33:36.849Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "c908efad-1718-4c6a-a18e-6d490523e8e5",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 47,
+   "segment": 0,
+   "position": {
+    "x": -8.597319602966309,
+    "z": 3.9023122787475586
+   },
+   "heading_rad": -1.9758558057003957,
+   "t": "2026-10-24T23:33:38.349Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "2f1ec27e-d1a7-4cef-8d7b-ef7738e88060",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 48,
+   "segment": 0,
+   "position": {
+    "x": -9.79585075378418,
+    "z": 3.485366106033325
+   },
+   "heading_rad": -0.8376976158113811,
+   "t": "2026-10-24T23:33:39.849Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "2565553a-5747-4528-b6f8-12a298d427cc",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 49,
+   "segment": 0,
+   "position": {
+    "x": -10.857348442077637,
+    "z": 2.7570178508758545
+   },
+   "heading_rad": -0.885815136996431,
+   "t": "2026-10-24T23:33:41.349Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "e9c7334d-f7a5-4dac-9795-bb43060bee9e",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 50,
+   "segment": 0,
+   "position": {
+    "x": -12.196696281433105,
+    "z": 2.879950523376465
+   },
+   "heading_rad": -1.672682340529982,
+   "t": "2026-10-24T23:33:42.849Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "fb9ed722-0d32-488e-9139-6e50ac43b41f",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 51,
+   "segment": 0,
+   "position": {
+    "x": -13.150477409362793,
+    "z": 3.8554322719573975
+   },
+   "heading_rad": -1.9968263741725245,
+   "t": "2026-10-24T23:33:44.349Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "856435b6-21bb-4f2f-ba32-5a35a868c0e5",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 52,
+   "segment": 0,
+   "position": {
+    "x": -13.651958465576172,
+    "z": 5.11074161529541
+   },
+   "heading_rad": -2.589973131689306,
+   "t": "2026-10-24T23:33:45.849Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "b2a3028f-8a00-4e3a-849b-86ca103f3f77",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 53,
+   "segment": 0,
+   "position": {
+    "x": -13.186817169189453,
+    "z": 6.068965435028076
+   },
+   "heading_rad": 2.8375256197421064,
+   "t": "2026-10-24T23:33:46.849Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "eea5b8c2-b891-4aba-9010-00649bd7272e",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 54,
+   "segment": 0,
+   "position": {
+    "x": -12.140043258666992,
+    "z": 6.648476600646973
+   },
+   "heading_rad": 1.624803466551899,
+   "t": "2026-10-24T23:33:48.349Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "61726747-2742-44c5-bfe2-c48acabd2b15",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 55,
+   "segment": 0,
+   "position": {
+    "x": -12.145075798034668,
+    "z": 7.819297790527344
+   },
+   "heading_rad": 2.8875508276041417,
+   "t": "2026-10-24T23:33:51.849Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "cb754c6e-e7f5-4954-8828-f2e0fdb429d5",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 56,
+   "segment": 0,
+   "position": {
+    "x": -12.124116897583008,
+    "z": 9.278010368347168
+   },
+   "heading_rad": -3.0435151106628644,
+   "t": "2026-10-24T23:33:53.349Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "aacad5aa-13d4-4487-9e64-15bf572e543f",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 57,
+   "segment": 0,
+   "position": {
+    "x": -12.12388801574707,
+    "z": 10.597389221191406
+   },
+   "heading_rad": 3.100840436651629,
+   "t": "2026-10-24T23:33:54.849Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "21f072d2-6ae9-4e5b-90ca-3f6f4c6af776",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 58,
+   "segment": 0,
+   "position": {
+    "x": -12.255221366882324,
+    "z": 11.648248672485352
+   },
+   "heading_rad": -2.9460089234031663,
+   "t": "2026-10-24T23:33:56.866Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "1e853aa3-717b-4aff-bd78-a68e156c7edf",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 59,
+   "segment": 0,
+   "position": {
+    "x": -11.865145683288574,
+    "z": 10.51523208618164
+   },
+   "heading_rad": 0.6400201069932264,
+   "t": "2026-10-24T23:34:05.366Z",
+   "tracking": "normal"
+  },
+  {
+   "id": "1af728a6-852b-43eb-b2be-bbcc01849154",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "seq": 60,
+   "segment": 0,
+   "position": {
+    "x": -12.13325023651123,
+    "z": 9.314447402954102
+   },
+   "heading_rad": -0.10140169797573731,
+   "t": "2026-10-24T23:34:06.866Z",
+   "tracking": "normal"
+  }
+ ],
+ "observations": [
+  {
+   "id": "d30e341f-a744-43f2-aeb8-f8c6d5594a21",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:31:58.019Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 0.044342052191495895,
+    "z": -0.0027748276479542255
+   },
+   "crumb_id": "5809d5aa-4c6d-44b8-8a78-6c005c9c843e",
+   "place_id": null,
+   "level_dbfs_rel": -52.37989054619576,
+   "level_aw_dbfs_rel": -59.302529186424415,
+   "spread_db": 8.44016474850536,
+   "peaks_per_min": 0.0,
+   "bands_db": [
+    -59.055163338356344,
+    -62.1441333629032,
+    -66.02216046347037,
+    -66.57892959873674,
+    -71.31237780070495,
+    -82.93703929260678
+   ],
+   "speech_share": 0.6120388619601727,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.5207151353359223
+    },
+    {
+     "label": "mosquito_buzz",
+     "confidence": 0.1271309733390808
+    },
+    {
+     "label": "insect",
+     "confidence": 0.1183866024017334
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "ca262b47-5804-4f30-81b3-a65beb8eab6a",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:32:03.019Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 0.11566686630249023,
+    "z": 0.1821371465921402
+   },
+   "crumb_id": "5809d5aa-4c6d-44b8-8a78-6c005c9c843e",
+   "place_id": null,
+   "level_dbfs_rel": -52.63498129199497,
+   "level_aw_dbfs_rel": -58.71564400290879,
+   "spread_db": 5.9563757712409995,
+   "peaks_per_min": 0.0,
+   "bands_db": [
+    -57.79930731881662,
+    -61.51460006366622,
+    -68.1973854074637,
+    -65.43053419866088,
+    -68.33096392345062,
+    -74.10415430650558
+   ],
+   "speech_share": 0.5593067802488804,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.44924113154411316
+    },
+    {
+     "label": "nose_blowing",
+     "confidence": 0.08661593496799469
+    },
+    {
+     "label": "drawer_open_close",
+     "confidence": 0.07759110182523728
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "6aed8bf9-bc2a-47ce-ba13-46793efde679",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:32:08.019Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 0.15237021446228027,
+    "z": 2.1332361698150635
+   },
+   "crumb_id": "67f64de0-0167-4655-8385-d241a5702d94",
+   "place_id": null,
+   "level_dbfs_rel": -53.31158640218949,
+   "level_aw_dbfs_rel": -60.46627144416982,
+   "spread_db": 4.944885210763289,
+   "peaks_per_min": 0.0,
+   "bands_db": [
+    -60.70341235353602,
+    -60.268710550220206,
+    -68.92625782024444,
+    -69.28481784956921,
+    -75.62316869814056,
+    -78.59223446750038
+   ],
+   "speech_share": 0.36631438732147215,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.39769843220710754
+    },
+    {
+     "label": "music",
+     "confidence": 0.1088000014424324
+    },
+    {
+     "label": "door",
+     "confidence": 0.060556480288505556
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "f1323798-10f7-4867-864d-442be4e8f14d",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:32:13.018Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 3.6654844284057617,
+    "z": 1.2314342260360718
+   },
+   "crumb_id": "f8dfc28e-4532-458d-a306-00bcf2176107",
+   "place_id": null,
+   "level_dbfs_rel": -49.281481332910275,
+   "level_aw_dbfs_rel": -55.482357394771995,
+   "spread_db": 6.476782760770895,
+   "peaks_per_min": 3.0,
+   "bands_db": [
+    -54.373447594476765,
+    -56.36609645242889,
+    -64.52172022920435,
+    -63.039755753336195,
+    -70.82701013786041,
+    -75.37808498749959
+   ],
+   "speech_share": 0.559121236205101,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.5069046318531036
+    },
+    {
+     "label": "door",
+     "confidence": 0.31509540379047396
+    },
+    {
+     "label": "door_slam",
+     "confidence": 0.16080911159515382
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "62c13ddb-9934-4d86-b514-5944e8b25ff2",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:32:18.018Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 5.759298801422119,
+    "z": -0.7137721180915833
+   },
+   "crumb_id": "32a21f97-8b8d-4987-a740-11ce0a1a208d",
+   "place_id": null,
+   "level_dbfs_rel": -51.39537285405034,
+   "level_aw_dbfs_rel": -56.23262025199288,
+   "spread_db": 6.285815036264957,
+   "peaks_per_min": 2.4,
+   "bands_db": [
+    -59.22201103185648,
+    -56.68314433119399,
+    -63.40709655902374,
+    -63.7688733400212,
+    -71.37043429048354,
+    -76.07979569730507
+   ],
+   "speech_share": 0.7607129514217377,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.7329835653305053
+    },
+    {
+     "label": "music",
+     "confidence": 0.16443801522254944
+    },
+    {
+     "label": "door",
+     "confidence": 0.051427526772022246
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "9e9acb7d-b841-4f08-966e-2de7668199a2",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:32:23.018Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 6.050595760345459,
+    "z": 0.5564432740211487
+   },
+   "crumb_id": "064f2684-6510-415a-84fd-ff831f34dadf",
+   "place_id": null,
+   "level_dbfs_rel": -52.95894215901537,
+   "level_aw_dbfs_rel": -58.58312591476833,
+   "spread_db": 6.472567872433871,
+   "peaks_per_min": 2.0,
+   "bands_db": [
+    -59.65194650841142,
+    -58.879974183287885,
+    -66.6659881830636,
+    -67.34212407848209,
+    -75.42520240508149,
+    -67.45811058713458
+   ],
+   "speech_share": 0.6795322895050049,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.65961052775383
+    },
+    {
+     "label": "music",
+     "confidence": 0.1003542810678482
+    },
+    {
+     "label": "basketball_bounce",
+     "confidence": 0.05503620505332947
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "a29d6cee-b886-407c-9bb8-7a2b8d21dcca",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:32:28.018Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 9.454057693481445,
+    "z": -0.719667911529541
+   },
+   "crumb_id": "7e99357d-8f1d-448d-9f91-b3ef9786beb4",
+   "place_id": null,
+   "level_dbfs_rel": -53.20132913871409,
+   "level_aw_dbfs_rel": -61.04668176120135,
+   "spread_db": 6.591496283611583,
+   "peaks_per_min": 1.7142857142857142,
+   "bands_db": [
+    -60.37014312510679,
+    -60.92058463113883,
+    -69.69712130576633,
+    -71.01784758863745,
+    -74.16911284677604,
+    -77.92196138006818
+   ],
+   "speech_share": 0.4379308525472879,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.39045737981796264
+    },
+    {
+     "label": "door",
+     "confidence": 0.09087118208408355
+    },
+    {
+     "label": "music",
+     "confidence": 0.09008037000894546
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "df27c374-0e5c-43d9-b0a6-6cf2f09958ff",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:32:33.018Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 10.14118480682373,
+    "z": -0.8233978152275085
+   },
+   "crumb_id": "fced3ca2-5211-40ce-ba84-f6a392389b0d",
+   "place_id": null,
+   "level_dbfs_rel": -46.95189266259251,
+   "level_aw_dbfs_rel": -50.824237041625196,
+   "spread_db": 8.545343345372252,
+   "peaks_per_min": 7.5,
+   "bands_db": [
+    -54.3303942747934,
+    -49.832288224139425,
+    -63.313342336938376,
+    -58.51069656776362,
+    -64.29581496454743,
+    -70.26683780533145
+   ],
+   "speech_share": 0.8528625041246414,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.9253864526748657
+    },
+    {
+     "label": "mosquito_buzz",
+     "confidence": 0.15996458232402802
+    },
+    {
+     "label": "playing_squash",
+     "confidence": 0.12904313206672668
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "abff4462-e923-464f-ab04-e33fb9d92935",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:32:38.018Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 10.064225196838379,
+    "z": -0.8651900291442871
+   },
+   "crumb_id": "fced3ca2-5211-40ce-ba84-f6a392389b0d",
+   "place_id": null,
+   "level_dbfs_rel": -31.707382497300728,
+   "level_aw_dbfs_rel": -32.80453976842879,
+   "spread_db": 11.93154220390204,
+   "peaks_per_min": 9.333333333333334,
+   "bands_db": [
+    -48.7212704294037,
+    -33.95545416959046,
+    -36.355964341640615,
+    -48.63410166906111,
+    -52.059785048352,
+    -59.85954302259814
+   ],
+   "speech_share": 0.7483446508646011,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.7110358297824859
+    },
+    {
+     "label": "mosquito_buzz",
+     "confidence": 0.10577772259712219
+    },
+    {
+     "label": "cow_moo",
+     "confidence": 0.10331269204616547
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "e6cc8e8c-278f-4e11-85b5-bf37409de702",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:32:43.018Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 12.380599975585938,
+    "z": -0.15243683755397797
+   },
+   "crumb_id": "e64d4722-a2e0-4a56-a56d-d7360f03fad9",
+   "place_id": null,
+   "level_dbfs_rel": -56.23991723507349,
+   "level_aw_dbfs_rel": -61.699304475937204,
+   "spread_db": 11.952188159765825,
+   "peaks_per_min": 8.4,
+   "bands_db": [
+    -63.45659409438753,
+    -62.634472186445926,
+    -70.86760147179712,
+    -70.15805736239226,
+    -69.71628574944349,
+    -76.68598687688949
+   ],
+   "speech_share": 0.5966464921832084,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.6199735045433045
+    },
+    {
+     "label": "person_walking",
+     "confidence": 0.11656132042407989
+    },
+    {
+     "label": "breathing",
+     "confidence": 0.06808226704597473
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "c364cae5-e6be-4460-acba-5d2c159abb9f",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:32:48.018Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 16.668516159057617,
+    "z": 0.9716069102287292
+   },
+   "crumb_id": "ac9c9891-bdb9-4b29-956f-a2dce31c6250",
+   "place_id": null,
+   "level_dbfs_rel": -57.27808445492955,
+   "level_aw_dbfs_rel": -65.87957503153095,
+   "spread_db": 12.077630113325256,
+   "peaks_per_min": 7.636363636363637,
+   "bands_db": [
+    -65.82949179446999,
+    -66.438164810211,
+    -74.21841693819326,
+    -74.78718791321883,
+    -77.15396170473674,
+    -78.49381149073868
+   ],
+   "speech_share": 0.2793500326573849,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.31634327173233034
+    },
+    {
+     "label": "music",
+     "confidence": 0.12938384860754013
+    },
+    {
+     "label": "person_walking",
+     "confidence": 0.06156538128852844
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "d2cdc586-c633-4f01-ad5c-b05786635296",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:32:53.018Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 17.360742568969727,
+    "z": 5.1409831047058105
+   },
+   "crumb_id": "341b3332-c562-407a-adad-bee9a2fd294d",
+   "place_id": null,
+   "level_dbfs_rel": -58.40729083686248,
+   "level_aw_dbfs_rel": -65.35070036867425,
+   "spread_db": 12.891366061553299,
+   "peaks_per_min": 7.0,
+   "bands_db": [
+    -64.06332624632739,
+    -66.92073276369814,
+    -73.8267053484103,
+    -72.9456689447168,
+    -78.20930318899607,
+    -81.54118166305553
+   ],
+   "speech_share": 0.22638942785561084,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.18123640716075898
+    },
+    {
+     "label": "music",
+     "confidence": 0.07383754551410675
+    },
+    {
+     "label": "writing",
+     "confidence": 0.059901148080825806
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "193405ae-6ecb-40d3-a1d3-33fe839468d3",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:32:58.018Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 14.551435470581055,
+    "z": 4.819746494293213
+   },
+   "crumb_id": "2afbd23e-2ae8-4a58-98dc-348509c3f57d",
+   "place_id": null,
+   "level_dbfs_rel": -59.07380859248814,
+   "level_aw_dbfs_rel": -65.15670353065566,
+   "spread_db": 12.981376367629835,
+   "peaks_per_min": 7.0,
+   "bands_db": [
+    -66.28623682568488,
+    -63.90559072852941,
+    -73.05850665656749,
+    -76.19443398951104,
+    -79.85828751325855,
+    -81.20391750182182
+   ],
+   "speech_share": 0.08019360303878784,
+   "classes": [
+    {
+     "label": "music",
+     "confidence": 0.09926824122667313
+    },
+    {
+     "label": "thunder",
+     "confidence": 0.07153270244598389
+    },
+    {
+     "label": "writing",
+     "confidence": 0.0697011947631836
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "bf88805c-3c83-4d34-888a-e985af1a4be0",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:33:03.018Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 10.838765144348145,
+    "z": 3.6640124320983887
+   },
+   "crumb_id": "fa6ea7c8-ae2a-4e21-b109-3c2ff99c7711",
+   "place_id": null,
+   "level_dbfs_rel": -55.752890015292174,
+   "level_aw_dbfs_rel": -61.43922985695837,
+   "spread_db": 9.06812076768773,
+   "peaks_per_min": 7.0,
+   "bands_db": [
+    -60.659946108888604,
+    -62.69818763645898,
+    -70.32496701837208,
+    -68.69526302064993,
+    -72.85739861784707,
+    -78.41257798772477
+   ],
+   "speech_share": 0.1485113188624382,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.14229584038257598
+    },
+    {
+     "label": "dog",
+     "confidence": 0.12439267337322235
+    },
+    {
+     "label": "snoring",
+     "confidence": 0.08561615943908692
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "14981cb3-0c75-4028-baab-1ec689be650b",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:33:08.017Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 8.903528213500977,
+    "z": 0.5054150223731995
+   },
+   "crumb_id": "3caac4bb-82b2-4f80-9617-0f6bd52338bc",
+   "place_id": null,
+   "level_dbfs_rel": -49.414772793074206,
+   "level_aw_dbfs_rel": -52.52907702872712,
+   "spread_db": 8.899050454820667,
+   "peaks_per_min": 9.0,
+   "bands_db": [
+    -57.7662835478762,
+    -53.522736671258954,
+    -56.85604866862289,
+    -63.394765630497034,
+    -67.93304836986775,
+    -73.26350355843351
+   ],
+   "speech_share": 0.7371769309043884,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.7505847573280334
+    },
+    {
+     "label": "writing",
+     "confidence": 0.14488145411014558
+    },
+    {
+     "label": "music",
+     "confidence": 0.09473212957382202
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "8cabb7cb-3b39-4638-b57a-1386251c8e09",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:33:13.017Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 9.286690711975098,
+    "z": -1.3118023872375488
+   },
+   "crumb_id": "65f2bbe0-3674-4e90-9c8f-1f841e26939d",
+   "place_id": null,
+   "level_dbfs_rel": -52.33045287431342,
+   "level_aw_dbfs_rel": -56.214560480283296,
+   "spread_db": 9.896908946378574,
+   "peaks_per_min": 9.0,
+   "bands_db": [
+    -57.71480560401295,
+    -57.42718148649946,
+    -64.8016732753921,
+    -62.96712850168014,
+    -66.74266411390987,
+    -75.00076060321308
+   ],
+   "speech_share": 0.8446875512599945,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.8217517137527466
+    },
+    {
+     "label": "music",
+     "confidence": 0.1848103731870651
+    },
+    {
+     "label": "guitar",
+     "confidence": 0.032750511169433595
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "f2cba5db-e33b-4c36-a268-64be989b9500",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:33:18.017Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 8.353755950927734,
+    "z": 0.14190737903118134
+   },
+   "crumb_id": "6a5d99ed-16f4-4119-8799-fef808d8d1f3",
+   "place_id": null,
+   "level_dbfs_rel": -54.903184896522326,
+   "level_aw_dbfs_rel": -60.13388642216523,
+   "spread_db": 10.144456399621909,
+   "peaks_per_min": 10.0,
+   "bands_db": [
+    -61.122954805611016,
+    -62.35287213968515,
+    -68.61674567779527,
+    -66.74875041540865,
+    -69.25891701253809,
+    -72.62087366834781
+   ],
+   "speech_share": 0.44126350022852423,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.32297912836074827
+    },
+    {
+     "label": "music",
+     "confidence": 0.10359431505203247
+    },
+    {
+     "label": "laughter",
+     "confidence": 0.08531368672847747
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "05dd770e-cd8a-4975-be51-5399c9fed2e9",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:33:23.017Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 5.181285381317139,
+    "z": 1.8246185779571533
+   },
+   "crumb_id": "be89ff92-be14-4069-9f6c-83b143db1ad1",
+   "place_id": null,
+   "level_dbfs_rel": -55.30815971953031,
+   "level_aw_dbfs_rel": -60.331583625986525,
+   "spread_db": 10.220140857000878,
+   "peaks_per_min": 10.0,
+   "bands_db": [
+    -62.0535614691801,
+    -60.65801674529386,
+    -67.03532326476736,
+    -69.62530345382696,
+    -73.74534637206652,
+    -78.78275705132677
+   ],
+   "speech_share": 0.34926710948348044,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.3060383915901184
+    },
+    {
+     "label": "music",
+     "confidence": 0.1636022448539734
+    },
+    {
+     "label": "sneeze",
+     "confidence": 0.07003406882286071
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "908cb367-83b6-4b81-b71e-7a3830c59162",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:33:28.017Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": 0.8650078177452087,
+    "z": 2.4033374786376953
+   },
+   "crumb_id": "511de5dc-ff05-477b-a6b7-75237497895d",
+   "place_id": null,
+   "level_dbfs_rel": -54.40231407465546,
+   "level_aw_dbfs_rel": -58.808825259504204,
+   "spread_db": 9.068023810987668,
+   "peaks_per_min": 10.0,
+   "bands_db": [
+    -61.621322760349635,
+    -59.77444221939691,
+    -64.38272506517463,
+    -66.68223330745847,
+    -74.61105712888792,
+    -79.7461261052789
+   ],
+   "speech_share": 0.4815990477800369,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.4183270573616028
+    },
+    {
+     "label": "breathing",
+     "confidence": 0.09897813498973847
+    },
+    {
+     "label": "person_walking",
+     "confidence": 0.08066275119781494
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "c44fc4e7-31c8-445e-9c12-43fbbfbc278f",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:33:33.017Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": -3.6567564010620117,
+    "z": 2.9203522205352783
+   },
+   "crumb_id": "565d382e-4ffc-4143-a843-13cca10e5aa3",
+   "place_id": null,
+   "level_dbfs_rel": -52.23261262595745,
+   "level_aw_dbfs_rel": -57.63218967182895,
+   "spread_db": 9.071948523630105,
+   "peaks_per_min": 6.0,
+   "bands_db": [
+    -58.63626429040316,
+    -56.57132766880263,
+    -68.48410475433394,
+    -66.97159777117712,
+    -73.13035118555297,
+    -77.20710604310239
+   ],
+   "speech_share": 0.46211785525083543,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.508190906047821
+    },
+    {
+     "label": "music",
+     "confidence": 0.07377077639102936
+    },
+    {
+     "label": "rope_skipping",
+     "confidence": 0.05631557106971741
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "4d005338-47dc-44bc-be9c-4f9e12eeb844",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:33:38.017Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": -8.098468780517578,
+    "z": 3.8704702854156494
+   },
+   "crumb_id": "4fe06bee-45c5-4c00-ad43-dc59873def7b",
+   "place_id": null,
+   "level_dbfs_rel": -53.45626213053028,
+   "level_aw_dbfs_rel": -59.88889157207592,
+   "spread_db": 8.525519370107808,
+   "peaks_per_min": 4.0,
+   "bands_db": [
+    -61.454190877744196,
+    -58.683129824642954,
+    -68.72496786570987,
+    -69.949972237825,
+    -76.96726017533776,
+    -81.23042286275387
+   ],
+   "speech_share": 0.3853877209126949,
+   "classes": [
+    {
+     "label": "speech",
+     "confidence": 0.3680699229240417
+    },
+    {
+     "label": "music",
+     "confidence": 0.1188115656375885
+    },
+    {
+     "label": "mosquito_buzz",
+     "confidence": 0.05475307703018188
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "da4cf34c-47f0-48d7-b319-96cf060598e0",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:33:43.017Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": -12.196696281433105,
+    "z": 2.879950523376465
+   },
+   "crumb_id": "e9c7334d-f7a5-4dac-9795-bb43060bee9e",
+   "place_id": null,
+   "level_dbfs_rel": -55.02529637773087,
+   "level_aw_dbfs_rel": -62.61481352675676,
+   "spread_db": 7.848508613864581,
+   "peaks_per_min": 4.0,
+   "bands_db": [
+    -64.53391983778742,
+    -62.81432471998925,
+    -69.7027587844019,
+    -71.96851422787637,
+    -74.7589767082771,
+    -79.9333169786214
+   ],
+   "speech_share": 0.04474844336509705,
+   "classes": [
+    {
+     "label": "person_walking",
+     "confidence": 0.10925212502479553
+    },
+    {
+     "label": "person_shuffling",
+     "confidence": 0.10310418009757996
+    },
+    {
+     "label": "insect",
+     "confidence": 0.09113761186599731
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "c22f41a8-984a-4ecb-aaac-705d5a631061",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:33:48.017Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": -12.53516960144043,
+    "z": 6.67178201675415
+   },
+   "crumb_id": "b2a3028f-8a00-4e3a-849b-86ca103f3f77",
+   "place_id": null,
+   "level_dbfs_rel": -56.329693161716264,
+   "level_aw_dbfs_rel": -63.72615182010075,
+   "spread_db": 6.621055384572273,
+   "peaks_per_min": 4.0,
+   "bands_db": [
+    -64.06543158884554,
+    -65.15746989100113,
+    -70.51001656748633,
+    -71.81112391686631,
+    -75.21072769337704,
+    -80.30200981200372
+   ],
+   "speech_share": 0.06785382702946663,
+   "classes": [
+    {
+     "label": "sigh",
+     "confidence": 0.1129145622253418
+    },
+    {
+     "label": "cow_moo",
+     "confidence": 0.09035948514938355
+    },
+    {
+     "label": "person_shuffling",
+     "confidence": 0.08823379278182983
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "5406e3ab-e8f6-46b5-b007-4d9b8eff7cf3",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:33:53.016Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": -12.104016304016113,
+    "z": 8.793438911437988
+   },
+   "crumb_id": "61726747-2742-44c5-bfe2-c48acabd2b15",
+   "place_id": null,
+   "level_dbfs_rel": -56.67543326922583,
+   "level_aw_dbfs_rel": -64.42832681860403,
+   "spread_db": 6.282848763815309,
+   "peaks_per_min": 4.0,
+   "bands_db": [
+    -65.15053441783681,
+    -65.60554481744164,
+    -70.42262583179215,
+    -73.69891542836571,
+    -77.75926138149194,
+    -80.9863808208525
+   ],
+   "speech_share": 0.03983489200472832,
+   "classes": [
+    {
+     "label": "air_horn",
+     "confidence": 0.12228984236717225
+    },
+    {
+     "label": "car_horn",
+     "confidence": 0.11198941469192505
+    },
+    {
+     "label": "brass_instrument",
+     "confidence": 0.10261961221694946
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "a0d6d90c-7efc-47e1-8a9c-94edb9fd4585",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:33:58.016Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": -12.24199104309082,
+    "z": 11.68958568572998
+   },
+   "crumb_id": "21f072d2-6ae9-4e5b-90ca-3f6f4c6af776",
+   "place_id": null,
+   "level_dbfs_rel": -56.19750942382022,
+   "level_aw_dbfs_rel": -62.09463296251884,
+   "spread_db": 6.1054878282215554,
+   "peaks_per_min": 4.0,
+   "bands_db": [
+    -64.20593424225784,
+    -68.57781586379703,
+    -65.59281508489858,
+    -69.3967781867707,
+    -73.14795869396937,
+    -81.81843912617393
+   ],
+   "speech_share": 0.012124982662498951,
+   "classes": [
+    {
+     "label": "truck",
+     "confidence": 0.11683599352836609
+    },
+    {
+     "label": "car_horn",
+     "confidence": 0.06651661992073059
+    },
+    {
+     "label": "mechanical_fan",
+     "confidence": 0.06030172407627106
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  },
+  {
+   "id": "6d0bc711-389e-4b9a-b376-b4147c4cc8ea",
+   "session_id": "ced615f2-4a87-40de-b6b5-dc8d32c91651",
+   "t": "2026-10-24T23:34:03.016Z",
+   "duration_s": 5.0,
+   "position": {
+    "x": -12.062966346740723,
+    "z": 12.261272430419922
+   },
+   "crumb_id": "21f072d2-6ae9-4e5b-90ca-3f6f4c6af776",
+   "place_id": null,
+   "level_dbfs_rel": -48.189760351810634,
+   "level_aw_dbfs_rel": -52.57170928322214,
+   "spread_db": 7.3294330881942145,
+   "peaks_per_min": 8.0,
+   "bands_db": [
+    -58.66770667465937,
+    -62.23321734007874,
+    -57.53529574457709,
+    -56.458430576164744,
+    -67.2843682242634,
+    -78.48781164700048
+   ],
+   "speech_share": 0.0076782567193731666,
+   "classes": [
+    {
+     "label": "air_conditioner",
+     "confidence": 0.12761499881744384
+    },
+    {
+     "label": "truck",
+     "confidence": 0.11454585492610932
+    },
+    {
+     "label": "microwave_oven",
+     "confidence": 0.08436903059482574
+    }
+   ],
+   "doa": null,
+   "tracking": "normal"
+  }
+ ]
+}
