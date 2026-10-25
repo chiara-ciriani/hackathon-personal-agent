@@ -1,6 +1,6 @@
 # QC Walk Map on the iPhone in 10 minutes
 
-This is the standalone walk-map app in `ios-walk/` (shown as **QC Walk Map** on the home screen). It needs no server. The team app in `ios/` is a different app (shown as **Quiet Compass**) and needs a server connection before "Start measuring" works.
+This is the standalone walk-map app in `ios-walk/` (shown as **QC Walk Map** on the home screen). Local mode needs no server. For agent mode open the agent’s phone link, choose **Open iPhone app**, and approve **Allow agent analysis**. Deploy both the relay and server from current main. The team app in `ios/` is a different app (shown as **Quiet Compass**) and needs a server connection before "Start measuring" works.
 
 You need a Mac with **Xcode 26** and an **iPhone 16 Pro or newer** (spatial audio + LiDAR) with a USB-C cable.
 

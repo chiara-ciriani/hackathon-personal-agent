@@ -160,6 +160,9 @@ final class CompassModel {
     var locateMessage = ""
 
     // Walk map
+    var agentTracking = false { didSet { updateAR() } }
+    var agentClipped = false
+    @ObservationIgnored private var captureGeneration = 0
     var isRecording = false { didSet { updateAR() } }
     /// Take the Walk-map level from ARKit's own mic stream instead of AudioCapture.
     var arAudioFallback = false { didSet { restartAR() } }
@@ -192,12 +195,14 @@ final class CompassModel {
     func start() async {
         guard !started else { return }
         started = true
+        captureGeneration += 1
+        let generation = captureGeneration
 
         // The model lives as long as the app, so capturing self strongly is fine.
         let pipeline: AnalysisPipeline
         do {
             pipeline = try AnalysisPipeline(motion: motion) { update in
-                Task { @MainActor in self.apply(update) }
+                Task { @MainActor in if self.captureGeneration == generation { self.apply(update) } }
             }
         } catch {
             status = "DSP setup failed: \(error.localizedDescription)"
@@ -217,6 +222,7 @@ final class CompassModel {
             return
         }
 
+        guard generation == captureGeneration, !Task.isCancelled else { return }
         loadWalks()
         let capture = AudioCapture(handler: { channels, info in pipeline.handle(channels, info) },
                                    onEvent: { event, running in
@@ -225,7 +231,9 @@ final class CompassModel {
         self.capture = capture
         status = "Starting capture…"
         do {
-            stream = try await capture.start()
+            let info = try await capture.start()
+            guard generation == captureGeneration, !Task.isCancelled else { capture.stop(); return }
+            stream = info
             status = stream.sessionRunning ? "Listening" : "Capture session did not start"
         } catch {
             status = "Capture failed: \(error.localizedDescription)"
@@ -253,6 +261,7 @@ final class CompassModel {
         radar = update.radar
         recentRadar = update.recent
         radarFromARKit = update.fromARKit
+        if isRecording, update.level.peakDB >= -0.01 { agentClipped = true }
         if isRecording, !arAudioFallback {
             walkPowerSum += update.powerSum
             walkPowerCount += update.powerCount
@@ -279,7 +288,7 @@ final class CompassModel {
 
     /// Runs ARKit while Locate mode is on or a walk is recording, never otherwise.
     private func updateAR() {
-        let wanted = locateMode || isRecording
+        let wanted = locateMode || isRecording || agentTracking
         if wanted, arTracker == nil {
             var onPower: ARTracker.PowerHandler?
             if arAudioFallback {
@@ -314,6 +323,7 @@ final class CompassModel {
 
     private func apply(_ status: ARStatus) {
         ar = status
+        if agentTracking, status.isNormal, let p = status.position { mapUser = p }
         if isRecording, let p = status.position, walkPath.last.map({ simd_distance($0, p) > 0.05 }) ?? true {
             walkPath.append(p)
             if replaying == nil { mapPath = walkPath; mapUser = p }
@@ -378,8 +388,27 @@ final class CompassModel {
 
     // MARK: - Walk map
 
+    func stopSensors() {
+        captureGeneration += 1
+        if isRecording { stopWalk() }
+        agentTracking = false; locateMode = false
+        stopReplay(); autoLog = false
+        capture?.stop(); capture = nil; pipeline = nil
+        motion.stop(); started = false; stream.sessionRunning = false
+    }
+
+    func beginAgentWalk() {
+        if isRecording { stopWalk() }
+        agentTracking = false; locateMode = false; arAudioFallback = false
+        // Every requested map gets a fresh AR frame; never compare separate walk origins.
+        ar = ARStatus()
+        agentTracking = true
+        startWalk()
+    }
+
     func startWalk() {
         stopReplay()
+        agentClipped = false
         let stamp = DateFormatter()
         stamp.locale = Locale(identifier: "en_US_POSIX")
         stamp.dateFormat = "yyyyMMdd-HHmmss"

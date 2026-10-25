@@ -3,22 +3,26 @@ import SwiftUI
 /// The default screen: the room's noise map filling in as you walk, and an arrow to the quietest spot measured.
 struct QuietMapView: View {
     @Bindable var model: CompassModel
+    @Bindable var agent: AgentLink
     @Binding var showAdvanced: Bool
 
     var body: some View {
-        VStack(spacing: 14) {
+        ScrollView { VStack(spacing: 14) {
             HStack {
                 Text("Quiet Map").font(.title.bold())
                 Spacer()
                 Button("Advanced", systemImage: "slider.horizontal.3") { showAdvanced = true }
-                    .labelStyle(.iconOnly).font(.title2)
+                    .labelStyle(.iconOnly).font(.title2).disabled(agent.hasLink)
             }
             FieldMapView(field: model.field, path: model.mapPath, user: model.mapUser)
-            guidance
+            if agent.hasLink { AgentPanel(agent: agent, model: model) } else { guidance }
+            if !agent.hasLink && !agent.message.isEmpty { Text(agent.message).font(.caption).foregroundStyle(.secondary) }
             Button {
-                model.isRecording ? model.stopWalk() : model.startWalk()
+                if agent.hasLink { agent.disconnect(model: model) }
+                else if model.isRecording { model.stopWalk() }
+                else { Task { await model.start(); if model.stream.sessionRunning { model.startWalk() } } }
             } label: {
-                Label(model.isRecording ? "Stop and save" : "Start a new map",
+                Label(agent.hasLink ? "Disconnect agent" : model.isRecording ? "Stop and save" : "Start a new map",
                       systemImage: model.isRecording ? "stop.fill" : "figure.walk")
                     .font(.title3.bold())
                     .frame(maxWidth: .infinity)
@@ -30,11 +34,11 @@ struct QuietMapView: View {
                 .foregroundStyle(model.isRecording && !model.ar.isNormal ? Color.orange : Color.secondary)
             Spacer(minLength: 0)
         }
-        .padding()
+        .padding() }
     }
 
     @ViewBuilder private var guidance: some View {
-        if let spot = model.field?.quietSpots.first, let me = model.mapUser {
+        if model.isRecording, model.ar.isNormal, let spot = model.field?.quietSpots.first, let me = model.mapUser {
             let dx = spot.x - me.x, dz = spot.z - me.y  // mapUser is (x, z)
             let distance = (dx * dx + dz * dz).squareRoot()
             if distance < 1.5 {

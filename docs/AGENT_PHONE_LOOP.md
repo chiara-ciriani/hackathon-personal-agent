@@ -2,15 +2,30 @@
 
 The mobile page is `/measure`. It is a sensor connection, not a manual measuring/export form.
 
-## Alongside the native apps
+## Native room analysis from the same link
 
-`/measure` remains available after integrating Alex’s `feat/sound-field` branch.
-The existing `ios/` app uploads private observations and handles agent guidance.
-`ios-walk/` is the standalone QC Walk Map app: it records and replays walks locally,
-with no agent connection or background upload. Its export tool accepts the app's
-elapsed-second timestamps. These modes coexist; a local walk is not silently published.
-The new private `quiet_get_sound_map` tool reads positioned observations already in the
-server. It is not exposed on the shared MCP endpoint.
+Install the current `ios-walk/` build, then open the agent's phone link on the iPhone.
+Choose **Open iPhone app** and approve **Allow agent analysis** in QC Walk Map.
+The app gets a short-lived phone capability, never an owner/shared API key. Requests
+use the fixed Vercel relay; app links cannot choose an arbitrary server.
+
+1. Agent: `connect_phone`, then wait for `phone_measurement_status.client == "native"`.
+2. Agent: `request_phone_measurement(phone_session_id, mode="walk", duration_seconds=60)`.
+   The user walks with the camera forward; only acoustic levels and ARKit positions are sent.
+3. Agent: poll status every five seconds. A complete job returns `walk.analysis` (energy-mean,
+   median, range and variation), current level, quiet spots and an optional experimental FOA
+   bearing. Incomplete, clipped or unavailable data must not become a quiet recommendation.
+4. Agent: `send_phone_recommendation(..., action="move", spot_index=0)` only for a returned
+   spot at least 3 dB quieter. The app displays advice and a straight-line direction in the
+   same AR session. Direction pauses when tracking is unavailable; it is not a safe route.
+5. Disconnect, backgrounding, expiry or connection failure turns off the sensors.
+
+Native maps stay private to the pairing and grant no shared-query receipt. Local maps,
+replay, export, compass and radar remain available; advanced controls are disabled during
+agent capture to avoid mixing profiles or coordinate systems. Physical ARKit/FOA validation
+and a real Dot connection remain pending. Loading the page installs neither the app nor Dot.
+
+## Browser sound measurement
 
 ## User flow
 
@@ -36,7 +51,7 @@ server. It is not exposed on the shared MCP endpoint.
 7. Leaving/hiding the page, disconnecting, loss of the microphone or expiry closes the sensors.
    The agent cannot reactivate them without a new authorized connection.
 
-No per-reading copy/paste, API-key entry or native app installation is required.
+Browser mode needs no native installation. Both modes avoid per-reading copy/paste and API-key entry.
 Do not open a user's connection link on an agent computer and call that a phone measurement.
 
 ## Deployment
@@ -47,7 +62,8 @@ Do not open a user's connection link on an agent computer and call that a phone 
   Override it when hosting the phone page elsewhere.
 - The web server uses `QC_SERVER_URL` (default: the existing Render server).
 - `GET /v1/exchange/status` must include
-  `phone_measurement.protocol = "phone-bridge-v1"`.
+  `phone_measurement.protocol = "phone-bridge-v1"` and, for the app,
+  `phone_measurement.native_protocol = "phone-walk-v1"`.
 - Clients use the existing authenticated `/mcp/shared`. This change does **not**
   add ChatGPT/Dot OAuth or install a plugin in the user's account. That connection
   remains a separate prerequisite; do not report Dot connected merely because this page loads.
@@ -63,7 +79,7 @@ fragment initially, is immediately removed from the page URL, and stays only in 
 Phone endpoints accept it as an Authorization header through a fixed-destination web relay.
 
 Connections expire after 900 seconds. Explicit phone-side consent is required before the
-server accepts a command/result. Requests expire after 90 seconds. Concurrent requests reuse
+server accepts a command/result. Browser requests expire after 90 seconds; native requests expire after their duration plus 60 seconds. Concurrent requests reuse
 the pending job; only one poll claims it. Retries retain the same request ID and payload, so a
 lost network response cannot generate another contribution or renew its receipt.
 A disconnected or stale phone is never reported as a completed measurement.
@@ -92,3 +108,31 @@ fixtures or this software validation as proof of a real iPhone/Dot run.
 - `VERCEL=1 pnpm exec next build` and the repository's Sites/Vinext build.
 - Physical phone microphone, browser permission behavior and the actual Dot connection still
   require an authorized live device test.
+
+## End-to-end software test
+
+`npx e2e@latest init` was run for the existing web app. The SDK is pinned to
+`e2e@0.21.2` and `@e2e-dev/web@0.15.2`, which satisfy the dependency age policy;
+no security exceptions are configured. Install with `pnpm install` in the web app.
+
+Run an isolated local server (from the repository root, with the server environment active):
+
+```sh
+QC_API_TOKEN=local-e2e-owner-only QC_SHARED_API_TOKEN=local-e2e-shared-only \
+QC_DB_PATH=/tmp/quiet-compass-e2e.db QC_PHONE_PAGE_URL=http://localhost:5180/measure \
+PYTHONPATH=server python -m uvicorn quiet_compass.app:create_app --factory --host 127.0.0.1 --port 8810
+```
+
+In `apps/quiet-compass`, start the web and then run the test in another terminal:
+
+```sh
+VERCEL=1 QC_SERVER_URL=http://127.0.0.1:8810 pnpm exec next dev --hostname 127.0.0.1 --port 5180
+APP_URL=http://localhost:5180 E2E_TELEMETRY_DISABLED=1 pnpm test:e2e
+```
+
+Use localhost for the browser URL so Next's canonical request URL and the browser Origin
+match. The same-origin check remains enforced. The suite refuses remote targets and checks
+mobile-width linking, explicit approval, MCP → relay → native summary → acoustic analysis →
+measured destination → advice → disconnect. Its native sensor input is a synthetic fixture.
+Swift's AgentCheck validates the actual native encoder against the same payload contract.
+This does not verify physical microphone/ARKit accuracy, OS permission prompts or actual Dot auth.
