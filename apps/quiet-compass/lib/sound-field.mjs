@@ -14,7 +14,7 @@ const fin=v=>typeof v==='number'&&Number.isFinite(v);
 const ok=p=>!!p&&fin(p.x)&&fin(p.z);
 const list=v=>Array.isArray(v)?v:[];
 
-/** Server origin from NEXT_PUBLIC_QC_SERVER_URL, or `?server=` for a demo. Null keeps the simulated venue.
+/** Server origin from NEXT_PUBLIC_QC_SERVER_URL, or `?server=`. Null means no server: there is no field to show, and nothing is drawn in its place.
  * @param {string|undefined} env @param {string} search @returns {string|null} */
 export function serverBase(env,search){
  for(const v of [new URLSearchParams(search||'').get('server'),env]){if(!v)continue;try{const u=new URL(v);if(u.protocol==='https:'||u.protocol==='http:')return (u.origin+u.pathname).replace(/\/+$/,'')}catch{/* not a URL */}}
@@ -48,7 +48,7 @@ export const cellKey=c=>'cell:'+c.x+','+c.z;
 export const spotKey=s=>'spot:'+s.x+','+s.z;
 const near=(rows,x,z)=>{let best=null,d=Infinity;for(const r of rows){const q=Math.hypot(r.x-x,r.z-z);if(ok(r)&&q<d){best=r;d=q}}return best?{...best,d}:null};
 
-/** GeoJSON for each live source. `ll` is the page's metres-to-map conversion, so the live field and the demo venue share one.
+/** GeoJSON for each live source. `ll` is the page's metres-to-map conversion, so the field and the map share one.
  * @param {SoundField} f @param {ToLngLat} ll @returns {Record<'cells'|'path'|'samples'|'places'|'user'|'spots',Features>} */
 export function fieldLayers(f,ll){
  const h=(f.cell_m||0)/2,range=f.level_range_db,path=list(f.path).filter(ok);

@@ -479,7 +479,6 @@ class Service:
             )
         if not obs:
             update["message"] = "Nothing measured yet in this session."
-        # TODO(next_event): add a labelled sample schedule / calendar hint here if wanted.
         return base.model_copy(update=update)
 
     def _sound_now(self, obs: list[Observation], now: datetime) -> SoundNow | None:

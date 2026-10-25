@@ -8,6 +8,7 @@ import {loadSfLayers} from '../lib/sf-layers.mjs';
 import {loadNoiseReports,emptyCollection,measurementText} from '../lib/real-map.mjs';
 import {buildReportField,describeCell,FIELD_NOTE,FIELD_SOURCES,FILTER_NOTE} from '../lib/noise-field.mjs';
 import {venues,venueMapProperties} from '../lib/venues';
+import {venuePin} from '../lib/venue-data.mjs';
 import 'ol/ol.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './map.css';
@@ -31,7 +32,7 @@ type McpConnection={state:string;endpoint:string|null;dotEndpoint?:string|null;d
 const connectionLabels:Record<string,string>={checking:'Checking server…',available:'Shared MCP available',not_configured:'Server setup needed',invalid_config:'Check server address',unavailable:'Server unavailable',disabled:'Shared access setup needed',incompatible:'Server update needed'};
 const deviceLabels:Record<string,string>={available:'Phone measurements are on the map',empty:'No one has shared a phone measurement in the last 24 hours',access_required:'The public map needs a server update',invalid_config:"Phone measurements aren't set up on the server yet",unavailable:"Couldn't load phone measurements right now"};
 const home={center:[-122.44,37.768] as [number,number],zoom:12.6,pitch:48,bearing:-12};
-// 921 Front Street, San Francisco. Used by the pitch's live demo.
+// 921 Front Street, San Francisco. Only a camera position for the pitch (?demo=front-street); no data is added or changed.
 const demoHome={...home,center:[-122.400556,37.799935] as [number,number],zoom:16.5};
 type ViewOptions={center?:[number,number];zoom?:number;pitch?:number;bearing?:number;duration?:number};
 type MapControls={zoomIn:()=>unknown;zoomOut:()=>unknown;getZoom:()=>number;flyTo:(o:ViewOptions)=>unknown;remove:()=>unknown};
@@ -56,7 +57,7 @@ const mapStyle:StyleSpecification={
   {id:'place-labels',type:'symbol',source:'city','source-layer':'place',minzoom:11,filter:['in',['get','class'],['literal',['suburb','neighbourhood','quarter']]],layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':['interpolate',['linear'],['zoom'],11,10,15,13],'text-letter-spacing':.08,'text-transform':'uppercase'},paint:{'text-color':'#6b6b73','text-halo-color':'#ffffff','text-halo-width':1.5}},
   // Violet = how many real reports (311 + police noise-nuisance calls) fall in each ~280 m area. No reports means no fill: unknown, not quiet.
   {id:'report-field',type:'fill',source:'field',paint:{'fill-color':reportRamp,'fill-opacity':.55,'fill-outline-color':'#ffffff00'}},
-  {id:'venue-points',type:'circle',source:'venuepts',paint:{'circle-color':'#a1a1aa','circle-radius':['interpolate',['linear'],['zoom'],11,7,15,10],'circle-stroke-color':'#171717','circle-stroke-width':2.2}},
+  {id:'venue-points',type:'circle',source:'venuepts',paint:{'circle-color':['case',['==',['get','evidence'],'measured_device'],'#171717','#c4c4cc'],'circle-radius':['interpolate',['linear'],['zoom'],11,7,15,10],'circle-stroke-color':['case',['==',['get','evidence'],'measured_device'],'#ffffff','#8b8b94'],'circle-stroke-width':2.2}},
   {id:'venue-labels',type:'symbol',source:'venuepts',minzoom:12,layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':12,'text-offset':[0,1.5],'text-anchor':'top'},paint:{'text-color':'#171717','text-halo-color':'#ffffff','text-halo-width':1.6}},
   {id:'proxy-context',type:'circle',source:'proxies',minzoom:11,paint:{'circle-color':'#a1a1aa','circle-radius':['interpolate',['linear'],['zoom'],13,1.8,17,4],'circle-stroke-color':'#ffffff','circle-stroke-width':1,'circle-opacity':.85}},
   {id:'candidate-places',type:'circle',source:'candidates',minzoom:11,paint:{'circle-color':'#b6b6bd','circle-radius':['interpolate',['linear'],['zoom'],12,3,17,6],'circle-stroke-color':'#8b8b94','circle-stroke-width':1.5}},
@@ -70,7 +71,7 @@ const mapStyle:StyleSpecification={
 export default function CityMap(){
  const initialView=useRef(home);
  const container=useRef<HTMLDivElement>(null),map=useRef<MapControls|null>(null),glMap=useRef<GLMap|null>(null);
- const sourceData=useRef<Partial<Record<LayerKey,PointCollection>>>({}),fieldKey=useRef<string>(''),filterRef=useRef<(f:Level|'all')=>void>(()=>{});
+ const sourceData=useRef<Partial<Record<LayerKey,PointCollection>>>({}),fieldKey=useRef<string>(''),venueKeyRef=useRef<string>(''),filterRef=useRef<(f:Level|'all')=>void>(()=>{});
  const fallbackUpdate=useRef<((features:PointFeature[])=>void)|null>(null);
  const mcpButton=useRef<HTMLButtonElement>(null),closeButton=useRef<HTMLButtonElement>(null),dialog=useRef<HTMLDivElement>(null);
  const request=useRef<AbortController|null>(null);
@@ -175,7 +176,12 @@ export default function CityMap(){
   const key=(data?.reports.features.length||0)+':'+(data?.cad.features.length||0);
   if(fieldKey.current!==key){fieldKey.current=key;(gl?.getSource('field') as GeoJSONSource|undefined)?.setData(report.collection as unknown as Parameters<GeoJSONSource['setData']>[0])}
   for(const id of ['report-field'])if(gl?.getLayer(id))gl.setLayoutProperty(id,'visibility',shown.field?'visible':'none');
-  features.push(...venues.map(v=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:[v.lng,v.lat]},properties:venueMapProperties(v)})));
+  // Venue pins are grey (no data) unless a released shared measurement exists for that venue.
+  const deviceFeatures=data?.device.features||[];
+  const venueFeatures=venues.map(v=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:[v.lng,v.lat]},properties:venuePin(venueMapProperties(v),v.id,deviceFeatures) as Properties}));
+  const venueKey=venueFeatures.map(f=>f.properties.evidence+':'+f.properties.dbfs).join('|');
+  if(gl&&venueKeyRef.current!==venueKey){venueKeyRef.current=venueKey;(gl.getSource('venuepts') as GeoJSONSource|undefined)?.setData({type:'FeatureCollection',features:venueFeatures} as unknown as Parameters<GeoJSONSource['setData']>[0])}
+  features.push(...venueFeatures);
   fallbackUpdate.current?.(features);
  },[data,ready,shown,fallback,report]);
  useEffect(()=>{filterRef.current(filter)},[filter,ready]);
@@ -227,7 +233,7 @@ export default function CityMap(){
   </section>
   <span className="quiet-source" role="status" title="Violet = number of real reports per area (311 complaints + police noise-nuisance calls, last 24 hours). Dark, gray and ringed marks are other real data, labelled by what they are.">{sourceLine}</span>
   {!loading&&!reportsOk&&!callsOk&&<div className="quiet-data-error" role="status">DataSF could not be reached, so there is no report density to show. Nothing is simulated in its place.</div>}
-  <div className="quiet-reportlegend" role="img" aria-label="Reported noise: lighter violet means fewer reports, darker violet means more reports in the last 24 hours. Counts of complaints and calls, not decibels. No colour means no reports: unknown, not quiet." title={FIELD_NOTE}><b>Reports, last 24 hours · not dB</b><div><em>Fewer</em><span/><em>More</em></div><small>No colour = no reports: unknown</small></div>
+  <div className="quiet-reportlegend" role="img" aria-label="Reported noise: lighter violet means fewer reports, darker violet means more reports in the last 24 hours. Counts of complaints and calls, not decibels. Grey means no data: no reports, so unknown, not quiet." title={FIELD_NOTE}><b>Reports, last 24 hours · not dB</b><div><em>Fewer</em><span/><em>More</em></div><small><i className="quiet-nodata-swatch" aria-hidden="true"/>Grey = no data (not quiet)</small></div>
   {mcp&&<div className="quiet-mcp-overlay" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><div className="quiet-mcp-panel" ref={dialog} role="dialog" aria-modal="true" aria-labelledby="mcp-title" onClick={e=>e.stopPropagation()}>
    <header className="quiet-mcp-heading">
     <div><h1 id="mcp-title"><Plug size={18} aria-hidden="true"/>MCP connection</h1><div className="quiet-mcp-state" role="status" data-state={connection.state}><span/>{connectionLabels[connection.state]||'Server unavailable'}</div></div>

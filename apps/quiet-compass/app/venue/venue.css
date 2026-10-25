@@ -13,12 +13,12 @@
 .venue-layout{display:grid;grid-template-columns:minmax(240px,310px) minmax(0,1fr);gap:56px;align-items:start}
 .venue-guide h2{font:500 15px/1.4 Geist,Arial,sans-serif;margin:0 0 12px}.venue-guide h3{font:500 20px/1.4 Geist,Arial,sans-serif;margin:0 0 4px;letter-spacing:-.02em}
 .venue-fact{padding:22px 0;border-top:1px solid var(--venue-border)}
-.venue-sound{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;padding:0 0 28px}.venue-sound h2{margin:0}.venue-sound p{margin:0!important}
+.venue-sound{padding:0 0 28px}.venue-nodata{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;margin-top:8px}.venue-zones ul{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:14px}.venue-zones li{display:grid;grid-template-columns:minmax(110px,180px) 1fr;gap:2px 16px;align-items:center}.venue-zone-name{font-weight:500}.venue-zone-bar{height:8px;border-radius:4px;background:#e4e4e8}.venue-zone-bar b{display:block;height:100%;border-radius:4px;background:#171717}.venue-zone-bar b.is-single{background:#171717;opacity:.45}.venue-zone-level,.venue-zones small{grid-column:2;color:var(--venue-muted)}.venue-zones small{font-size:12px}@media(max-width:600px){.venue-zones li{grid-template-columns:1fr}.venue-zone-level,.venue-zones small{grid-column:1}}.venue-sound h2{margin:0}.venue-sound p{margin:0!important}
 .venue-fact strong{font-weight:500}.venue-fact p,.venue-sound p{color:var(--venue-muted);margin-top:8px}
 .venue-source{display:inline-flex;align-items:center;gap:5px;color:var(--venue-accent);font-size:13px;min-height:36px;line-height:1.4}
 .venue-source svg{flex-shrink:0}.venue-fact .venue-source{margin-top:6px}
-.venue-unmeasured{display:inline-flex;align-items:center;gap:8px;border:1px solid #d6d6dc;border-radius:20px;padding:4px 10px;color:#55555e;font-size:13px}
-.venue-unmeasured i{width:8px;height:8px;border:1.5px solid #73737c;border-radius:50%}
+.venue-unmeasured{display:inline-flex;align-items:center;gap:8px;background:#ececef;border:1px solid #c4c4cc;border-radius:20px;padding:4px 10px;color:#55555e;font-size:13px}
+.venue-unmeasured i{width:10px;height:10px;background:#a1a1aa;border-radius:50%}
 .venue-section-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0 14px;border-top:1px solid var(--venue-border)}.venue-section-heading h2{margin:0}
 .venue-muted{color:var(--venue-muted)}.venue-plan-preview{display:flex;align-items:center;justify-content:center;background:#f7f7f8;border:1px solid var(--venue-border);border-radius:12px;margin-top:20px;padding:16px;min-height:320px}
 .venue-plan-preview img{display:block;width:100%;height:auto;max-height:660px;object-fit:contain}

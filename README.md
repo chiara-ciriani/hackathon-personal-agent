@@ -11,7 +11,7 @@ It was built for an SF hackathon on personal agents for everyday life. The first
 3. **The agent decides.** The Claude app, connected through a custom MCP connector, reads your calendar and the sound memory, suggests a place, and asks the phone to guide you back along the path you walked.
 
 ```
-apps/quiet-compass/  Next.js web app: SF noise map (real data only: violet = density of 311 noise complaints + police noise-nuisance calls, last 24 hours, a count of reports and not dB; plus labelled DataSF/SFO/shared phone layers), Oura integration and agent-controlled phone mode at /measure
+apps/quiet-compass/  Next.js web app: SF noise map (real data only: violet = density of 311 noise complaints + police noise-nuisance calls, last 24 hours, a count of reports and not dB; grey = no data, never quiet; venue pins and `/venue` zones are grey until a released shared phone measurement exists; plus labelled DataSF/SFO/shared phone layers), Oura integration and agent-controlled phone mode at /measure
 ios/                 SwiftUI app (QuietCompass) + QuietCore Swift package (DSP, route logic, contracts)
 ios-walk/            Alex’s standalone QC Walk Map app: local walk map, radar, compass and replay
 server/              Starlette ingest API + MCP Python SDK + scoring + optional SF 311 city layer

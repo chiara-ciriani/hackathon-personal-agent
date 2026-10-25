@@ -89,4 +89,12 @@ MapLibre renderiza el mapa y las estructuras 3D en navegadores con WebGL2. OpenL
 
 ## Mapa de San Francisco — solo datos reales (actualización)
 
-La portada `/` ya no muestra valores simulados, puntos escritos a mano ni contribuciones ficticias. El violeta es la densidad de reportes reales (quejas de ruido 311 + llamadas de policía NOISE NUISANCE, últimos 30 días, por área de ~280 m, en las ubicaciones publicadas): es un conteo de reportes, no dB ni volumen medido. Sin color = sin reportes = desconocido, no silencioso. El filtro Fewer/Mid/Most divide las áreas con reportes en tercios por conteo. Si DataSF no responde, el mapa lo dice y no muestra nada inventado. Las notas anteriores sobre valores ficticios aplican solo a `/venue`, que conserva su etiqueta "Demo venue".
+La portada `/` ya no muestra valores simulados, puntos escritos a mano ni contribuciones ficticias. El violeta es la densidad de reportes reales (quejas de ruido 311 + llamadas de policía NOISE NUISANCE, últimos 30 días, por área de ~280 m, en las ubicaciones publicadas): es un conteo de reportes, no dB ni volumen medido. Sin color (gris) = sin reportes = sin datos, no silencioso; la leyenda lo muestra con una muestra gris «Grey = no data». El filtro Fewer/Mid/Most divide las áreas con reportes en tercios por conteo. Si DataSF no responde, el mapa lo dice y no muestra nada inventado. 
+
+### Todo dato real, gris donde no hay datos
+
+- `/venue` ya no tiene recintos de demostración ni niveles por zona inventados. La sección «Sound level» lee las mediciones compartidas y publicadas por el servidor (`/api/map`, solo `source=device`, sin datos simulados, `relative_uncalibrated`). Un recinto es el área `venue:<id>` y una zona `venue:<id>:<zona>` (por ejemplo `venue:moscone:hall`). Sin ninguna medición publicada se muestra gris con «No measurements yet»; si el servidor no responde, gris con «Could not load measurements». Las zonas solo se comparan entre sí dentro del mismo perfil de captura (más silenciosa/más ruidosa es relativo, no dB).
+- Los pines de recintos en `/` son grises (sin datos) salvo que exista una medición publicada para `venue:<id>`; entonces pasan al color de «medido» (negro) con el valor y su advertencia.
+- Los planos oficiales, horarios y accesos de `lib/venues.ts` son información de visitante con fuente; nunca implican un nivel de sonido.
+- `?demo=front-street` solo mueve la cámara a 921 Front Street para el pitch; no agrega ni cambia datos. `public/demo.html` es el guion de la presentación y está etiquetado como ejemplo.
+- Los datos simulados solo existen como `source: simulated` desde el Simulator de iOS o pruebas; el mapa público del servidor los excluye.

@@ -50,8 +50,11 @@ crumb's, then its place's. Each cell blends nearby readings with a Gaussian weig
 (σ 1.5 m) times exp(−age/20 min), so newer readings win; `confidence = 1 − exp(−Σw)`. Cells
 more than 3 m from every reading have `level_db: null` (unknown, never quiet). Quiet spots are
 the quietest cells within 1 m of a real reading. `GET /v1/venue/sound_field` serves the active
-session's grid to the venue page without a token only when `QC_PUBLIC_VENUE_FIELD=1` (it reveals
-where the user walked); otherwise it answers 404.
+session's grid without a token only when `QC_PUBLIC_VENUE_FIELD=1` (it reveals
+where the user walked); otherwise it answers 404. The web `/venue` page does not use this grid: it reads the released shared
+aggregates (`/v1/map/public`, via the web app's `/api/map`) for the areas `venue:<id>` and
+`venue:<id>:<zone>`. A venue or zone without a released aggregate is shown grey, "No measurements
+yet"; the server and the web app never fill it with a value.
 
 The MCP tools act on the **active session**: the one named by `QC_ACTIVE_SESSION_ID` if set, otherwise the most recently updated session.
 

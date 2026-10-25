@@ -129,7 +129,7 @@
 @keyframes quiet-ripple{0%{transform:scale(.4);opacity:.9}100%{transform:scale(6);opacity:0}}
 @media(max-width:600px){.quiet-history-btn{right:103px}.quiet-intensity>span{width:90px}}
 
-/* Layers panel: collapsed by default, ink + grays for real data, violet only for the synthetic score. */
+/* Layers panel: collapsed by default, ink + grays for real data, violet only for the report-density field. */
 .quiet-layers{position:absolute;left:28px;top:92px;width:268px;max-width:calc(100vw - 34px);background:#fffffff2;border:1px solid var(--map-border);border-radius:10px;box-shadow:0 0 0 1px #00000004,0 2px 2px #00000003,0 8px 16px -4px #00000006;backdrop-filter:blur(8px);z-index:800;font-size:12px;color:#171717}
 .quiet-layers-head{display:flex;align-items:center;gap:7px;width:100%;height:34px;padding:0 12px;background:transparent;color:#171717;font:500 12px/16px Geist,Arial,sans-serif;border-radius:10px;transition:background .15s ease,transform .16s var(--ease-out)}
 .quiet-layers-head:active{transform:scale(.98)}@media(hover:hover) and (pointer:fine){.quiet-layers-head:hover{background:#f5f5f5}}
@@ -168,13 +168,13 @@ a.quiet-icon{text-decoration:none}
 .quiet-card-none{text-transform:none;color:#737373}
 @media(max-width:600px){.quiet-venue .quiet-card{bottom:112px}}
 
-/* Real-data map: report-density legend and truthful source line (the venue page keeps its own Demo venue label). */
+/* Real-data map: report-density legend and truthful source line. */
 .quiet-source{position:absolute;bottom:25px;left:29px;max-width:min(36vw,420px);font:11px/15px Geist,Arial,sans-serif;color:#525252;background:#ffffffd9;border-radius:4px;padding:4px 6px;z-index:800}
 .quiet-reportlegend{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:5px;border:1px solid #ebe6f0;border-radius:12px;background:#fffffff0;padding:8px 14px;z-index:800;backdrop-filter:blur(8px)}
 .quiet-reportlegend b{font:500 11px/14px Geist,Arial,sans-serif;color:#404040}
 .quiet-reportlegend div{display:flex;align-items:center;gap:10px}.quiet-reportlegend em{font:500 11px/16px Geist,Arial,sans-serif;font-style:normal;color:#525252}
 .quiet-reportlegend div>span{width:150px;height:8px;border-radius:5px;background:linear-gradient(90deg,#e6dcff,#b996f5 30%,#8a45e8 55%,#5a14b0 80%,#2b0a63)}
-.quiet-reportlegend small{font:10px/12px Geist,Arial,sans-serif;color:#737373}
+.quiet-reportlegend small{display:flex;align-items:center;gap:6px;font:10px/12px Geist,Arial,sans-serif;color:#737373}.quiet-nodata-swatch{width:12px;height:12px;border-radius:3px;background:#e4e4e8;box-shadow:inset 0 0 0 1px #a1a1aa}
 .quiet-data-error{position:absolute;left:50%;top:84px;transform:translateX(-50%);max-width:min(90vw,420px);background:#fff;border:1px solid #f0d9b5;color:#8a4500;border-radius:8px;padding:9px 14px;font:12px/17px Geist,Arial,sans-serif;z-index:850;box-shadow:0 4px 16px #0000000f}
 .swatch-field{background:linear-gradient(135deg,#b996f5,#5a14b0)}
 @media(max-width:600px){.quiet-source{bottom:12px;left:17px;max-width:calc(100vw - 120px)}.quiet-reportlegend{left:17px;bottom:86px;transform:none;padding:6px 10px}.quiet-reportlegend div>span{width:90px}.quiet-data-error{top:112px}}
