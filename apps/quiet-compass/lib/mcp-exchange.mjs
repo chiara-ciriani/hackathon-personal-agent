@@ -49,7 +49,8 @@ export async function exchangeStatus(origin, fetcher = fetch) {
         sharedTools.some(tool => !data.tools.includes(tool.name))) return {state: 'incompatible', endpoint: null, dotEndpoint, dotReady: false};
     if (data.shared_endpoint_enabled !== true) return {state: 'disabled', endpoint: null, dotEndpoint, dotReady: false};
     return {state: 'available', endpoint: `${base.origin}/mcp/shared`, dotEndpoint,
-      dotReady: data.dot_mcp_enabled === true && data.dot_mcp_path === '/mcp/dot',
+      dotReady: data.dot_mcp_enabled === true && data.dot_mcp_path === '/mcp/dot' &&
+        data.dot_oauth_request_lifetime_seconds >= 3600,
       ...(data.phone_measurement?.protocol === 'phone-bridge-v1' ? {phoneReady: true, nativeReady: data.phone_measurement?.native_protocol === 'phone-walk-v1'} : {})};
   } catch {
     return {state: 'unavailable', endpoint: null, dotEndpoint: null, dotReady: false};

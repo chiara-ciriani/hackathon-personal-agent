@@ -39,8 +39,10 @@ test('phone availability requires the deployed phone protocol', async()=>{
  assert.equal(result.phoneReady,true);
 });
 
-test('Dot is ready only when the server advertises OAuth at the Dot endpoint',async()=>{
- const result=await exchangeStatus('https://api.example',async()=>Response.json({...capabilities,dot_mcp_enabled:true,dot_mcp_path:'/mcp/dot'}));
+test('Dot is ready only when the deployed server advertises OAuth with the extended request lifetime',async()=>{
+ const result=await exchangeStatus('https://api.example',async()=>Response.json({...capabilities,dot_mcp_enabled:true,dot_mcp_path:'/mcp/dot',dot_oauth_request_lifetime_seconds:3600}));
  assert.equal(result.dotReady,true);
  assert.equal(result.dotEndpoint,'https://api.example/mcp/dot');
+ const old=await exchangeStatus('https://api.example',async()=>Response.json({...capabilities,dot_mcp_enabled:true,dot_mcp_path:'/mcp/dot'}));
+ assert.equal(old.dotReady,false);
 });

@@ -20,6 +20,7 @@ from starlette.routing import BaseRoute, Route
 
 from .api import ApiError, Handler, guarded, model_response, parse_body
 from .auth import token_matches, unauthorized
+from .mcp_oauth import REQUEST_SECONDS
 from .settings import Settings
 from .shared_access import ContributionRequired, require_access
 from .shared_contracts import AREA_ID_PATTERN, AreaUpsert, ContributionUpload
@@ -143,6 +144,9 @@ def build_shared_routes(layer: SharedLayer, settings: Settings) -> list[BaseRout
             "shared_endpoint_enabled": bool(settings.shared_api_token), "mcp_path": "/mcp/shared",
             "dot_mcp_enabled": bool(settings.shared_api_token and settings.public_url),
             "dot_mcp_path": "/mcp/dot",
+            "dot_oauth_request_lifetime_seconds": (
+                REQUEST_SECONDS if settings.shared_api_token and settings.public_url else 0
+            ),
             "tools": ["connect_phone", "request_phone_measurement", "phone_measurement_status",
                       "send_phone_recommendation", "submit_observation", "query_sound_map", "find_suitable_places"],
             "phone_measurement": {"protocol": "phone-bridge-v1", "session_seconds": 900, "duration_seconds": 30,
