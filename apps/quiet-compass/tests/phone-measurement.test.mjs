@@ -69,7 +69,7 @@ test('phone relay forwards only to the configured phone route and returns no age
   const response=await relayPhone(req(),'https://server.example','poll',async(url,options)=>{
     assert.equal(url,'https://server.example/v1/phone/poll');
     assert.equal(options.headers.Authorization,'Bearer '+token);
-    assert.equal(options.redirect,'error');
+    assert.equal(options.redirect,'manual');
     return Response.json({status:'measure',request_id:'job',duration_seconds:10,expires_at:'later',agent_token:'never forward'});
   });
   assert.equal(response.status,200);

@@ -12,7 +12,7 @@ export async function shareCommunity(request,origin=DEFAULT_SERVER,fetcher=fetch
   while(true){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>8192){await reader.cancel();return reply({error:'Summary exceeds the size limit.'},413)}parts.push(value)}
   const bytes=new Uint8Array(size);let offset=0;for(const p of parts){bytes.set(p,offset);offset+=p.byteLength}
   const body=JSON.parse(new TextDecoder().decode(bytes));
-  const response=await fetcher(base.origin+'/v1/community/contributions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12000)});
+  const response=await fetcher(base.origin+'/v1/community/contributions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),redirect:'manual',cache:'no-store',signal:AbortSignal.timeout(12000)});
   if(!response.ok)return reply({error:response.status===429?'Sharing limit reached. Try again later.':'Could not share. Check location, permissions and server version.'},response.status===429?429:502);
   const result=await response.json();
   if(!['accepted','withheld','rejected'].includes(result.status))throw Error();

@@ -36,7 +36,7 @@ test('empty or malformed server payload never becomes fake contributions',async(
 });
 test('map request uses only its expiring receipt',async()=>{
  const result=await loadDeviceReadings(undefined,async(url,options)=>{
-  assert.match(url,/\/v1\/map\/view$/);assert.equal(options.headers.Authorization,'Bearer '+receipt);assert.equal(options.redirect,'error');
+  assert.match(url,/\/v1\/map\/view$/);assert.equal(options.headers.Authorization,'Bearer '+receipt);assert.equal(options.redirect,'manual');
   return {ok:true,json:async()=>({aggregates:[row]})};
  },now,receipt);
  assert.equal(result.state,'available');

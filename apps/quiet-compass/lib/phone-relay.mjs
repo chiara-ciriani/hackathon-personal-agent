@@ -34,7 +34,7 @@ export async function relayPhone(request, origin, action, fetcher = fetch) {
   try {
     const response = await fetcher(base.origin + '/v1/phone/' + action, {
       method: 'POST', headers: {'Authorization': token, 'Content-Type': 'application/json'},
-      body: JSON.stringify(body), cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(12000),
+      body: JSON.stringify(body), cache: 'no-store', redirect: 'manual', signal: AbortSignal.timeout(12000),
     });
     if ([401, 403, 410].includes(response.status)) return reply({error: 'This link expired or disconnected. Ask your agent for a new one.'}, response.status);
     if ([404, 503].includes(response.status)) return reply({error: 'Server update needed before phones can connect.'}, 503);

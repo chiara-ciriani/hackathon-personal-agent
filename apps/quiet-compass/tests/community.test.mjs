@@ -7,7 +7,7 @@ test('native sharing forwards only the summary to the fixed backend without acco
  const response=await shareCommunity(request({share_consent:true}),'https://server.example',async(url,options)=>{
   assert.equal(url,'https://server.example/v1/community/contributions');
   assert.equal(options.headers.Authorization,undefined);
-  assert.equal(options.redirect,'error');
+  assert.equal(options.redirect,'manual');
   return Response.json({status:'withheld',reason:'Needs another sample',access_receipt:receipt});
  });
  assert.equal((await response.json()).access_receipt,receipt);

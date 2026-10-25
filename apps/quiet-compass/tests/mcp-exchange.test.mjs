@@ -13,7 +13,7 @@ test('connection requires configured URL and the exchange protocol', async()=>{
  assert.equal(called,false);
  const status=await exchangeStatus('https://api.example',async(url,options)=>{
   assert.equal(url,'https://api.example/v1/exchange/status');
-  assert.equal(options.redirect,'error');assert.equal(options.cache,'no-store');
+  assert.equal(options.redirect,'manual');assert.equal(options.cache,'no-store');
   assert.equal(options.headers,undefined);
   return Response.json({...capabilities,private_field:'must not reach browser'});
  });

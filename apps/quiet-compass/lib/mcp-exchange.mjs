@@ -39,7 +39,7 @@ export async function exchangeStatus(origin, fetcher = fetch) {
     }
     const dotEndpoint = `${base.origin}/mcp/dot`;
     const response = await fetcher(`${base.origin}/v1/exchange/status`, {
-      cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(5000),
+      cache: 'no-store', redirect: 'manual', signal: AbortSignal.timeout(5000),
     });
     if (response.status === 404) return {state: 'incompatible', endpoint: null, dotEndpoint, dotReady: false};
     if (!response.ok) return {state: 'unavailable', endpoint: null, dotEndpoint, dotReady: false};

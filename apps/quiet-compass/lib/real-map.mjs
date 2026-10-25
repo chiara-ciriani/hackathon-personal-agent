@@ -34,7 +34,7 @@ export async function loadDeviceReadings(origin = DEFAULT_SERVER, fetcher = fetc
     const path = accessReceipt ? '/v1/map/view' : '/v1/map/public';
     const response = await fetcher(`${base.origin}${path}`, {
       headers:accessReceipt ? {Authorization:`Bearer ${accessReceipt}`} : {},
-      cache:'no-store', redirect:'error', signal:AbortSignal.timeout(12000),
+      cache:'no-store', redirect:'manual', signal:AbortSignal.timeout(12000),
     });
     if ([401,403,410,428].includes(response.status)) return empty('access_required');
     if (!response.ok) return empty('unavailable');

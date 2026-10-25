@@ -133,7 +133,7 @@ h2{font-size:52px;line-height:1.08;font-weight:600;letter-spacing:-.03em}
     <div class="num hot"><b>5.9%</b><p>of U.S. adults reported sensitivity to everyday sounds</p></div>
     <div class="num"><b>11,893</b><p>San Francisco 311 noise reports in 2025—not sound measurements</p></div>
   </div>
-  <p class="foot">These are research and reporting signals, not an SF prevalence count or live noise map. 41% is a pooled estimate from autistic study samples; 5.9% is a 2014 U.S. adult estimate. Sources: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8349927/" target="_blank" rel="noopener">Williams et al., 2021</a> · <a href="https://www.cdc.gov/mmwr/volumes/66/wr/mm6605e3.htm" target="_blank" rel="noopener">CDC, 2017</a> · <a href="https://data.sf.gov/resource/vw6y-z8j6.json" target="_blank" rel="noopener">DataSF 311</a>.</p>
+  <p class="foot">These are research and reporting signals, not an SF prevalence count or live noise map. 41% is a pooled estimate from autistic study samples; 5.9% is a 2014 U.S. adult estimate. Sources: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8349927/" target="_blank" rel="noopener">Williams et al., 2021</a> · <a href="https://www.cdc.gov/mmwr/preview/mmwrhtml/mm6437a8.htm" target="_blank" rel="noopener">CDC MMWR, 2015</a> · <a href="https://data.sf.gov/resource/vw6y-z8j6.json" target="_blank" rel="noopener">DataSF 311</a>.</p>
 </section>
 
 <!-- 3 · Solution -->
@@ -145,9 +145,10 @@ h2{font-size:52px;line-height:1.08;font-weight:600;letter-spacing:-.03em}
       <p class="lead">Quiet Compass gives an agent fresh context to help you choose a quieter place or route—while keeping your plans and preferences in mind.</p>
     </div>
     <div class="chat-card">
-      <div class="chat-label">Example · in Dot</div>
-      <div class="bubble me">I'm at a loud event. Where can I go that's quieter?</div>
-      <div class="bubble ai">I found a nearby option with quieter recent readings. Want a route there?</div>
+      <div class="chat-label">Tools the agent can call</div>
+      <div class="bubble ai"><span class="mono">query_sound_map</span><br>Read released, consented sound summaries.</div>
+      <div class="bubble ai"><span class="mono">find_suitable_places</span><br>Match places against a person's stated needs. Places with no measurement stay unknown.</div>
+      <div class="bubble ai"><span class="mono">submit_observation</span><br>Contribute a consented sound summary.</div>
     </div>
   </div>
 </section>
