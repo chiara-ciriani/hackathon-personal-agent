@@ -35,7 +35,7 @@ export async function createCanvasMap(container:HTMLDivElement,isDisposed:()=>bo
  const setFeatures=(features:PointFeature[])=>{
   overlays.forEach(overlay=>instance.removeOverlay(overlay));
   overlays=features.map(f=>{
-   const p=f.properties,hasMeasurement=['measured','measured_crowdsourced','measured_device'].includes(String(p.evidence));
+   const p=f.properties,hasMeasurement=['measured','measured_device'].includes(String(p.evidence));
    const button=document.createElement('button');button.className='sound-point';button.type='button';
    button.setAttribute('aria-label',String(p.label||'Location')+(hasMeasurement?' · dated measurement':' · no measurement'));
    button.title=button.getAttribute('aria-label')||'';

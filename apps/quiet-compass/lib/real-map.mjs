@@ -1,5 +1,6 @@
 // Only published measurements may carry acoustic values. Reports remain context.
 export const DEFAULT_SERVER = 'https://quiet-compass-server.onrender.com';
+/** @returns {{type:'FeatureCollection', features:any[]}} */
 export const emptyCollection = () => ({type:'FeatureCollection', features:[]});
 const finite = value => typeof value === 'number' && Number.isFinite(value);
 const inSf = (lat, lon) => finite(lat) && finite(lon) && lat >= 37.6 && lat <= 37.85 && lon >= -122.55 && lon <= -122.3;
@@ -38,6 +39,7 @@ export async function loadDeviceReadings(origin = DEFAULT_SERVER, fetcher = fetc
   } catch { return empty('unavailable'); }
 }
 
+/** @returns {{type:'FeatureCollection', features:any[]}} */
 export function noiseReports(rows) {
   if (!Array.isArray(rows)) throw new Error('Invalid 311 reports');
   return {type:'FeatureCollection', features:rows.flatMap(row => {
@@ -55,7 +57,7 @@ export function noiseReports(rows) {
 
 /** @param {(url:string, options?:any)=>Promise<any>} [fetcher] */
 export async function loadNoiseReports(fetcher = fetch, now = new Date()) {
-  // Last 30 days (about 1,500 reports), matching the police-call window, so the density field is not one day's noise.
+  // Last 30 days (about 1,500 reports), so the density field shows recent complaints.
   const since = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10);
   const query = new URLSearchParams({
     '$select':'service_subtype,neighborhoods_sffind_boundaries,requested_datetime,lat,long',
@@ -64,12 +66,14 @@ export async function loadNoiseReports(fetcher = fetch, now = new Date()) {
   });
   const response = await fetcher(`https://data.sf.gov/resource/vw6y-z8j6.json?${query}`, {cache:'no-store',signal:AbortSignal.timeout(12000)});
   if (!response.ok) throw new Error('311 unavailable');
-  return noiseReports(await response.json());
+  const body=await response.json();
+  if(!Array.isArray(body))throw new Error('Invalid 311 reports');
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles'}).format(now);
+  return noiseReports(body.filter(r=>String(r.requested_datetime||'').slice(0,10)>=since&&String(r.requested_datetime||'').slice(0,10)<=today));
 }
 
 export function measurementText(p) {
   if (p.evidence === 'measured_device' && finite(p.dbfs)) return `${p.dbfs} dBFS · uncalibrated`;
-  if (p.evidence === 'measured_crowdsourced' && finite(p.medianDb)) return `${p.medianDb} dB · uncalibrated phone`;
   if (p.evidence === 'measured' && finite(p.cnel)) return `${p.cnel} dB CNEL · daily average`;
   if (p.evidence === 'measured' && finite(p.maxDb)) return `${p.maxDb} dBA · maximum event`;
   return 'No sound measurement';
