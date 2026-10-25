@@ -30,7 +30,7 @@ targets:
         CFBundleDisplayName: QC Walk Map
         CFBundleShortVersionString: "1.1"
         CFBundleVersion: "2"
-        NSLocationWhenInUseUsageDescription: Your approximate location places a sound summary on the community map only when you choose Measure and share.
+        NSLocationWhenInUseUsageDescription: Your approximate location helps your paired agent personalize sound recommendations and is not added to the community map.
         CFBundleURLTypes:
           - CFBundleURLName: com.hackathon.quietcompass.walk.agent
             CFBundleURLSchemes: [quietcompass-walk]

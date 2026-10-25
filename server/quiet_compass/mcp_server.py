@@ -35,8 +35,16 @@ NO_SESSION = (
 INSTRUCTIONS = (
     "Quiet Compass remembers relative sound levels (dBFS, not dBA) the user's phone "
     "measured at places in this venue. Call quiet_get_context before recommending, always "
-    "state how old a measurement is, never call an unmeasured place quiet, and call "
-    "quiet_start_guidance only after the user agrees. Shared query_sound_map and find_suitable_places "
+    "state how old a measurement is, and use the measured level, variability and quieter "
+    "spots to tailor advice to the user's stated goal. If phone_measurement_status includes "
+    "an owner's location, it is approximate private context: use it to query nearby SF layers "
+    "or reports when useful, but do not publish it. Clearly distinguish measured sound from "
+    "historical reports and proxy layers; never promise a quiet route unless actual route-level "
+    "measurements support it. A high sound reading is not a stress or health diagnosis. "
+    "Only repeat measurements or send proactive alerts after the user explicitly asks for "
+    "monitoring; stop when the phone disconnects, and avoid repeated alerts for the same event. "
+    "Never call an unmeasured place quiet, and call quiet_start_guidance only after the user agrees. "
+    "Shared query_sound_map and find_suitable_places "
     "require access_receipt from a consented submit_observation, valid for 15 minutes. Never "
     "invent a measurement or share private health/routes to obtain access."
 )

@@ -49,6 +49,16 @@ nonisolated struct AgentWalk: Encodable, Sendable {
     let samples: [WalkSample]
     let clippingDetected: Bool
     let dominantSound: AgentDirection?
+    let location: AgentLocationPoint?
+}
+nonisolated struct AgentLocationPoint: Codable, Sendable {
+    let lat: Double
+    let lon: Double
+}
+nonisolated struct AgentNativeConsent: Encodable, Sendable {
+    let microphoneConsent: Bool
+    let spatialConsent: Bool
+    let locationConsent: Bool
 }
 nonisolated struct AgentWalkResult: Encodable, Sendable {
     let requestId: String

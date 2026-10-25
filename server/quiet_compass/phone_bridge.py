@@ -154,7 +154,8 @@ class PhoneBridge:
         def approve(body, expires):
             if body["consented"] and body.get("client") != "native":
                 raise PhoneError("This connection belongs to the browser")
-            body.update(consented=True, client="native", last_seen=self.store._now())
+            body.update(consented=True, client="native", location_consented=consent.location_consent,
+                        last_seen=self.store._now())
             return {"status": "ready", "expires_at": expires}
 
         return self._update(token, True, approve)
@@ -302,6 +303,8 @@ class PhoneBridge:
             if job["state"] != "measuring":
                 raise PhoneError("Walk is not active or was already completed")
             if result.walk:
+                if result.walk.location and not body.get("location_consented"):
+                    raise PhoneError("Location was not approved on the phone", 422)
                 try:
                     analysis = analyze_walk(result.walk, parse_ts(job["requested_at"]), self.store.clock(),
                                             job["duration_seconds"])
@@ -462,8 +465,12 @@ def register_phone_tools(mcp: MCPServer, bridge: PhoneBridge) -> None:
         """Read actual phone state/result. A completed job contains contribution_result with
         access_receipt and access_expires_at for 15 minutes of shared queries in browser mode.
         Native mode=walk instead returns private acoustic analysis, measured quiet_spots and
-        an optional experimental sound bearing. It never grants shared access. Pending/offline
-        is not success. Poll at most every 5 seconds. No need to resubmit the returned summary.
+        an optional experimental sound bearing. If the owner allowed location, it also returns
+        a private location rounded to approximately 100 m. Use it only to personalize this
+        owner's advice and nearby context queries; null means location was unavailable. Never
+        submit this location to the shared map. Native mode never grants shared access.
+        Pending/offline is not success. Poll at most every 5 seconds. No need to resubmit the
+        returned summary.
         """
         return run(bridge.status, phone_session_id)
 

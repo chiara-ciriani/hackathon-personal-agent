@@ -16,13 +16,16 @@ def request_walk(client, agent, duration=30):
                 mode="walk", duration_seconds=duration)
 
 
-def payload(job, clock):
-    return {"request_id": job, "walk": {
+def payload(job, clock, location=None):
+    walk = {
         "started_at": clock.now.isoformat(), "capture_profile": "ios-walk-v1:fixture:48000:1",
         "clipping_detected": False,
         "samples": [{"t": i * 2, "x": i * .6, "z": 0, "level_dbfs": -55 + i * 1.5,
                      "tracking": "normal"} for i in range(1, 15)],
-    }}
+    }
+    if location is not None:
+        walk["location"] = location
+    return {"request_id": job, "walk": walk}
 
 
 def ready(client):
@@ -70,6 +73,29 @@ def test_full_walk_analysis_advice_retry_and_no_shared_access(client, clock):
                 message="Guess", action="move", spot_index=90)["isError"]
     phone(client, token, "disconnect")
     assert phone(client, token, "native-poll").status_code == 410
+
+
+def test_native_location_is_private_optional_and_coarsened(client, clock):
+    agent, token = connect(client)
+    assert phone(client, token, "native-consent", NATIVE).status_code == 200
+    job = request_walk(client, agent)["structuredContent"]["request_id"]
+    phone(client, token, "native-poll")
+    denied = payload(job, clock, {"lat": 37.774912, "lon": -122.419486})
+    clock.now += timedelta(seconds=30)
+    assert phone(client, token, "native-result", denied).status_code == 422
+
+    phone(client, token, "disconnect")
+    agent, token = connect(client)
+    assert phone(client, token, "native-consent", {**NATIVE, "location_consent": True}).status_code == 200
+    job = request_walk(client, agent)["structuredContent"]["request_id"]
+    phone(client, token, "native-poll")
+    result = payload(job, clock, {"lat": 37.774912, "lon": -122.419486})
+    clock.now += timedelta(seconds=30)
+    response = phone(client, token, "native-result", result)
+    assert response.status_code == 200, response.text
+    location = status(client, agent)["job"]["walk"]["location"]
+    assert location == {"lat": 37.775, "lon": -122.419, "precision": "approximately_100m"}
+    assert "contribution_result" not in status(client, agent)["job"]
 
 
 def test_native_rejects_replay_audio_clipping_and_stale_or_limited_samples(client, clock):

@@ -14,6 +14,7 @@ final class AgentLink {
     @ObservationIgnored private var token: String?
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private let client = AgentClient()
+    @ObservationIgnored private let location = AgentLocation()
     @ObservationIgnored private var generation = 0
 
     func receive(_ url: URL, model: CompassModel) {
@@ -23,7 +24,7 @@ final class AgentLink {
         }
         disconnect(model: model)
         token = next; hasLink = true; advice = nil; lastRequestId = nil
-        message = "Allow your agent to analyze sound and your private room map for up to 15 minutes."
+        message = "Allow your agent to analyze sound, your private room map, and approximate location for up to 15 minutes."
     }
 
     func connect(model: CompassModel) {
@@ -33,6 +34,7 @@ final class AgentLink {
         task = Task {
             do {
                 // Explicit button approval precedes both OS permissions and server consent.
+                let locationConsent = await location.requestPermission()
                 guard await AVCaptureDevice.requestAccess(for: .audio),
                       await AVCaptureDevice.requestAccess(for: .video) else {
                     throw AgentConnectionError("Microphone and camera access are needed to map this room.")
@@ -41,7 +43,8 @@ final class AgentLink {
                 await model.start()
                 guard model.stream.sessionRunning else { throw AgentConnectionError("The microphone could not start.") }
                 try Task.checkCancellation()
-                let approval = Data("{\"microphone_consent\":true,\"spatial_consent\":true}".utf8)
+                let approval = try AgentClient.encode(AgentNativeConsent(
+                    microphoneConsent: true, spatialConsent: true, locationConsent: locationConsent))
                 let ready = try await client.call("native-consent", token: token, body: approval)
                 guard let stamp = ready.expiresAt, let expires = AgentProtocol.date(stamp), expires > Date() else {
                     throw AgentConnectionError("This connection expired.")
@@ -58,6 +61,9 @@ final class AgentLink {
                             throw AgentConnectionError("Invalid or expired analysis request.")
                         }
                         advice = nil; lastRequestId = id
+                        message = "Getting your approximate location for this measurement."
+                        let locationPoint = await location.currentPoint()
+                        try Task.checkCancellation()
                         model.beginAgentWalk()
                         let rate = model.stream.sampleRate, channels = model.stream.channelCount
                         let profile = "ios-walk-v1:\(UUID().uuidString):\(Int(rate)):\(channels)"
@@ -78,7 +84,8 @@ final class AgentLink {
                                                samples: walk.samples.filter { $0.t <= Double(duration) },
                                                clippingDetected: false,
                                                dominantSound: model.radarFromARKit && channels >= 4 && (model.estimate?.confidence ?? 0) >= 0.5
-                                                   ? model.estimate.map { AgentDirection(bearingDegrees: ($0.bearingWorld + 360).truncatingRemainder(dividingBy: 360), confidence: $0.confidence) } : nil)
+                                                   ? model.estimate.map { AgentDirection(bearingDegrees: ($0.bearingWorld + 360).truncatingRemainder(dividingBy: 360), confidence: $0.confidence) } : nil,
+                                               location: locationPoint)
                         } else { upload = nil }
                         let result = AgentWalkResult(requestId: id, walk: upload, error: upload == nil ? "capture_failed" : nil)
                         let body = try AgentClient.encode(result)

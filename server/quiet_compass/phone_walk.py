@@ -18,6 +18,12 @@ from .sound_field import Sample, build_field
 class NativeConsent(Contract):
     microphone_consent: bool
     spatial_consent: bool
+    location_consent: bool = False
+
+
+class ApproximateLocation(Contract):
+    lat: float = Field(ge=-90, le=90, allow_inf_nan=False)
+    lon: float = Field(ge=-180, le=180, allow_inf_nan=False)
 
 
 class WalkSample(Contract):
@@ -39,6 +45,7 @@ class WalkCapture(Contract):
     samples: list[WalkSample] = Field(min_length=3, max_length=90)
     clipping_detected: Literal[False]
     dominant_sound: Direction | None = None
+    location: ApproximateLocation | None = None
 
 
 class WalkResult(Contract):
@@ -71,6 +78,8 @@ def analyze_walk(walk: WalkCapture, requested_at: datetime, now: datetime, durat
         "current_level_dbfs": last.level_dbfs, "user": {"x": last.x, "z": last.z},
         "quiet_spots": [{"spot_index": i, **asdict(spot)} for i, spot in enumerate(field.quiet_spots)],
         "dominant_sound": walk.dominant_sound.model_dump() if walk.dominant_sound else None,
+        "location": ({"lat": round(walk.location.lat, 3), "lon": round(walk.location.lon, 3),
+                      "precision": "approximately_100m"} if walk.location else None),
         "note": "Private ARKit room map; relative uncalibrated dBFS, not dBA. Unknown cells are not quiet. "
                 "Distances/directions are straight-line, not obstacle-free routes. "
                 "Any sound bearing is experimental FOA, not verified source identification. "
