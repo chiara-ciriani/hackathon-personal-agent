@@ -11,7 +11,7 @@ import sqlite3
 import time
 from html import escape
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 from mcp.server.auth.provider import (
     AccessToken,
@@ -422,7 +422,7 @@ def build_dot_oauth_routes(
         resource_name="Quiet Compass shared sound tools",
     ))
 
-    def page(request_id: str, client_name: str, error: str = "") -> HTMLResponse:
+    def page(request_id: str, client_name: str, redirect_uri: str, error: str = "") -> HTMLResponse:
         error_html = f'<p role="alert">{escape(error)}</p>' if error else ""
         body = f"""<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Connect Quiet Compass</title>
@@ -444,11 +444,15 @@ Phone capture still requires your approval.</p>
 <small>The key is checked by Quiet Compass and is not saved in your browser.</small><p>
 <button type="submit" name="action" value="allow">Allow access</button>
 <button type="submit" name="action" value="deny" formnovalidate>Cancel</button></p></form></html>"""
+        # Browsers apply form-action to the redirect that follows the POST, so the
+        # client's callback origin must be allowed or the approval never reaches it.
+        parts = urlsplit(redirect_uri)
+        callback = f"{parts.scheme}://{parts.netloc}" if parts.scheme in ("http", "https") and parts.netloc else ""
         return HTMLResponse(body, headers={
             "Cache-Control": "no-store", "Pragma": "no-cache", "Referrer-Policy": "no-referrer",
             "X-Content-Type-Options": "nosniff",
             "Content-Security-Policy": (
-                "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; "
+                f"default-src 'none'; style-src 'unsafe-inline'; form-action 'self' {callback}; "
                 "base-uri 'none'; frame-ancestors 'none'"
             ),
         })
@@ -463,7 +467,7 @@ Phone capture still requires your approval.</p>
         if client is None:
             return HTMLResponse("Unknown MCP client.", status_code=400, headers={"Cache-Control": "no-store"})
         name = client.client_name or "ChatGPT"
-        return page(request_id, name)
+        return page(request_id, name, str(details["redirect_uri"]))
 
     async def consent_post(request: Request) -> Response:
         form = await request.form()
@@ -482,7 +486,8 @@ Phone capture still requires your approval.</p>
                                 headers={"Cache-Control": "no-store"})
         secret = str(form.get("shared_access_key", ""))
         if not provider.verify_owner_key(secret):
-            return page(request_id, client.client_name or "ChatGPT", "That access key did not match.")
+            return page(request_id, client.client_name or "ChatGPT", str(details["redirect_uri"]),
+                        "That access key did not match.")
         redirect = await provider.allow(request_id, secret)
         if redirect:
             return RedirectResponse(redirect, status_code=303, headers={"Cache-Control": "no-store"})
