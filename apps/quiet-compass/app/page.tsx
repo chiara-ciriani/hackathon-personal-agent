@@ -120,6 +120,18 @@ export default function CityMap(){
  },[]);
  useEffect(()=>{const timer=setTimeout(()=>void refresh(),0);return()=>{clearTimeout(timer);request.current?.abort()}},[refresh]);
  useEffect(()=>{
+  let pending:AbortController|null=null;
+  const timer=setInterval(()=>{
+   if(document.hidden||pending)return;
+   pending=new AbortController();
+   void fetch('/api/map',{cache:'no-store',signal:pending.signal})
+    .then(async r=>{if(!r.ok)throw Error();return r.json() as Promise<Pick<MapData,'device'|'deviceState'>>})
+    .then(result=>{if(!pending?.signal.aborted)setData(current=>current?{...current,...result}:current)})
+    .catch(()=>{}).finally(()=>{pending=null});
+  },30000);
+  return()=>{clearInterval(timer);pending?.abort()};
+ },[]);
+ useEffect(()=>{
   if(!mcp)return;
   const controller=new AbortController();
   fetch('/api/mcp/status',{cache:'no-store',signal:controller.signal}).then(async r=>{if(!r.ok)throw new Error();return r.json() as Promise<McpConnection>})

@@ -45,3 +45,22 @@ It writes `map.png` and `replay.gif` next to the file, computed with the team se
 - **Concurrency errors:** Build Settings → Swift Compiler → Language → Default Actor Isolation → `nonisolated`, then build again.
 - **"No such module ARKit" or device not supported:** run on a real iPhone, not the Simulator.
 - Anything else: copy the first red error from Xcode's Issue navigator and send it over.
+
+## Community sharing, version 1.1 build 2
+
+Tap **Measure and share** on the main screen and confirm sharing. Allow microphone and
+location access. Stand still for 30 seconds. The app pauses room mapping, keeps audio
+on the phone, and uploads only a numeric sound summary with coordinates rounded to
+about 100 m. An agent link is not required. Sharing stops when the app goes into the
+background. A failed upload can retry the same summary without duplicating it.
+
+Tap **Open community map** after upload to open the website with 15 minutes of map
+access. Other contributors can see released readings there; the website refreshes
+shared phone readings every 30 seconds while visible. The existing release rule needs
+two matching contributions in one area, five-minute bucket and capture profile.
+A first summary can therefore remain hidden. Measure again to add a second real
+summary. No audio, private walk, or room positions enter the community map.
+
+Deploy the server and web app from the same commit, then rebuild and install this app.
+Existing installed apps do not update from a Git push. This version adds the iOS
+location permission description and uses the existing website origin in AgentProtocol.

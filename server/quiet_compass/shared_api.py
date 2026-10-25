@@ -7,6 +7,8 @@ Shared reads also require an unexpired contribution receipt. Area editing stays 
 from __future__ import annotations
 
 import re
+import time
+from collections import deque
 from collections.abc import Callable
 
 from starlette.concurrency import run_in_threadpool
@@ -59,6 +61,39 @@ def build_shared_routes(layer: SharedLayer, settings: Settings) -> list[BaseRout
                     return response
             return unauthorized()
         return endpoint
+
+    community_requests: dict[str, deque[float]] = {}
+
+    async def post_community_contribution(request: Request) -> Response:
+        # Public, opt-in ingestion. Neither account credentials nor private phone sessions are exposed.
+        now = time.monotonic()
+        for key in list(community_requests):
+            if not community_requests[key] or community_requests[key][-1] < now - 3600:
+                del community_requests[key]
+        peer = request.client.host if request.client else "unknown"
+        recent = community_requests.setdefault(peer, deque())
+        while recent and recent[0] < now - 3600:
+            recent.popleft()
+        if len(recent) >= 30:
+            return JSONResponse({"error": "Please try sharing again later."}, status_code=429)
+        recent.append(now)
+        if len(await request.body()) > 8192:
+            return JSONResponse({"error": "Summary exceeds the size limit."}, status_code=413)
+        try:
+            body = await parse_body(request, ContributionUpload)
+        except ApiError:
+            return JSONResponse({"error": "Invalid sound summary."}, status_code=422)
+        c = body.contribution
+        if (not body.share_consent or c.source != "device" or c.quality.clipping_detected
+                or c.lat is None or c.lon is None or not 37.6 <= c.lat <= 37.85
+                or not -122.55 <= c.lon <= -122.3 or not 25 <= c.duration_seconds <= 35
+                or not c.quality.capture_profile.startswith("qc-community-v1:")):
+            return JSONResponse({"error": "Share a consented 30-second, unclipped measurement in San Francisco."},
+                                status_code=422, headers={"Cache-Control": "no-store"})
+        result = await run_in_threadpool(layer.submit_shared, c, True)
+        response = model_response(result)
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     async def post_contribution(request: Request) -> Response:
         body = await parse_body(request, ContributionUpload)
@@ -120,6 +155,7 @@ def build_shared_routes(layer: SharedLayer, settings: Settings) -> list[BaseRout
     )
     token = settings.api_token
     return [
+        Route("/v1/community/contributions", post_community_contribution, methods=["POST"]),
         Route("/v1/map/view", get_map_view, methods=["GET"]),
         Route("/v1/exchange/status", exchange_status, methods=["GET"]),
         Route("/v1/contributions", shared_guarded(post_contribution), methods=["POST"]),
