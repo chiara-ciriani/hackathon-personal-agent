@@ -1,13 +1,13 @@
 # Team status: who is doing what
 
-Last updated: October 24, 2026, 16:45 PT. Update this file whenever you start or finish something, so two people don't build the same thing.
+Last updated: October 24, 2026, 17:30 PT. Update this file whenever you start or finish something, so two people don't build the same thing.
 
 ## In progress right now
 
 | Area | Who | What | Files |
 | --- | --- | --- | --- |
 | Background capture and noise alerts | Ana | Plan written; check with Ana before touching it | `docs/BACKGROUND_CAPTURE_AND_NOISE_ALERTS.md` |
-| Room sound map from phone readings | Alex | Branch `feat/sound-field`: server `sound_field.py` (0.5 m grid from positioned readings; unwalked = unknown), `GET /v1/sessions/{id}/sound_field`, opt-in `GET /v1/venue/sound_field`, MCP `quiet_get_sound_map`; web helper `lib/sound-field.mjs` (not wired into /venue yet); standalone `ios-walk/` app (ARKit walk map, record/replay/export, radar, source locate; untested on device) and `tools/walk_map.py`. Not merged. | `server/quiet_compass/{sound_field,field_api}.py`, `ios-walk/**`, `tools/walk_map.py` |
+| Demo prep | Alex | Edge glow + haptic in QC Walk Map (done, untested on device); `docs/DEMO.md` runbook; autism-first section in `server/agent_instructions.md` | `ios-walk/EdgeGlow.swift`, `ios-walk/QuietMapView.swift`, `docs/DEMO.md` |
 | Web map and venue view | Ana and Martin | Map-first redesign, DataSF layers, `/venue` 3D view | `apps/quiet-compass/**` |
 
 ## Ready for main

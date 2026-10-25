@@ -35,6 +35,27 @@ struct QuietMapView: View {
             Spacer(minLength: 0)
         }
         .padding() }
+        .overlay { EdgeGlow(turn: glowTurn) }
+        .sensoryFeedback(.impact(weight: .light), trigger: glowTurn.map(EdgeGlow.side)) { _, side in side == .ahead }
+    }
+
+    /// Where the edge glow points: the agent's destination when it advised a move, otherwise the
+    /// quietest measured spot, but only while the spot you stand on is loud. Nil keeps the screen calm.
+    private var glowTurn: Double? {
+        guard model.ar.isNormal, let me = model.mapUser else { return nil }
+        let target: (x: Double, z: Double)
+        if agent.hasLink {
+            guard let advice = agent.advice, advice.action == "move", let destination = advice.destination,
+                  destination.kind == "room", destination.requestId == agent.lastRequestId,
+                  let expires = AgentProtocol.date(advice.expiresAt), expires > Date() else { return nil }
+            target = (destination.x, destination.z)
+        } else {
+            guard model.isRecording, let spot = model.field?.quietSpots.first, (hereLoudness ?? 0) >= 0.66 else { return nil }
+            target = (spot.x, spot.z)
+        }
+        let dx = target.x - me.x, dz = target.z - me.y  // mapUser is (x, z)
+        guard (dx * dx + dz * dz).squareRoot() >= 1.5 else { return nil }
+        return Geo.degrees(atan2(dx, -dz)) - model.phoneBearing
     }
 
     @ViewBuilder private var guidance: some View {
@@ -62,14 +83,17 @@ struct QuietMapView: View {
         return [hereText, age].compactMap { $0 }.joined(separator: " · ")
     }
 
-    /// How loud the spot you stand on is, within this walk's quietest-to-loudest range.
-    private var hereText: String? {
+    /// How loud the spot you stand on is, from 0 (this walk's quietest) to 1 (its loudest).
+    private var hereLoudness: Double? {
         guard let field = model.field, let me = model.mapUser, let range = field.levelRange,
               let level = field.cell(atX: me.x, z: me.y)?.levelDB else { return nil }
         let span = range.upperBound - range.lowerBound
         guard span > 0 else { return nil }
-        let t = (level - range.lowerBound) / span
-        return t < 0.33 ? "Here: quiet" : t < 0.66 ? "Here: moderate" : "Here: loud"
+        return (level - range.lowerBound) / span
+    }
+
+    private var hereText: String? {
+        hereLoudness.map { $0 < 0.33 ? "Here: quiet" : $0 < 0.66 ? "Here: moderate" : "Here: loud" }
     }
 
     private var statusLine: String {

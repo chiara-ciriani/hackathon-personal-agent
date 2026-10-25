@@ -28,6 +28,8 @@ type McpConnection={state:string;endpoint:string|null;dotEndpoint?:string|null;d
 const connectionLabels:Record<string,string>={checking:'Checking server…',available:'Shared MCP available',not_configured:'Server setup needed',invalid_config:'Check server address',unavailable:'Server unavailable',disabled:'Shared access setup needed',incompatible:'Server update needed'};
 const deviceLabels:Record<string,string>={available:'Phone measurements are on the map',empty:'No one has shared a phone measurement in the last 24 hours',access_required:'Share a measurement of your own to see other people’s',invalid_config:"Phone measurements aren't set up on the server yet",unavailable:"Couldn't load phone measurements right now"};
 const home={center:[-122.44,37.768] as [number,number],zoom:12.6,pitch:48,bearing:-12};
+// 921 Front Street, San Francisco. Used by the pitch's live demo.
+const demoHome={...home,center:[-122.400556,37.799935] as [number,number],zoom:16.5};
 type ViewOptions={center?:[number,number];zoom?:number;pitch?:number;bearing?:number;duration?:number};
 type MapControls={zoomIn:()=>unknown;zoomOut:()=>unknown;getZoom:()=>number;flyTo:(o:ViewOptions)=>unknown;remove:()=>unknown};
 const measured=(p:Properties)=>['measured','measured_device'].includes(p.evidence||'');
@@ -75,6 +77,7 @@ const mapStyle:StyleSpecification={
  ]
 };
 export default function CityMap(){
+ const initialView=useRef(home);
  const container=useRef<HTMLDivElement>(null),map=useRef<MapControls|null>(null),glMap=useRef<GLMap|null>(null);
  const sourceData=useRef<Partial<Record<LayerKey,PointCollection>>>({}),heatData=useRef<MapData|null>(null);
  const fallbackUpdate=useRef<((features:PointFeature[])=>void)|null>(null);
@@ -125,15 +128,16 @@ export default function CityMap(){
  },[mcp,connectionCheck]);
  useEffect(()=>{
   let disposed=false;
+  initialView.current=new URLSearchParams(window.location.search).get('demo')==='front-street'?demoHome:home;
   const startFallback=async()=>{
    const {createCanvasMap}=await import('../lib/canvas-map');if(disposed||!container.current)return;
    const result=await createCanvasMap(container.current,()=>disposed,()=>{if(!disposed){setReady(true);setFailed(false)}},p=>setSelection(p));
-   if(!result)return;map.current=result.controls;fallbackUpdate.current=result.setFeatures;setFallback(true);
+   if(!result)return;map.current=result.controls;result.controls.flyTo({...initialView.current,duration:1});fallbackUpdate.current=result.setFeatures;setFallback(true);
   };
   void(async()=>{try{
    const lib=await import('maplibre-gl');if(disposed||!container.current)return;
    lib.setWorkerUrl('/maplibre-gl-worker.mjs');
-   const instance=new lib.Map({container:container.current,style:mapStyle,...home,minZoom:10,maxZoom:19,attributionControl:false,canvasContextAttributes:{antialias:true}});
+   const instance=new lib.Map({container:container.current,style:mapStyle,...initialView.current,minZoom:10,maxZoom:19,attributionControl:false,canvasContextAttributes:{antialias:true}});
    map.current=instance;glMap.current=instance;
    instance.addControl(new lib.AttributionControl({compact:true,customAttribution:'DataSF'}),'bottom-right');
    instance.getCanvas().setAttribute('aria-label','San Francisco map. Violet shows where noise is likely, from complaints, police calls, permits and measurements. Black dots were measured. Gray dots were not.');
@@ -175,13 +179,13 @@ export default function CityMap(){
  const entries=data?.device.features||[];
  const count=data?['device','measured','sfoEvents'].reduce((sum,key)=>sum+data[key as LayerKey].features.length,0):0;
  function openMcp(){setConnection({state:'checking',endpoint:null});setCopied(null);setCopyError(false);setMcp(true)}
- function reset(){map.current?.flyTo({...home,duration:1000});setSelection(null)}
+ function reset(){map.current?.flyTo({...initialView.current,duration:1000});setSelection(null)}
  async function copyText(key:string,text:string){setCopyError(false);try{await navigator.clipboard.writeText(text);setCopied(key);setTimeout(()=>setCopied(c=>c===key?null:c),1800)}catch{setCopied(null);setCopyError(true)}}
  return <main className="quiet-map-only">
   <div className="quiet-map-canvas" ref={container}/>
   {!ready&&!failed&&<div className="quiet-loading" role="status" aria-label="Loading map"><span/></div>}
   {failed&&!ready&&<div className="quiet-map-error" role="status">The map could not be loaded.<button onClick={()=>window.location.reload()} aria-label="Try again"><RotateCcw size={18}/></button></div>}
-  <button className="quiet-home quiet-icon" onClick={reset} title="Reset San Francisco view" aria-label="Reset San Francisco view"><Compass size={25} strokeWidth={1.4}/></button>
+  <button className="quiet-home quiet-icon" onClick={reset} title="Reset starting view" aria-label="Reset starting view"><Compass size={25} strokeWidth={1.4}/></button>
   <button className="quiet-mcp" ref={mcpButton} onClick={openMcp} aria-haspopup="dialog"><Plug size={14}/>MCP</button>
   {selection&&<aside className={'quiet-card '+(measured(selection)?'':'is-unmeasured')} aria-live="polite">
    <button className="quiet-icon quiet-card-close" aria-label="Close place details" onClick={()=>setSelection(null)}><X size={16}/></button>
