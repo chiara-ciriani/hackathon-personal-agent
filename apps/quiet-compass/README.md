@@ -131,3 +131,10 @@ The portable build runs Vinext directly without a host `timeout` command. The ma
 
 - [vinext Documentation](https://github.com/cloudflare/vinext)
 - [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+
+## Phone page
+
+`/measure` connects the phone to an agent-issued, 15-minute session. The agent requests
+measurements and sends recommendations; the user approves sensors and sharing once. No
+manual reading upload or shared API key is needed in the browser.
+See [AGENT_PHONE_LOOP.md](../../docs/AGENT_PHONE_LOOP.md) for deployment and verification.

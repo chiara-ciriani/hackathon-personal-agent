@@ -1,16 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CELL_LAT,CELL_LNG,buildReportField,describeCell,load311Reports,parseReport,FIELD_NOTE,FILTER_NOTE} from '../lib/noise-field.mjs';
+import {CELL_LAT,CELL_LNG,buildReportField,describeCell,FIELD_NOTE,FILTER_NOTE} from '../lib/noise-field.mjs';
 
 const NOW=new Date('2026-10-24T21:00:00Z');
 const row=(lat,long,extra={})=>({requested_datetime:'2026-10-20T10:00:00.000',lat:String(lat),long:String(long),service_subtype:'other_excessive_noise',...extra});
 const pt=(lng,lat)=>({type:'Feature',geometry:{type:'Point',coordinates:[lng,lat]},properties:{}});
 
-test('parseReport keeps real SF coordinates and drops missing or out-of-city ones',()=>{
- assert.deepEqual(parseReport(row(37.7766,-122.4119)).geometry.coordinates,[-122.4119,37.7766]);
- assert.equal(parseReport(row(37.7766,-122.4119)).properties.kind,'other excessive noise');
- assert.equal(parseReport({lat:'',long:''}),null);assert.equal(parseReport(row(40.7,-74)),null);assert.equal(parseReport(null),null);
-});
 test('empty input yields no cells: no reports means unknown, never a quiet value',()=>{
  const f=buildReportField([],[]);
  assert.deepEqual([f.collection.features.length,f.total,f.cells],[0,0,0]);
@@ -40,21 +35,7 @@ test('CAD rows with zero or invalid counts and out-of-city points are ignored',(
  assert.equal(f.total,2);
 });
 test('describeCell and notes say reports, not dB',()=>{
- const t=describeCell({n:5,r311:2,cad:3,days:30});
+ const t=describeCell({n:5,r311:2,cad:3,hours:24});
  assert.match(t,/5 reports/);assert.match(t,/2 311 complaints/);assert.match(t,/3 police noise-nuisance calls/);assert.match(t,/not dB/);
  assert.match(FIELD_NOTE,/unknown, not quiet/);assert.match(FILTER_NOTE,/nothing about decibels/);
-});
-test('load311Reports queries the 30-day window on the real dataset, with mocked fetch',async()=>{
- const calls=[];
- const fetchFn=async url=>{calls.push(url);return {ok:true,json:async()=>[row(37.7766,-122.4119),{lat:'',long:''}]}};
- const out=await load311Reports(fetchFn,NOW);
- assert.equal(out.features.length,1);
- const u=decodeURIComponent(calls[0]);
- assert.ok(u.startsWith('https://data.sf.gov/resource/vw6y-z8j6.json?'));
- assert.match(u,/requested_datetime >= '2026-09-24T00:00:00'/);assert.match(u,/service_name in\('Noise','Noise Report'\)/);
-});
-test('load311Reports throws when DataSF fails: no fallback data',async()=>{
- await assert.rejects(load311Reports(async()=>({ok:false,status:503,json:async()=>[]}),NOW),/503/);
- await assert.rejects(load311Reports(async()=>({ok:true,json:async()=>({error:1})}),NOW),/unexpected/);
- await assert.rejects(load311Reports(async()=>{throw new Error('offline')},NOW),/offline/);
 });

@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quiet Compass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#171717;--ink2:#525252;--mut:#737373;--faint:#a4a4a4;--line:#e7e7e7;--paper:#ffffff;--wash:#fafafa;
+  --v50:#f4ecff;--v100:#ebdfff;--v200:#d9c7fa;--v300:#b996f5;--v500:#8a45e8;--v600:#752deb;--v700:#5a14b0;--v900:#2b0a63;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0d0d0f;overflow:hidden;font-family:Geist,Inter,system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+#viewport{position:fixed;inset:0;display:grid;place-items:center}
+#stage{width:1280px;height:720px;position:relative;transform-origin:center;background:var(--paper);overflow:hidden;border-radius:6px}
+
+/* slides */
+.slide{position:absolute;inset:0;padding:72px 88px;opacity:0;pointer-events:none;transform:translateY(28px) scale(.985);filter:blur(8px);
+  transition:opacity .7s var(--ease),transform .9s var(--ease),filter .7s var(--ease)}
+.slide.active{opacity:1;pointer-events:auto;transform:none;filter:none}
+.slide.past{transform:translateY(-28px) scale(.985)}
+.slide.dark{background:var(--ink);color:#fff}
+.slide.violet{background:var(--v900);color:#fff}
+
+/* fragments */
+[data-f]{opacity:0;transform:translateY(16px);transition:opacity .6s var(--ease),transform .8s var(--ease),filter .6s var(--ease)}
+[data-f].in{opacity:1;transform:none}
+.fade[data-f]{transform:none}
+
+.eyebrow{font:500 13px/1 'Geist Mono',ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--v600)}
+.dark .eyebrow,.violet .eyebrow{color:var(--v300)}
+h1,h2,h3,p{margin:0}
+h1{font-weight:600;letter-spacing:-.035em}
+h2{font-size:52px;line-height:1.08;font-weight:600;letter-spacing:-.03em}
+.lead{font-size:24px;line-height:1.45;color:var(--ink2);font-weight:400}
+.dark .lead,.violet .lead{color:var(--v200)}
+.v{color:var(--v600)}
+.mono{font-family:'Geist Mono',ui-monospace,monospace}
+
+/* chrome */
+#progress{position:absolute;left:0;bottom:0;height:3px;background:var(--v600);transition:width .8s var(--ease);z-index:5}
+#count{position:absolute;right:28px;bottom:20px;font:500 12px 'Geist Mono',monospace;color:var(--faint);z-index:5;letter-spacing:.08em}
+#brand{position:absolute;left:28px;bottom:18px;display:flex;gap:8px;align-items:center;font:500 12px 'Geist Mono',monospace;color:var(--faint);z-index:5;letter-spacing:.08em}
+#brand i{width:8px;height:8px;border-radius:50%;background:var(--v600)}
+#hint{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);color:#666;font:12px 'Geist Mono',monospace;transition:opacity 1s;letter-spacing:.06em}
+
+/* 1 · title */
+.rings{position:absolute;right:120px;top:50%;width:0;height:0}
+.rings span{position:absolute;left:0;top:0;width:520px;height:520px;margin:-260px 0 0 -260px;border-radius:50%;border:1.5px solid var(--v300);opacity:0;animation:ring 6s var(--ease) infinite}
+.rings span:nth-child(2){animation-delay:1.5s}.rings span:nth-child(3){animation-delay:3s}.rings span:nth-child(4){animation-delay:4.5s}
+.rings b{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:var(--v600);box-shadow:0 0 0 10px var(--v100)}
+@keyframes ring{0%{transform:scale(.05);opacity:.9;border-color:var(--v600)}100%{transform:scale(1);opacity:0}}
+.title-wrap{position:absolute;left:88px;top:50%;transform:translateY(-50%);max-width:640px}
+.title-wrap h1{font-size:96px;line-height:.95;margin:22px 0 28px}
+
+/* 2 · hook */
+#wave{position:absolute;left:0;right:0;top:250px;height:240px;width:100%}
+.hook-text{position:absolute;left:88px;right:88px;bottom:90px}
+.hook-text h2{font-size:56px}
+.hook-text .lead{margin-top:14px;font-size:28px}
+
+/* 3 · numbers */
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:56px}
+.num{border-radius:18px;padding:30px 28px 28px;background:var(--v50);min-height:250px;display:flex;flex-direction:column;justify-content:space-between}
+.num.hot{background:var(--v600);color:#fff}
+.num b{font-size:76px;font-weight:600;letter-spacing:-.04em;color:var(--v700);line-height:1}
+.num.hot b{color:#fff}
+.num p{font-size:19px;line-height:1.4;color:var(--ink2)}
+.num.hot p{color:var(--v50)}
+.foot{position:absolute;left:88px;right:88px;bottom:56px;font-size:13px;color:var(--mut);line-height:1.5}
+
+
+/* 4 · noise complaints */
+.noise-chart{width:100%;height:430px;margin-top:24px;overflow:visible}
+.noise-chart text{font-family:Geist,Inter,system-ui,sans-serif}
+.noise-source{font-size:13px;line-height:1.5;color:var(--mut);margin-top:8px}
+.noise-source a{color:inherit}
+
+/* 5 · map */
+.split{display:grid;grid-template-columns:420px 1fr;gap:56px;height:100%;align-items:center}
+.mapcard{position:relative;height:540px;border-radius:20px;overflow:hidden;background:#f3f3f3;border:1px solid var(--line)}
+.mapcard svg{position:absolute;inset:0;width:100%;height:100%}
+.pin{position:absolute;left:50%;top:46%;transform:translate(-50%,-100%)}
+.pin svg{position:static;width:34px;height:44px}
+.tag{position:absolute;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px;box-shadow:0 8px 30px rgba(0,0,0,.08);white-space:nowrap}
+.tag small{display:block;color:var(--mut);font-size:12px;margin-top:3px}
+.tag.alert{border-color:var(--v300);background:var(--v50)}
+.tag.alert b{color:var(--v700)}
+.blast{position:absolute;left:50%;top:46%;width:0;height:0}
+.blast span{position:absolute;width:360px;height:360px;margin:-180px;border-radius:50%;background:radial-gradient(circle,rgba(117,45,235,.55),rgba(117,45,235,.18) 45%,rgba(117,45,235,0) 70%);transform:scale(0);transition:transform 1.4s var(--ease)}
+.blast.in span{transform:scale(1);animation:throb 1.2s ease-in-out 1.4s infinite alternate}
+@keyframes throb{to{transform:scale(1.12)}}
+.stack h2+h2{margin-top:10px}
+
+/* 5 · quote */
+.quote-wrap{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 120px}
+.quote-wrap h2{font-size:68px;line-height:1.08;font-weight:500;letter-spacing:-.035em}
+.quote-wrap h2 em{font-style:normal;color:var(--v300)}
+.who{margin-top:36px;font-size:20px;color:var(--v200);display:flex;align-items:center;gap:14px}
+.who i{width:40px;height:1px;background:var(--v300)}
+
+/* 6 · loop */
+.loop{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:60px;margin-top:90px}
+.loop::before{content:"";position:absolute;left:calc((100% - 120px)/6);right:calc((100% - 120px)/6);top:43px;height:2px;background:var(--v300)}
+.step{position:relative;text-align:center;display:flex;flex-direction:column;align-items:center}
+.dot{width:88px;height:88px;border-radius:50%;background:#fff;border:2px solid var(--line);display:grid;place-items:center;font:600 22px 'Geist Mono',monospace;color:var(--faint);transition:all .6s var(--ease);position:relative;z-index:1}
+.step.in .dot{border-color:var(--v600);background:var(--v600);color:#fff;box-shadow:0 0 0 10px var(--v50)}
+.step h3{margin-top:26px;font-size:24px;font-weight:600;letter-spacing:-.02em}
+.step p{margin-top:12px;max-width:290px;font-size:20px;line-height:1.45;color:var(--ink2)}
+.step[data-f]{opacity:.35;transform:none}
+.step[data-f].in{opacity:1}
+
+/* 7 · phone */
+.phone{width:300px;height:600px;border-radius:46px;background:var(--ink);padding:12px;box-shadow:0 30px 80px rgba(43,10,99,.25)}
+.screen{width:100%;height:100%;border-radius:36px;background:#fff;padding:52px 22px 22px;position:relative;overflow:hidden}
+.notch{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:96px;height:28px;border-radius:20px;background:var(--ink)}
+.screen h4{margin:0;font-size:13px;font-weight:500;color:var(--mut);letter-spacing:.02em}
+.screen .place{font-size:22px;font-weight:600;letter-spacing:-.02em;margin-top:4px}
+.meter{display:flex;align-items:flex-end;gap:4px;height:120px;margin-top:26px}
+.meter i{flex:1;background:var(--v300);border-radius:3px;height:20%;transition:height .18s linear}
+.timer{display:flex;justify-content:space-between;margin-top:12px;font:500 13px 'Geist Mono',monospace;color:var(--mut)}
+.summary{margin-top:20px;border:1px solid var(--line);border-radius:16px;padding:14px;font-size:13px;line-height:1.7}
+.summary div{display:flex;justify-content:space-between}
+.summary span{color:var(--mut)}
+.share{margin-top:14px;display:flex;align-items:center;justify-content:space-between;border-radius:16px;padding:14px;background:var(--wash);font-size:14px;font-weight:500}
+.toggle{width:46px;height:28px;border-radius:20px;background:#d4d4d4;position:relative;transition:background .4s}
+.toggle::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .4s var(--ease);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.share.in .toggle{background:var(--v600)}
+.share.in .toggle::after{transform:translateX(18px)}
+.share[data-f]{opacity:1;transform:none}
+.phone-row{display:grid;grid-template-columns:300px 1fr;gap:80px;align-items:center;height:100%}
+.bul{list-style:none;padding:0;margin:34px 0 0;display:grid;gap:18px}
+.bul li{font-size:22px;display:flex;gap:14px;align-items:baseline;color:var(--ink2)}
+.bul li::before{content:"";flex:none;width:9px;height:9px;border-radius:50%;background:var(--v600);transform:translateY(-3px)}
+.bul b{color:var(--ink);font-weight:600}
+.flyer{position:absolute;left:115px;top:420px;width:12px;height:12px;border-radius:50%;background:var(--v600);opacity:0;z-index:4}
+.flyer.go{animation:fly 1.4s var(--ease) forwards}
+@keyframes fly{0%{opacity:1;transform:translate(0,0) scale(1)}70%{opacity:1}100%{opacity:0;transform:translate(700px,-160px) scale(.6)}}
+
+/* 8 · chat */
+.chat{display:flex;flex-direction:column;gap:16px;max-width:860px;margin:44px auto 0}
+.bubble{max-width:640px;padding:18px 22px;border-radius:22px;font-size:21px;line-height:1.45}
+.bubble.me{align-self:flex-end;background:var(--ink);color:#fff;border-bottom-right-radius:6px}
+.bubble.ai{align-self:flex-start;background:var(--v50);color:var(--ink);border-bottom-left-radius:6px}
+.tool{align-self:flex-start;display:inline-flex;align-items:center;gap:10px;font:500 14px 'Geist Mono',monospace;color:var(--v700);border:1px dashed var(--v300);border-radius:999px;padding:9px 16px}
+.tool i{width:8px;height:8px;border-radius:50%;background:var(--v600);animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+.age{display:inline-block;background:#fff;border:1px solid var(--v200);color:var(--v700);border-radius:8px;padding:0 7px;font:500 16px 'Geist Mono',monospace}
+.check{align-self:flex-start;display:flex;align-items:center;gap:12px;font-size:18px;color:var(--ink2);padding:12px 18px;border-radius:14px;border:1px solid var(--line)}
+.check b{color:var(--v700)}
+.caret::after{content:"▍";color:var(--v500);animation:blink .8s infinite;margin-left:2px}
+
+/* 9 · live */
+.live{position:absolute;inset:0}
+.live iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.live .badge{position:absolute;left:28px;top:24px;z-index:2;background:#fff;border:1px solid var(--line);border-radius:999px;padding:9px 16px;font:500 13px 'Geist Mono',monospace;display:flex;gap:10px;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.live .badge i{width:8px;height:8px;border-radius:50%;background:#e5484d;animation:blink 1.4s infinite}
+.live .next{position:absolute;right:24px;bottom:50px;z-index:2;background:var(--ink);color:#fff;border:0;border-radius:999px;padding:12px 20px;font:500 14px Geist,sans-serif;cursor:pointer}
+
+/* 10 · trust */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:50px}
+.col{border-radius:20px;padding:32px 34px}
+.col.yes{background:var(--v50)}
+.col.no{background:var(--wash);border:1px solid var(--line)}
+.col h3{font:500 13px 'Geist Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--v700);margin-bottom:20px}
+.col.no h3{color:var(--mut)}
+.col ul{list-style:none;margin:0;padding:0;display:grid;gap:16px}
+.col li{font-size:22px;line-height:1.35;display:flex;gap:14px}
+.col.yes li::before{content:"✓";color:var(--v600);font-weight:600}
+.col.no li{color:var(--ink2)}
+.col.no li::before{content:"—";color:var(--faint)}
+
+/* 11 · close */
+.close-wrap{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 120px}
+.close-wrap h2{font-size:72px;letter-spacing:-.04em}
+.close-wrap .lead{margin-top:26px;font-size:26px;max-width:860px}
+.close-wrap .url{margin-top:56px;font:500 18px 'Geist Mono',monospace;color:var(--v300)}
+.field{position:absolute;inset:0;opacity:.55}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01s!important}}
+</style>
+</head>
+<body>
+<div id="viewport"><div id="stage">
+
+<!-- 1 · Title -->
+<section class="slide" data-name="title">
+  <div class="rings"><span></span><span></span><span></span><span></span><b></b></div>
+  <div class="title-wrap">
+    <div class="eyebrow">Personal Agents Hackathon · San Francisco</div>
+    <h1>Quiet<br>Compass</h1>
+    <p class="lead">Your agent knows what you need to do.<br>Now it knows how places sound.</p>
+  </div>
+</section>
+
+<!-- 2 · Hook -->
+<section class="slide dark" data-name="hook">
+  <div class="eyebrow">Listen</div>
+  <canvas id="wave"></canvas>
+  <div class="hook-text">
+    <h2>This is what a hackathon sounds like.</h2>
+    <p class="lead" data-f="1">For a lot of people, it isn't background noise.</p>
+    <p class="lead" data-f="2" style="color:#fff">It's the reason they leave.</p>
+  </div>
+</section>
+
+<!-- 3 · Numbers -->
+<section class="slide" data-name="numbers">
+  <div class="eyebrow">The problem · San Francisco</div>
+  <h2 style="margin-top:18px">Thousands of people here plan their day around sound.</h2>
+  <div class="nums">
+    <div class="num" data-f="1"><b>~15,000</b><p>autistic adults live in the city</p></div>
+    <div class="num hot" data-f="2"><b>~6,000</b><p>of them are sensitive to everyday sound right now</p></div>
+    <div class="num" data-f="3"><b>~40,000</b><p>SF adults of any neurotype who find everyday sounds hard to bear</p></div>
+  </div>
+  <p class="foot">Estimates. No SF-only count exists, so we applied national rates to ~830k residents: 2.2% of US adults are autistic (Dietz et al., 2020); 41% of autistic people have current hyperacusis (Williams et al., 2021 meta-analysis); 5.9% of US adults report sensitivity to everyday sounds (NHIS 2014).</p>
+</section>
+
+<!-- 4 · Noise complaints -->
+<section class="slide" data-name="evidence">
+  <div class="eyebrow">San Francisco · 2021–2026</div>
+  <h2 style="margin-top:14px;font-size:44px">Noise complaints are rising.</h2>
+  <svg class="noise-chart" viewBox="0 0 1104 430" role="img" aria-labelledby="noise-title noise-desc"><title id="noise-title">San Francisco 311 noise complaints, 2021–2026</title><desc id="noise-desc">Complaints rose from 7,324 in 2021 to 11,893 in 2025. There were 17,542 through October 23, 2026. Complaint counts are not sound level measurements.</desc><line x1="70" y1="365.0" x2="1090" y2="365.0" stroke="#e7e7e7"/><text x="55" y="370.0" text-anchor="end" font-size="14" fill="#737373">0</text><line x1="70" y1="287.5" x2="1090" y2="287.5" stroke="#e7e7e7"/><text x="55" y="292.5" text-anchor="end" font-size="14" fill="#737373">5,000</text><line x1="70" y1="210.0" x2="1090" y2="210.0" stroke="#e7e7e7"/><text x="55" y="215.0" text-anchor="end" font-size="14" fill="#737373">10,000</text><line x1="70" y1="132.5" x2="1090" y2="132.5" stroke="#e7e7e7"/><text x="55" y="137.5" text-anchor="end" font-size="14" fill="#737373">15,000</text><line x1="70" y1="55.0" x2="1090" y2="55.0" stroke="#e7e7e7"/><text x="55" y="60.0" text-anchor="end" font-size="14" fill="#737373">20,000</text><rect x="107" y="251.478" width="108" height="113.522" rx="8" fill="#d9c7fa"/><text x="161" y="239.478" text-anchor="middle" font-size="22" font-weight="600" fill="#5a14b0">7,324</text><text x="161" y="396" text-anchor="middle" font-size="18" fill="#525252">2021</text><rect x="273" y="251.23000000000002" width="108" height="113.77" rx="8" fill="#d9c7fa"/><text x="327" y="239.23000000000002" text-anchor="middle" font-size="22" font-weight="600" fill="#5a14b0">7,340</text><text x="327" y="396" text-anchor="middle" font-size="18" fill="#525252">2022</text><rect x="439" y="236.9855" width="108" height="128.0145" rx="8" fill="#d9c7fa"/><text x="493" y="224.9855" text-anchor="middle" font-size="22" font-weight="600" fill="#5a14b0">8,259</text><text x="493" y="396" text-anchor="middle" font-size="18" fill="#525252">2023</text><rect x="605" y="212.108" width="108" height="152.892" rx="8" fill="#d9c7fa"/><text x="659" y="200.108" text-anchor="middle" font-size="22" font-weight="600" fill="#5a14b0">9,864</text><text x="659" y="396" text-anchor="middle" font-size="18" fill="#525252">2024</text><rect x="771" y="180.6585" width="108" height="184.3415" rx="8" fill="#d9c7fa"/><text x="825" y="168.6585" text-anchor="middle" font-size="22" font-weight="600" fill="#5a14b0">11,893</text><text x="825" y="396" text-anchor="middle" font-size="18" fill="#525252">2025</text><rect x="937" y="93.09899999999999" width="108" height="271.901" rx="8" fill="#752deb"/><text x="991" y="81.09899999999999" text-anchor="middle" font-size="22" font-weight="600" fill="#5a14b0">17,542</text><text x="991" y="396" text-anchor="middle" font-size="18" fill="#525252">2026</text><text x="991" y="419" text-anchor="middle" font-size="13" fill="#752deb">Through Oct 23</text></svg>
+  <p class="noise-source">Source: <a href="https://data.sf.gov/resource/vw6y-z8j6.json" target="_blank" rel="noopener">DataSF 311</a> · 2021–2025 full years; 2026 through Oct 23.<br>Complaints reflect reporting, not measured loudness. Reporting categories changed in 2024.</p>
+</section>
+
+<!-- 5 · Map vs sound -->
+<section class="slide" data-name="map">
+  <div class="split">
+    <div class="stack">
+      <div class="eyebrow">What's missing</div>
+      <h2 style="margin-top:18px">A map tells you <span>where</span> a place is.</h2>
+      <h2 class="v" data-f="1">Not how it sounds right now.</h2>
+    </div>
+    <div class="mapcard">
+      <svg viewBox="0 0 700 540" preserveAspectRatio="xMidYMid slice">
+        <rect width="700" height="540" fill="#f3f3f3"/>
+        <g fill="#e2e2e2">
+          <rect x="20" y="20" width="150" height="110" rx="4"/><rect x="190" y="20" width="130" height="110" rx="4"/><rect x="340" y="20" width="160" height="110" rx="4"/><rect x="520" y="20" width="160" height="110" rx="4"/>
+          <rect x="20" y="150" width="150" height="120" rx="4"/><rect x="520" y="150" width="160" height="120" rx="4"/>
+          <rect x="20" y="290" width="150" height="110" rx="4"/><rect x="520" y="290" width="160" height="110" rx="4"/>
+          <rect x="20" y="420" width="150" height="110" rx="4"/><rect x="190" y="420" width="130" height="110" rx="4"/><rect x="340" y="420" width="160" height="110" rx="4"/><rect x="520" y="420" width="160" height="110" rx="4"/>
+        </g>
+        <rect x="190" y="150" width="310" height="250" rx="6" fill="#e9eee6"/>
+        <g fill="#dfe6da"><circle cx="240" cy="200" r="16"/><circle cx="450" cy="210" r="20"/><circle cx="260" cy="350" r="18"/><circle cx="455" cy="355" r="14"/></g>
+        <g stroke="#fff" stroke-width="3"><line x1="0" y1="140" x2="700" y2="140"/><line x1="0" y1="410" x2="700" y2="410"/><line x1="180" y1="0" x2="180" y2="540"/><line x1="510" y1="0" x2="510" y2="540"/></g>
+        <text x="345" y="388" text-anchor="middle" font-family="Geist,sans-serif" font-size="13" fill="#9e9e9e" letter-spacing="1">YERBA BUENA GARDENS</text>
+      </svg>
+      <div class="blast fade" data-f="1"><span></span></div>
+      <div class="pin"><svg viewBox="0 0 34 44"><path d="M17 43s15-14.2 15-26A15 15 0 0 0 2 17c0 11.8 15 26 15 26z" fill="#171717"/><circle cx="17" cy="17" r="6" fill="#fff"/></svg></div>
+      <div class="tag" style="left:28px;top:28px"><b>Yerba Buena Gardens</b><small>Park · ★ 4.7 · "peaceful spot"</small></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · Loop -->
+<section class="slide" data-name="loop">
+  <div class="eyebrow">How it works</div>
+  <h2 style="margin-top:18px;max-width:1000px">Measure. Share. Decide.</h2>
+  <div class="loop">
+    <div class="step" data-f="1"><div class="dot">01</div><h3>Measure</h3><p>The app measures the noise around you.</p></div>
+    <div class="step" data-f="2"><div class="dot">02</div><h3>Share</h3><p>It shares the noise measurement on the map.</p></div>
+    <div class="step" data-f="3"><div class="dot">03</div><h3>Decide</h3><p>Your agent uses all the data to recommend where to go.</p></div>
+  </div>
+</section>
+
+<!-- 7 · Live map -->
+<section class="slide" data-name="live" style="padding:0">
+  <div class="live">
+    <div class="badge"><i></i>Live · 921 Front Street, San Francisco</div>
+    <iframe data-src="https://quiet-compass-navy.vercel.app/?demo=front-street" data-local-src="http://127.0.0.1:5199/?demo=front-street" title="Quiet Compass live map at 921 Front Street" loading="lazy"></iframe>
+    <button class="next" onclick="next()">Next →</button>
+  </div>
+</section>
+
+<!-- 8 · Close -->
+<section class="slide violet" data-name="close">
+  <canvas class="field" id="field"></canvas>
+  <div class="close-wrap">
+    <div class="eyebrow">Quiet Compass</div>
+    <h2 style="margin-top:22px">Quiet Compass</h2>
+    <p class="lead" data-f="1">Built for autistic people first. Useful for anyone who needs a quieter place without leaving what they came for.</p>
+    <div class="url" data-f="2">quiet-compass-navy.vercel.app</div>
+  </div>
+</section>
+
+<div id="brand"><i></i>QUIET COMPASS</div>
+<div id="count"></div>
+<div id="progress"></div>
+</div></div>
+<div id="hint">click · → · space to advance &nbsp;·&nbsp; ← back &nbsp;·&nbsp; F fullscreen</div>
+
+<script>
+const slides=[...document.querySelectorAll('.slide')];
+let s=0,f=0;
+const steps=el=>Math.max(0,...[...el.querySelectorAll('[data-f]')].map(e=>+e.dataset.f));
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// fit 1280x720 stage to window
+function fit(){const k=Math.min(innerWidth/1280,innerHeight/720);document.getElementById('stage').style.transform=`scale(${k})`}
+addEventListener('resize',fit);fit();
+
+function render(){
+  slides.forEach((el,i)=>{el.classList.toggle('active',i===s);el.classList.toggle('past',i<s)});
+  const cur=slides[s];
+  cur.querySelectorAll('[data-f]').forEach(e=>{
+    const on=+e.dataset.f<=f, was=e.classList.contains('in');
+    e.classList.toggle('in',on);
+    if(on&&!was)reveal(e); if(!on&&was)hide(e);
+  });
+  document.getElementById('progress').style.width=((s+(f/(steps(cur)+1)))/(slides.length-1)*100)+'%';
+  document.getElementById('count').textContent=String(s+1).padStart(2,'0')+' / '+String(slides.length).padStart(2,'0');
+  hooks[cur.dataset.name]?.(f);
+  history.replaceState(null,'','#'+(s+1)+(f?'.'+f:''));
+  const ifr=cur.querySelector('iframe[data-src]');
+  if(ifr&&!ifr.src){
+    const local=location.protocol==='file:'||['localhost','127.0.0.1'].includes(location.hostname);
+    ifr.src=local&&ifr.dataset.localSrc?ifr.dataset.localSrc:ifr.dataset.src;
+  }
+}
+function next(){const max=steps(slides[s]);if(f<max)f++;else if(s<slides.length-1){reset(slides[s]);s++;f=0}render()}
+function prev(){if(f>0)f--;else if(s>0){reset(slides[s]);s--;f=steps(slides[s]);slides[s].querySelectorAll('[data-f]').forEach(e=>{e.classList.add('in');reveal(e,true)})}render()}
+function reset(el){el.querySelectorAll('[data-f]').forEach(e=>{e.classList.remove('in');hide(e)})}
+
+// typing
+function reveal(e,instant){
+  if(e.dataset.type!==undefined)type(e,instant);
+}
+function hide(e){if(e.dataset.type!==undefined){clearInterval(e._t);e.innerHTML=''}}
+function fmt(t){return t.replace(/\{(.+?)\}/g,'<span class="age">$1</span>')}
+function type(e,instant){
+  clearInterval(e._t);const full=e.dataset.type;
+  if(instant||reduce){e.innerHTML=fmt(full);return}
+  let i=0;e.classList.add('caret');
+  e._t=setInterval(()=>{i+=2;e.innerHTML=fmt(full.slice(0,i).replace(/\{([^}]*)$/,'$1'));if(i>=full.length){clearInterval(e._t);e.innerHTML=fmt(full);e.classList.remove('caret')}},22);
+}
+
+// per-slide behaviour
+const hooks={
+  hook:f=>{wave.chaos=f>=1?1:0}
+};
+
+// waveform (slide 2)
+const wave={chaos:0,c:0};
+(function(){
+  const cv=document.getElementById('wave'),x=cv.getContext('2d');cv.width=1280*2;cv.height=240*2;
+  const N=96;let t=0;
+  function draw(){
+    t+=0.016;wave.c+=(wave.chaos-wave.c)*0.04;
+    x.clearRect(0,0,cv.width,cv.height);
+    const w=cv.width/N;
+    for(let i=0;i<N;i++){
+      const calm=0.12+0.08*Math.sin(t*1.4+i*0.18);
+      const loud=0.25+0.75*Math.abs(Math.sin(t*7+i*1.7)*Math.cos(t*3.1+i*0.53))+ (Math.random()*0.25);
+      const a=calm*(1-wave.c)+loud*wave.c;
+      const h=a*cv.height*0.9;
+      x.fillStyle=wave.c>0.5?'#8a45e8':'#5a14b0';
+      x.globalAlpha=0.5+0.5*a;
+      x.fillRect(i*w+w*0.25,(cv.height-h)/2,w*0.5,h);
+    }
+    if(slides[s].dataset.name==='hook'&&!reduce)requestAnimationFrame(draw);else setTimeout(draw,300);
+  }
+  draw();
+})();
+
+// contribution field (closing)
+(function(){
+  const cv=document.getElementById('field'),x=cv.getContext('2d');cv.width=1280;cv.height=720;
+  const pts=[];
+  function draw(){
+    if(slides[s].dataset.name==='close'&&!reduce){
+      if(Math.random()<0.06)pts.push({x:Math.random()*1280,y:Math.random()*720,r:0});
+      x.clearRect(0,0,1280,720);
+      for(let i=pts.length-1;i>=0;i--){const p=pts[i];p.r+=0.6;const a=Math.max(0,1-p.r/90);
+        x.strokeStyle=`rgba(185,150,245,${a*.8})`;x.lineWidth=1.2;x.beginPath();x.arc(p.x,p.y,p.r,0,7);x.stroke();
+        x.fillStyle=`rgba(217,199,250,${Math.min(1,a+.3)})`;x.beginPath();x.arc(p.x,p.y,2.2,0,7);x.fill();
+        if(a<=0)pts.splice(i,1)}
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// input
+addEventListener('keydown',e=>{
+  if(['ArrowRight','ArrowDown',' ','PageDown','Enter'].includes(e.key)){e.preventDefault();next()}
+  else if(['ArrowLeft','ArrowUp','PageUp','Backspace'].includes(e.key)){e.preventDefault();prev()}
+  else if(e.key==='f'||e.key==='F'){document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}
+});
+document.getElementById('viewport').addEventListener('click',e=>{if(e.target.closest('button,a,iframe'))return;next()});
+setTimeout(()=>document.getElementById('hint').style.opacity=0,4000);
+const h=location.hash.slice(1).split('.');if(h[0]){s=Math.min(slides.length-1,Math.max(0,+h[0]-1));f=+(h[1]||0)}
+render();
+</script>
+</body>
+</html>

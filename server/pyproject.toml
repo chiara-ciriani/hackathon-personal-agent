@@ -13,10 +13,12 @@ dependencies = [
     "pydantic>=2.12",
     "mcp>=2.3,<3",
     "httpx2>=2.10",
+    "cryptography>=44",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.6", "jsonschema>=4.20"]
+dev = ["pytest>=8", "ruff>=0.6", "jsonschema>=4.20", "Pillow>=11"]
+walk-map = ["Pillow>=11"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["quiet_compass"]

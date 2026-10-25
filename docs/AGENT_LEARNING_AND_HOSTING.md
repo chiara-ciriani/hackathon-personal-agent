@@ -8,10 +8,10 @@ código recibido de `main` de lo que todavía debemos conectar y validar.
 | Parte | Ubicación elegida | Estado |
 | --- | --- | --- |
 | Micrófono, características acústicas y clasificación | iPhone, procesamiento local | Código de captura y DSP presente; validar en dispositivo |
-| Recorrido y guía | iPhone, ARKit y memoria local | Lógica de recorrido presente; verificar integración de la app |
+| Recorrido y guía | iPhone, ARKit y memoria local | Integración nativa compilada; validación en dispositivo pendiente |
 | Mapa web e integración Oura existente | Sitio actual en Sites | Mantener su alojamiento; este cambio no publica el sitio |
 | API de ingestión y servidor MCP | Un servicio Python en Render | Código presente; Blueprint preparado, despliegue pendiente |
-| Observaciones, feedback y destino de guía | SQLite en disco persistente del servicio | Implementado para una instancia de demo |
+| Observaciones, feedback y destino de guía | SQLite en disco persistente del servicio | Implementado para una instancia de prueba |
 | Conversación y elección de herramientas | Agente personal conectado, inicialmente Claude | Requiere configurar el conector y probar el flujo |
 | Acciones proactivas | Futuro proceso de eventos y ejecución del agente | Pendiente; conectar MCP no activa vigilancia |
 
@@ -81,19 +81,18 @@ La memoria reside en la base de datos, no solo en el historial del chat. El MCP
 expone operaciones para consultarla y actualizarla. Una llamada de consulta no
 activa el micrófono ni produce una nueva observación.
 
-## Cómo incorporaremos wearables
+## Integración de wearables
 
-Oura ya tiene un flujo de autorización en la web, con credenciales ligadas a una
-cookie del navegador. El backend Python todavía no puede leer esos datos.
+El servidor tiene un flujo propio de Oura: autorización ligada al navegador,
+credenciales cifradas, renovación, sincronización cada 15 minutos y desconexión.
+La app de iPhone lee resúmenes de Apple Health con permiso por tipo de dato y
+muestra una vista previa antes de compartirlos. `quiet_get_personal_context`
+devuelve estos resúmenes al agente con fuente y fechas. No importa cookies de Sites.
 
-Antes de añadir una herramienta privada de contexto personal, vincular ambos
-accesos a la misma identidad, mantener credenciales cifradas en el servidor,
-implementar renovación y revocación, y devolver solo campos autorizados con sus
-fechas. Apple Health requiere integración nativa y permisos por tipo de dato.
-Una puntuación de recuperación no representa una medición del ambiente.
-
-Oura y Apple Health serán opcionales. Su información y las preferencias personales
-quedan fuera de cualquier capa pública de observaciones.
+Son opcionales y privados para la única persona de esta instalación. No entran en
+capas públicas. Una puntuación de recuperación no mide el ambiente ni diagnostica
+estrés. Falta verificar cuentas y hardware reales; ver
+[configuración y pruebas](WEARABLES_AND_PHONE.md).
 
 ## Cómo activaremos ayuda proactiva
 
@@ -110,7 +109,7 @@ peticiones o cambios relevantes. Este ejecutor no está implementado.
 ## Límite de la primera instalación
 
 El backend actual usa un token compartido y selecciona una sesión activa. Es una
-instalación para una persona de demo; no hay aislamiento entre cuentas. Para
+instalación para una persona de prueba; no hay aislamiento entre cuentas. Para
 varias personas hacen falta propiedad y permisos en cada consulta, además del
 perfil persistente. El mapa web tampoco debe publicar las filas privadas de este
 servicio como si fueran agregados anónimos.

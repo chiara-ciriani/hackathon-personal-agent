@@ -1,4 +1,4 @@
-# Import this Blueprint in Render to create the private demo backend.
+# Import this Blueprint in Render to create the private backend.
 # This selects paid compute plus a persistent disk; committing it creates no resources.
 services:
   - type: web
@@ -21,6 +21,10 @@ services:
       - key: PYTHON_VERSION
         value: 3.12.13
       - key: QC_API_TOKEN
+        generateValue: true
+      - key: QC_SHARED_API_TOKEN
+        generateValue: true
+      - key: QC_ENCRYPTION_KEY
         generateValue: true
       - key: QC_DB_PATH
         value: /var/data/quiet_compass.db

@@ -1,8 +1,29 @@
 # Background capture and noise alerts
 
-**Status:** plan, not implemented. Waiting on pending iOS app changes before any code lands.
-**Owner:** Ana Undurraga. Check with her before starting any of this, so two people don't build it twice.
+**Status:** implemented, **not yet tested on an iPhone**. The app type-checks (Swift 6, strict concurrency) but hasn't been built for a device: this Mac's Xcode lacks the iOS 26.5 platform. See [How to test](#how-to-test).
+**Owner:** Ana Undurraga. Check with her before changing this, so two people don't build it twice.
 **Date:** 2026-10-24
+
+## Progress
+
+Built on top of Martin's app (`6b5d4c8`, "Connect phone capture…"), which already wired capture → 5 s observations → upload while the app is open.
+
+| Piece | File | State |
+| --- | --- | --- |
+| Alert logic: baseline, 30 s sustain, peaks, re-arm, 10 min cooldown, snooze, gap reset | `QuietCore/Audio/NoiseAlertMonitor.swift` | Done. 9 unit tests in `NoiseAlertTests.swift` pass |
+| Restart capture after calls or Siri; pause the classifier in the background | `QuietCompass/Audio/MonoFeatureSource.swift` | Done, untested on device |
+| Local notifications, also shown while the app is open, plus a haptic | `QuietCompass/App/NoiseNotifier.swift` | Done, untested on device |
+| Keep the session alive in the background: end ARKit path tracking, keep the mic | `QuietCompassApp.swift` (`enterBackground` instead of `stop`), `CompassModel.swift` (`enterBackground`, `trackingFailed`, `endTracking`) | Done, untested on device |
+| Feed each observation to the monitor; "Noise alerts" section: on/off, sensitivity (4–20 dB, default 10), "This feels comfortable", snooze 30 min, last alert | `CompassModel.swift`, `CompassView` | Done, untested on device |
+| `UIBackgroundModes: [audio]`, updated mic usage text | `ios/project.yml` | Done |
+| Device build and test on an iPhone | | **To do** |
+
+### Behaviour as built
+
+- **Background:** when the app goes to the background during a session, path tracking ends (ARKit can't run there) and the mic keeps measuring. Observations keep uploading without a position. Coming back doesn't restart the path; start a new recording for that, matching the existing "don't mix paths" rule.
+- **ARKit interruptions** while the app isn't active (e.g. pulling down Control Center) also end the path but keep the session. While the app is active, a tracking failure still stops the session as before.
+- **Baseline:** until the person taps "This feels comfortable", the first 5 s observation counts as comfortable.
+- **Alerts:** a notification banner (also in the foreground, with a haptic) plus the last alert text in the app. Permission is asked when a session starts with alerts on.
 
 ## Goal
 
@@ -52,7 +73,7 @@ All numbers are starting points to tune on a device.
 
 The alert should point somewhere: "It's been loud for a while. The courtyard was quieter 6 min ago." Get the suggestion from the server (`find_suitable_places` / `quiet_find_space`) when online, and fall back to a plain alert offline.
 
-## Code changes (when the app is ready)
+## Code changes (original plan)
 
 - `ios/project.yml`: background mode, usage strings.
 - `AudioSessionConfigurator`: interruption and route-change handling.
@@ -68,3 +89,40 @@ The alert should point somewhere: "It's been loud for a while. The courtyard was
 - Hardware calibration (external USB-C measurement mic or per-model offset) would allow absolute thresholds later. Out of scope here.
 
 App Store review scrutinizes background recording. For the hackathon the app is installed from Xcode, so review doesn't apply.
+
+## How to test
+
+**Now, on a Mac:** `cd ios/Packages/QuietCore && swift test --filter NoiseAlertTests`.
+
+**On an iPhone.** Setup:
+
+1. Xcode > Settings > Components: install the iOS 26.5 platform.
+2. `brew install xcodegen`.
+3. `cp ios/Config.example.xcconfig ios/Config.xcconfig` and set `DEVELOPMENT_TEAM`.
+4. An iPhone on iOS 26 with ARKit support and Developer Mode on (Settings > Privacy & Security).
+5. A reachable server (deployed, or `server/` running on the same Wi-Fi). The app won't start a session without one.
+6. `cd ios && xcodegen generate`, open `QuietCompass.xcodeproj`, choose the iPhone, Run.
+
+Checks:
+
+| # | Do | Expect |
+| --- | --- | --- |
+| 1 | Connect, tap "Start measuring", allow mic, camera and notifications | Level updates every second |
+| 2 | In a quiet room tap "This feels comfortable", then play loud music or pink noise for over 30 s | Banner and haptic; alert text in the "Noise alerts" section |
+| 3 | Start a session, lock the phone, make noise for over 30 s | Orange mic indicator stays on; notification arrives |
+| 4 | Clap or knock repeatedly for a minute without sustained loudness | "Lots of sudden sounds" alert |
+| 5 | Stay in the noise | No second alert for 10 min, and none until it gets quiet again |
+| 6 | Call the phone or trigger Siri mid-session, then end it | Measuring resumes; server keeps receiving observations |
+| 7 | Background for 1 h | Note battery use; not measured yet |
+| 8 | Return to the app after backgrounding | Path shows "Ended (sound only)"; sound still measured |
+
+Tune the defaults (+10 dB, 30 s, 20 peaks/min, 10 min) from checks 2–5.
+
+## Known gaps
+
+- Not built or run on a device yet.
+- The peaks threshold (20/min) is a guess; `peaks_per_min` hasn't been looked at on real recordings.
+- Alerts don't suggest a quieter place yet (planned via `find_suitable_places`).
+- No Live Activity yet.
+- Background survival of the spatial (FOA) capture is still unverified; the app uses mono capture.
+

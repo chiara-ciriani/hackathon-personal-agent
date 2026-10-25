@@ -13,6 +13,9 @@ public final class MonoFeatureSource: FeatureSource, @unchecked Sendable {
     private var extractor: LevelFeatureExtractor?
     private var continuation: AsyncStream<FeatureFrame>.Continuation?
     private var running = false
+    private var classifierPaused = false // only touched on `queue`
+    private var interruptionObserver: NSObjectProtocol?
+    private let log = Logger(subsystem: "QuietCompass", category: "MonoCapture")
     public private(set) var sessionResult: AudioSessionConfigurator.Result?
 
     public init(classifier: SoundClassifier? = nil) {
@@ -49,12 +52,46 @@ public final class MonoFeatureSource: FeatureSource, @unchecked Sendable {
             self.queue.async { self.process(samples, start: t, sampleRate: sr) }
         }
         engine.prepare()
-        try engine.start()
+        do {
+            try engine.start()
+        } catch {
+            input.removeTap(onBus: 0)
+            engine.stop()
+            classifier?.stop()
+            queue.sync { continuation?.finish(); continuation = nil; extractor = nil }
+            throw error
+        }
         running = true
+        // Calls, Siri or another app can take the mic. The engine stops; restart it when they let go.
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification, object: AVAudioSession.sharedInstance(), queue: nil
+        ) { [weak self] note in
+            guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  AVAudioSession.InterruptionType(rawValue: raw) == .ended else { return }
+            self?.resumeAfterInterruption()
+        }
+    }
+
+    private func resumeAfterInterruption() {
+        guard running, !engine.isRunning else { return }
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+            try engine.start()
+            log.info("capture resumed after interruption")
+        } catch {
+            log.error("could not resume capture: \(error.localizedDescription)")
+        }
+    }
+
+    /// The classifier is the first thing to turn off to save battery (e.g. while in the background).
+    public func setClassifierPaused(_ paused: Bool) {
+        queue.async { self.classifierPaused = paused }
     }
 
     public func stop() async {
         guard running else { return }
+        if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
+        interruptionObserver = nil
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         classifier?.stop()
@@ -64,12 +101,12 @@ public final class MonoFeatureSource: FeatureSource, @unchecked Sendable {
 
     private func process(_ samples: [Float], start: Date, sampleRate: Double) {
         samples.withUnsafeBufferPointer { buf in
-            classifier?.feed(buf, sampleRate: sampleRate)
+            if !classifierPaused { classifier?.feed(buf, sampleRate: sampleRate) }
             guard var ex = extractor else { return }
             let seconds = ex.append(buf, startTime: start)
             extractor = ex
             for s in seconds {
-                let snap = classifier?.takeSnapshot()
+                let snap = classifierPaused ? nil : classifier?.takeSnapshot()
                 continuation?.yield(s.featureFrame(speechShare: snap?.speech, classes: snap?.top ?? [], doa: nil))
             }
         }

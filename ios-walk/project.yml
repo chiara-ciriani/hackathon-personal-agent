@@ -1,0 +1,48 @@
+# XcodeGen spec: `xcodegen generate` writes QuietCompassWalk.xcodeproj next to this file.
+name: QuietCompassWalk
+options:
+  bundleIdPrefix: com.hackathon.quietcompass
+  deploymentTarget:
+    iOS: "26.0"
+settings:
+  base:
+    # Swift 5 language mode keeps strict-concurrency warnings from failing the build at a hackathon.
+    SWIFT_VERSION: "5.0"
+targets:
+  QuietCompassWalk:
+    type: application
+    platform: iOS
+    sources:
+      - path: .
+        excludes:
+          - "*.md"
+          - "*.sh"
+          - "*.zip"
+          - "project.yml"
+          - "SelfCheck/**"
+          - "AgentCheck/**"
+          - "CommunityCheck/**"
+          - "Generated/**"
+          - "QuietCompassWalk.xcodeproj/**"
+    info:
+      path: Generated/Info.plist
+      properties:
+        CFBundleDisplayName: QC Walk Map
+        CFBundleShortVersionString: "1.1"
+        CFBundleVersion: "2"
+        NSLocationWhenInUseUsageDescription: Your approximate location personalizes recommendations and places a coarse sound summary on the shared map to unlock nearby readings for 15 minutes.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.hackathon.quietcompass.walk.agent
+            CFBundleURLSchemes: [quietcompass-walk]
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIRequiredDeviceCapabilities: [arkit]
+        NSMicrophoneUsageDescription: Quiet Compass measures how loud the room is. Audio is analysed on the phone and never recorded.
+        NSCameraUsageDescription: The camera lets ARKit track where you walk so the noise map knows where each reading was taken.
+        NSMotionUsageDescription: Motion sensors keep the direction arrow and the map aligned as you turn.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hackathon.quietcompass.walk
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: NO

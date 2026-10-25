@@ -33,3 +33,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Test QuietCore
         run: swift test
+      - name: Test native agent protocol
+        working-directory: ios-walk
+        run: swiftc AgentProtocol.swift SoundField.swift AgentCheck/main.swift -o /tmp/qc-agent-check && /tmp/qc-agent-check
+      - name: Test walk-map math
+        working-directory: ios-walk
+        run: swiftc -O SoundField.swift SourceMap.swift SelfCheck/main.swift -o /tmp/qc-walk-selfcheck && /tmp/qc-walk-selfcheck
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install local integration server
+        working-directory: .
+        run: pip install -e server
+      - name: Verify phone, server and MCP round trip
+        working-directory: .
+        run: python scripts/test_phone_server.py
+
+  web-measurement:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Test web data, measurement and sensor lifecycle
+        run: node --test apps/quiet-compass/tests/*.test.mjs

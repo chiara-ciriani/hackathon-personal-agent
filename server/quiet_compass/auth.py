@@ -1,4 +1,4 @@
-"""Bearer-token checks for the REST routes and the MCP endpoint (one shared token)."""
+"""Bearer-token checks for the REST routes and the MCP endpoint (separate owner and shared credentials)."""
 
 from __future__ import annotations
 

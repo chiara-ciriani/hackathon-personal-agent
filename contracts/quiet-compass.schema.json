@@ -231,7 +231,7 @@
     "EvidenceLabel": {
       "type": "string",
       "enum": ["measured", "measured_crowdsourced", "reference_measured", "proxy", "unmeasured_candidate"],
-      "description": "What a city-layer record is. measured = sensor measurement (SFO monitors only: CNEL and aircraft exceedance events); measured_crowdsourced = uncalibrated phone measurements from NoiseCapture volunteers (ODbL), aggregated into ~100 m cells; reference_measured = published measurement with a citation; proxy = permit, closure or complaint/dispatch count that hints at possible noise; unmeasured_candidate = place from a city inventory that nobody has measured. The web map shows no synthetic scores; its violet field is a density of real reports (a count, not dB) and is never served as a measurement. Only the separate /venue page is a labelled demo."
+      "description": "What a city-layer record is. measured = sensor measurement (SFO monitors only: CNEL and aircraft exceedance events); measured_crowdsourced = uncalibrated phone measurements from NoiseCapture volunteers (ODbL), aggregated into ~100 m cells; reference_measured = published measurement with a citation; proxy = permit, closure or complaint/dispatch count that hints at possible noise; unmeasured_candidate = place from a city inventory that nobody has measured. The web map shows no synthetic scores; its violet field is a density of real reports (311 + police noise-nuisance calls, last 24 hours; a count, not dB) and is never served as a measurement. Only the separate /venue page is a labelled demo."
     },
     "LayerPoint": {
       "type": "object",
@@ -239,8 +239,8 @@
       "required": ["layer", "kind", "label", "lat", "lon", "evidence", "caveat", "dataset"],
       "additionalProperties": false,
       "properties": {
-        "layer": { "type": "string", "enum": ["quiet_candidates", "entertainment_permits", "night_noise_permits", "street_closures", "sfo_cnel", "sfo_events", "cad_noise_calls", "noisecapture"] },
-        "kind": { "type": "string", "examples": ["popos", "library", "park", "entertainment_permit", "sfo_monitor", "sfo_exceedance_events", "noise_nuisance_calls", "noisecapture_cell"] },
+        "layer": { "type": "string", "enum": ["quiet_candidates", "entertainment_permits", "night_noise_permits", "street_closures", "street_work_permits", "sfo_cnel", "sfo_events", "cad_noise_calls", "noisecapture"] },
+        "kind": { "type": "string", "examples": ["popos", "library", "park", "entertainment_permit", "street_work_permit", "sfo_monitor", "sfo_exceedance_events", "noise_nuisance_calls", "noisecapture_cell"] },
         "label": { "type": "string" },
         "lat": { "type": "number" },
         "lon": { "type": "number" },
@@ -294,8 +294,8 @@
     "AreaId": {
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9:._,-]{0,119}$",
-      "description": "Coarse place id: an organizer's indoor zone (e.g. demo-venue-courtyard) or an outdoor cell `cell:<lat>,<lon>` with 3 decimals (~100 m).",
-      "examples": ["demo-venue-courtyard", "cell:37.770,-122.420"]
+      "description": "Coarse place id: an organizer's indoor zone (e.g. sample-venue-courtyard) or an outdoor cell `cell:<lat>,<lon>` with 3 decimals (~100 m).",
+      "examples": ["sample-venue-courtyard", "cell:37.770,-122.420"]
     },
     "AreaKind": { "type": "string", "enum": ["indoor_zone", "outdoor_cell"] },
     "SharedContribution": {
@@ -333,7 +333,7 @@
             "clipping_detected": { "type": "boolean" }
           }
         },
-        "source": { "type": "string", "enum": ["device", "synthetic_demo"] }
+        "source": { "type": "string", "enum": ["device", "simulated"] }
       }
     },
     "ContributionUpload": {
@@ -342,7 +342,8 @@
       "additionalProperties": false,
       "properties": {
         "contract_version": { "$ref": "#/$defs/ContractVersion" },
-        "contribution": { "$ref": "#/$defs/SharedContribution" }
+        "contribution": { "$ref": "#/$defs/SharedContribution" },
+        "share_consent": { "type": "boolean", "default": false }
       }
     },
     "ContributionResult": {
@@ -353,7 +354,10 @@
         "status": { "type": "string", "enum": ["accepted", "withheld", "rejected"], "description": "accepted: stored and its aggregate is released; withheld: stored, cohort below the release threshold; rejected: not stored." },
         "reason": { "type": ["string", "null"] },
         "area_id": { "type": "string", "description": "The area the server assigned (e.g. the outdoor cell)." },
-        "time_bucket": { "$ref": "#/$defs/Timestamp" }
+        "time_bucket": { "$ref": "#/$defs/Timestamp" },
+        "access_receipt": { "type": ["string", "null"], "description": "Bearer receipt for 15 minutes of shared queries. Retries do not renew it." },
+        "access_expires_at": { "type": ["string", "null"], "format": "date-time" },
+        "access_reason": { "type": ["string", "null"] }
       }
     },
     "AreaUpsert": {
@@ -403,7 +407,7 @@
         "clipped_count": { "type": "integer", "minimum": 0 },
         "age_minutes": { "type": "number", "minimum": 0 },
         "has_synthetic": { "type": "boolean" },
-        "source": { "type": "string", "enum": ["device", "synthetic_demo", "mixed"] },
+        "source": { "type": "string", "enum": ["device", "simulated", "mixed"] },
         "coverage": { "type": "string" }
       }
     },

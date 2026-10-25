@@ -34,7 +34,7 @@ from .shared_contracts import (
     SharedContribution,
     SoundMapResponse,
 )
-from .shared_db import ContributionRow, SharedStore, StoredCohort
+from .shared_db import ContributionConflict, ContributionRow, SharedStore, StoredCohort
 
 BUCKET = timedelta(minutes=5)
 COORD_DECIMALS = 3
@@ -92,18 +92,18 @@ def implausible(c: SharedContribution) -> str | None:
     return None
 
 
-def _source_label(sources: set[str]) -> Literal["device", "synthetic_demo", "mixed"]:
+def _source_label(sources: set[str]) -> Literal["device", "simulated", "mixed"]:
     if sources == {"device"}:
         return "device"
-    if sources == {"synthetic_demo"}:
-        return "synthetic_demo"
+    if sources == {"simulated"}:
+        return "simulated"
     return "mixed"
 
 
 def _coverage(area: Area, n: int, has_synthetic: bool) -> str:
     unit = "~100 m outdoor cell" if area.kind == "outdoor_cell" else "designated indoor zone"
     note = f"{n} contribution(s) from one capture profile in one 5-minute bucket; {unit}."
-    return note + (" Includes synthetic demo data, not real measurements." if has_synthetic else "")
+    return note + (" Includes simulated data, not real measurements." if has_synthetic else "")
 
 
 # --- candidate search ---------------------------------------------------------------------
@@ -193,7 +193,7 @@ def uncertainty(c: Candidate) -> str:
     else:
         parts.append(f"Quietness is ranked against {c.cohort_areas - 1} other area(s) in the same cohort only.")
     if agg.has_synthetic:
-        parts.append("Includes synthetic demo data, not a real reading.")
+        parts.append("Includes simulated data, not a real reading.")
     if agg.clipped_count:
         parts.append(f"{agg.clipped_count} contribution(s) reported clipping.")
     return " ".join(parts)
@@ -247,8 +247,8 @@ class SharedLayer:
     def _status(self, cohort: StoredCohort, clipped: bool, duplicate: bool = False) -> ContributionResult:
         released = cohort.size >= self.min_release
         notes = []
-        if duplicate:
-            notes.append("duplicate id; already stored")
+        if duplicate or cohort.duplicate:
+            notes.append("duplicate summary; already stored")
         if not released:
             notes.append(
                 f"stored; aggregate withheld until {self.min_release} contributions share this area, "
@@ -261,6 +261,8 @@ class SharedLayer:
             reason="; ".join(notes) or None,
             area_id=cohort.area_id,
             time_bucket=cohort.time_bucket,
+            access_receipt=cohort.access_receipt,
+            access_expires_at=cohort.access_expires_at,
         )
 
     def _reject(self, reason: str, area_id: str, bucket: datetime) -> ContributionResult:
@@ -273,13 +275,21 @@ class SharedLayer:
             return f"time_bucket is older than the {self.settings.contribution_retention_hours:g} h retention window"
         return None
 
-    def submit(self, c: SharedContribution) -> ContributionResult:
+    def submit_shared(self, c: SharedContribution, share_consent: bool) -> ContributionResult:
+        if not share_consent:
+            return self._reject("explicit share_consent is required", c.area_id, floor_bucket(c.time_bucket))
+        result = self.submit(c, exchange=True)
+        if not result.access_receipt:
+            result.access_reason = (
+                "Access requires a newly stored device summary from the last 15 minutes without clipping. "
+                "Simulated, rejected, old and previously stored uncredited summaries do not unlock queries."
+            )
+        return result
+
+    def submit(self, c: SharedContribution, *, exchange: bool = False) -> ContributionResult:
         now = self.clock()
         self.store.purge_before(now - self.retention)
         bucket = floor_bucket(c.time_bucket)
-        existing = self.store.find_contribution(str(c.id))
-        if existing is not None:
-            return self._status(existing, c.quality.clipping_detected, duplicate=True)
         problem = implausible(c) or self._timing_problem(bucket, now)
         if problem:
             return self._reject(problem, c.area_id, bucket)
@@ -287,7 +297,10 @@ class SharedLayer:
         if placement.area is None:
             return self._reject(placement.reason or "unknown area", c.area_id, bucket)
         row = self._row(c, placement.area.id, bucket)
-        cohort = self.store.insert_contribution(row, MAX_PER_COHORT)
+        try:
+            cohort = self.store.insert_contribution(row, MAX_PER_COHORT, exchange=exchange)
+        except ContributionConflict as exc:
+            return self._reject(str(exc), placement.area.id, bucket)
         if cohort is None:
             reason = f"rate limit: at most {MAX_PER_COHORT} contributions per area, time bucket and capture profile"
             return self._reject(reason, placement.area.id, bucket)
@@ -330,7 +343,7 @@ class SharedLayer:
         area, dist = placed
         sources = {r.source for r in rows}
         peaks = [r.peaks_per_min for r in rows if r.peaks_per_min is not None]
-        has_synthetic = "synthetic_demo" in sources
+        has_synthetic = "simulated" in sources
         bucket = rows[0].time_bucket
         return AreaAggregate(
             area_id=area.id, area_name=area.name, lat=area.lat, lon=area.lon, area_kind=area.kind,

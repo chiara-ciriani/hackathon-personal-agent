@@ -27,6 +27,7 @@ from quiet_compass.sf_layers import (
     parse_closure,
     parse_night_noise,
     parse_park,
+    parse_street_work,
     sfo_event_monitors,
 )
 
@@ -59,6 +60,21 @@ CLOSURES = [
     {"type": "Special Event", "loc_desc": "OAK ST between STANYAN ST and BRODERICK ST", "veh_imp": "all-lanes-closed",
      "shape": {"type": "LineString", "coordinates": [[-122.45398, 37.77143], [-122.4533, 37.77139]]}},
     {"type": "Special Event", "loc_desc": "no geometry"},
+]
+# x8nh-xzn6 rows (2026-10-24), trimmed to the selected fields.
+WORK = [
+    {"permit_type": "Excavation", "streetname": "08TH ST", "cross_street_1": "NATOMA ST", "cross_street_2": "HOWARD ST",
+     "permit_start_date": "2026-05-01T00:00:00.000", "permit_end_date": "2026-10-28T00:00:00.000",
+     "location": {"type": "Point", "coordinates": [-122.41188, 37.77644]}},
+    {"permit_type": "Boring", "streetname": "CLAY ST", "cross_street_1": "LARKIN ST",
+     "permit_start_date": "2026-10-24T00:00:00.000", "permit_end_date": "2026-10-24T00:00:00.000",
+     "location": {"type": "Point", "coordinates": [-122.4194, 37.79259]}},
+    {"permit_type": "Wireless", "streetname": "x", "permit_start_date": "2026-10-01T00:00:00.000",
+     "permit_end_date": "2026-11-01T00:00:00.000", "location": {"type": "Point", "coordinates": [-122.42, 37.75]}},
+    {"permit_type": "Excavation", "streetname": "ended", "permit_start_date": "2026-10-01T00:00:00.000",
+     "permit_end_date": "2026-10-23T00:00:00.000", "location": {"type": "Point", "coordinates": [-122.42, 37.75]}},
+    {"permit_type": "Excavation", "streetname": "no point", "permit_start_date": "2026-10-01T00:00:00.000",
+     "permit_end_date": "2026-11-01T00:00:00.000"},
 ]
 SFO = [
     {"date": "2026-08-30T00:00:00.000", "location_id": "21", "latitude": "37.740", "longitude": "-122.433",
@@ -109,6 +125,7 @@ BY_ID: dict[str, list[dict[str, Any]]] = {
     DATASETS["popos"]: POPOS, DATASETS["libraries"]: LIBS, DATASETS["entertainment"]: ENT,
     DATASETS["night_noise"]: NIGHT, DATASETS["closures"]: CLOSURES, DATASETS["sfo"]: SFO,
     DATASETS["parks"]: PARKS, DATASETS["sfo_events"]: SFO_EVENTS, DATASETS["cad"]: CAD,
+    DATASETS["street_work"]: WORK,
 }
 
 
@@ -142,7 +159,7 @@ def test_only_sfo_is_measured_and_latest_per_monitor_wins() -> None:
     sfo = layers.layer("sfo_cnel")
     assert [(p.label, p.cnel_db, p.observed_on) for p in sfo] == [("SFO noise monitor 21", 61.1, "2026-08-31")]
     assert sfo[0].evidence == "measured"
-    for name in ("entertainment_permits", "night_noise_permits", "street_closures"):
+    for name in ("entertainment_permits", "night_noise_permits", "street_closures", "street_work_permits"):
         assert all(p.evidence == "proxy" and p.cnel_db is None for p in layers.layer(name))
     assert latest_sfo_monitors([]) == []
 
@@ -152,6 +169,20 @@ def test_night_permits_skip_denied_and_bogus_dates() -> None:
     assert parse_night_noise(NIGHT[0], today) is not None
     assert parse_night_noise(NIGHT[1], today) is None
     assert parse_night_noise(NIGHT[2], today) is None
+
+
+def test_street_work_keeps_noisy_types_valid_today() -> None:
+    today = datetime(2026, 10, 24)
+    first = parse_street_work(WORK[0], today)
+    assert first is not None and first.label == "08TH ST between NATOMA ST and HOWARD ST"
+    assert first.detail == "Excavation; until 2026-10-28" and first.evidence == "proxy"
+    assert (first.lat, first.lon) == (37.77644, -122.41188) and first.dataset == "x8nh-xzn6"
+    assert "may not be happening right now" in first.caveat
+    one_day = parse_street_work(WORK[1], today)
+    assert one_day is not None and one_day.label == "CLAY ST at LARKIN ST"
+    assert [parse_street_work(r, today) for r in WORK[2:]] == [None, None, None]
+    labels = {p.label for p in make_layers().layer("street_work_permits")}
+    assert labels == {"08TH ST between NATOMA ST and HOWARD ST", "CLAY ST at LARKIN ST"}
 
 
 def test_closure_uses_middle_vertex_and_needs_geometry() -> None:
@@ -276,7 +307,7 @@ def test_cad_noise_calls_count_per_masked_intersection() -> None:
     p = pts[0]
     assert (p.count, p.evidence, p.observed_on, p.label) == (2, "proxy", "2026-10-23", "MISSION ST / 16TH ST")
     assert "complaints, not measurements" in p.caveat and p.cnel_db is None and p.max_level_db is None
-    assert cad_noise_areas([], 30) == []
+    assert cad_noise_areas([], 24) == []
 
 
 def test_noisecapture_cells_are_crowdsourced_and_never_plain_measured() -> None:
