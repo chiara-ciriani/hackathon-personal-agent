@@ -213,9 +213,9 @@ h2{font-size:52px;line-height:1.08;font-weight:600;letter-spacing:-.03em}
   <div class="eyebrow">The problem · San Francisco</div>
   <h2 style="margin-top:18px">Thousands of people here plan their day around sound.</h2>
   <div class="nums">
-    <div class="num" data-f="1"><b>~<span class="count" data-to="15000">0</span></b><p>autistic adults live in the city</p></div>
-    <div class="num hot" data-f="2"><b>~<span class="count" data-to="6000">0</span></b><p>of them are sensitive to everyday sound right now</p></div>
-    <div class="num" data-f="3"><b>~<span class="count" data-to="40000">0</span></b><p>SF adults of any neurotype who find everyday sounds hard to bear</p></div>
+    <div class="num"><b>~15,000</b><p>autistic adults live in the city</p></div>
+    <div class="num hot"><b>~6,000</b><p>of them are sensitive to everyday sound right now</p></div>
+    <div class="num"><b>~40,000</b><p>SF adults of any neurotype who find everyday sounds hard to bear</p></div>
   </div>
   <p class="foot">Estimates. No SF-only count exists, so we applied national rates to ~830k residents: 2.2% of US adults are autistic (Dietz et al., 2020); 41% of autistic people have current hyperacusis (Williams et al., 2021 meta-analysis); 5.9% of US adults report sensitivity to everyday sounds (NHIS 2014).</p>
 </section>
@@ -331,17 +331,11 @@ function next(){const max=steps(slides[s]);if(f<max)f++;else if(s<slides.length-
 function prev(){if(f>0)f--;else if(s>0){reset(slides[s]);s--;f=steps(slides[s]);slides[s].querySelectorAll('[data-f]').forEach(e=>{e.classList.add('in');reveal(e,true)})}render()}
 function reset(el){el.querySelectorAll('[data-f]').forEach(e=>{e.classList.remove('in');hide(e)})}
 
-// counters + typing
+// typing
 function reveal(e,instant){
-  e.querySelectorAll('.count').forEach(c=>count(c,instant));
   if(e.dataset.type!==undefined)type(e,instant);
 }
 function hide(e){if(e.dataset.type!==undefined){clearInterval(e._t);e.innerHTML=''}}
-function count(c,instant){
-  const to=+c.dataset.to,t0=performance.now(),d=instant||reduce?0:1400;
-  const tick=t=>{const p=d?Math.min(1,(t-t0)/d):1,v=Math.round(to*(1-Math.pow(1-p,3)));c.textContent=v.toLocaleString('en-US');if(p<1)requestAnimationFrame(tick)};
-  requestAnimationFrame(tick);
-}
 function fmt(t){return t.replace(/\{(.+?)\}/g,'<span class="age">$1</span>')}
 function type(e,instant){
   clearInterval(e._t);const full=e.dataset.type;
