@@ -175,33 +175,86 @@ a.quiet-share{box-sizing:border-box}
 .quiet-venue-title{position:absolute;left:84px;top:36px;z-index:800;font:600 14px/20px Geist,Arial,sans-serif;color:#171717;letter-spacing:-.2px}
 @media(max-width:600px){.quiet-venue-title{left:70px;top:30px;font-size:13px}}
 
-/* MCP panel: connect an agent in two steps, copy the URL and one snippet. */
-.quiet-mcp-panel{width:380px;font-family:Geist,Arial,sans-serif}
-.quiet-mcp-heading strong{font-size:15px;font-weight:600;letter-spacing:-.2px}
-.quiet-mcp-lead{margin:6px 0 16px;font-size:13px;line-height:19px;color:#525252}
-.quiet-mcp-label{display:block;font-size:12px;font-weight:500;color:#171717;margin-bottom:6px}
-.quiet-field{display:flex;align-items:center;gap:4px;border:1px solid var(--map-border);border-radius:8px;background:#fafafa;padding:3px 3px 3px 12px}
-.quiet-field input{flex:1;min-width:0;border:0;background:transparent;font:12px/20px ui-monospace,SFMono-Regular,monospace;color:#171717;outline:0}
-.quiet-field .quiet-icon{width:32px;height:32px;border-radius:6px}
-.quiet-tabs{display:flex;gap:2px;margin:16px 0 8px;padding:3px;border:1px solid var(--map-border);border-radius:8px;background:#fff}
-.quiet-tabs button{flex:1;height:28px;border-radius:5px;background:transparent;color:#525252;font:500 12px/16px Geist,Arial,sans-serif;transition:background .15s ease,color .15s ease}
-.quiet-tabs button.is-active{background:#171717;color:#fff}
-@media(hover:hover) and (pointer:fine){.quiet-tabs button:not(.is-active):hover{background:#f5f5f5;color:#171717}}
-.quiet-snippet{position:relative}
-.quiet-snippet pre{margin:0;padding:12px;max-height:150px;overflow:auto;white-space:pre-wrap;word-break:break-all;border-radius:8px;background:#171717;color:#f4f4f6;font:11.5px/18px ui-monospace,SFMono-Regular,monospace}
-.quiet-snippet .quiet-share{margin-top:8px}
-.quiet-mcp-hint{margin:10px 0 0;font-size:12px;line-height:18px;color:#737373}
-.quiet-tools{list-style:none;margin:16px 0 0;padding:0;border-top:1px solid #f0f0f0}
-.quiet-tools li{display:grid;gap:2px;padding:11px 0;border-bottom:1px solid #f0f0f0}
-.quiet-tools code{font:500 12px/16px ui-monospace,SFMono-Regular,monospace;color:#5a14b0}
-.quiet-tools span{font-size:12.5px;line-height:18px;color:#525252}
-@media(max-width:600px){.quiet-mcp-panel{width:calc(100vw - 34px)}}
+/* MCP connection: fixed header, readable setup, optional tool reference. */
+.quiet-mcp-overlay{position:fixed;justify-content:center;align-items:center;padding:32px;background:#16101e38}
+.quiet-mcp-panel{display:flex;flex-direction:column;width:680px;max-width:100%;max-height:calc(100dvh - 64px);padding:0;overflow:hidden;border:0;border-radius:16px;background:#fff;font-family:Geist,Arial,sans-serif;box-shadow:0 20px 70px -16px #21153040}
+.quiet-mcp-heading{flex-shrink:0;align-items:flex-start;gap:16px;padding:22px 28px 20px;border-bottom:1px solid var(--map-border);letter-spacing:0}
+.quiet-mcp-heading h1{display:flex;align-items:center;gap:10px;margin:0;font-size:16px;line-height:24px;font-weight:600;letter-spacing:-.2px;color:var(--map-ink)}
+.quiet-mcp-heading h1 svg{color:#66616c}
+.quiet-mcp-heading .quiet-icon{width:40px;height:40px;margin:-5px -8px 0 0;border-radius:8px;color:#66616c}
+.quiet-mcp-state{gap:7px;margin:6px 0 0;font-size:12px;line-height:18px;color:#66616c}
+.quiet-mcp-state>span{width:6px;height:6px;background:#a56520}
+.quiet-mcp-state[data-state="available"]>span{background:#35804b}
+.quiet-mcp-state[data-state="checking"]>span{background:#8b8493}
+.quiet-mcp-body{min-height:0;padding:26px 28px 8px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#c8c3cd transparent}
+.quiet-mcp-intro{display:grid;grid-template-columns:1fr 1.1fr;gap:20px 28px;padding-bottom:26px}
+.quiet-mcp-intro h2{margin:0;font-size:26px;line-height:1.2;font-weight:550;letter-spacing:-.7px;color:var(--map-ink);text-wrap:balance}
+.quiet-exchange-detail{grid-column:2;grid-row:1/3;align-self:center;margin:0;font-size:13px;line-height:21px;color:#635c6b}
+.quiet-mcp-phone{display:flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:10px 12px;border-radius:8px;background:#171717;color:#fff;text-decoration:none;font-size:12px;font-weight:500;line-height:18px;transition:background .15s ease}
+.quiet-mcp-phone svg{flex-shrink:0}.quiet-mcp-phone svg:last-child{margin-left:auto}
+.quiet-mcp-phone:hover{background:#333}
+.quiet-mcp-notice{display:flex;align-items:center;gap:20px;padding:14px 16px;margin:0 0 24px;background:#f6f5f7;border-radius:8px}
+.quiet-mcp-notice p{flex:1;margin:0;font-size:12px;line-height:19px;color:#635c6b}
+.quiet-mcp-notice button{display:flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;min-height:36px;padding:6px 0;background:none;font:500 12px/18px Geist,Arial,sans-serif;color:#37313f}
+.quiet-mcp-notice button:disabled{color:#716978;cursor:wait}
+.quiet-mcp-notice button:disabled svg{animation:quiet-spin 1s linear infinite}
+.quiet-mcp-notice button:not(:disabled):hover{text-decoration:underline;text-underline-offset:4px}
+.quiet-mcp-label{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:8px;font-size:13px;line-height:20px;font-weight:500;color:#171717}
+.quiet-mcp-label>span{font-size:11px;font-weight:400;color:#716978}
+.quiet-field{display:flex;align-items:center;gap:8px;border:1px solid #dfdce3;border-radius:8px;background:#fafafa;padding:3px 4px 3px 14px}
+.quiet-field:focus-within{outline:2px solid #8656ed;outline-offset:3px}
+.quiet-field input{flex:1;min-width:0;width:100%;border:0;background:transparent;font:12px/22px ui-monospace,SFMono-Regular,monospace;color:#37313f;outline:0}
+.quiet-field .quiet-icon{width:36px;height:36px;border-radius:6px;color:#635c6b}
+.quiet-tabs{display:flex;gap:22px;margin:18px 0 0;padding:0;border-bottom:1px solid var(--map-border)}
+.quiet-tabs button{position:relative;flex:0 1 auto;min-height:44px;padding:0 0 12px;background:none;color:#716978;font:500 13px/20px Geist,Arial,sans-serif;white-space:nowrap;transition:color .15s ease}
+.quiet-tabs button.is-active{color:#171717}
+.quiet-tabs button.is-active:after{content:'';position:absolute;right:0;bottom:-1px;left:0;height:2px;background:#171717}
+.quiet-tabs button:hover{color:#171717}
+.quiet-snippet{margin-top:16px;overflow:hidden;border-radius:10px;background:#1c1b20;color:#f4f3f5}
+.quiet-snippet-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px 8px 18px;border-bottom:1px solid #ffffff14}
+.quiet-snippet-toolbar>span{font-size:11px;line-height:18px;color:#bdb8c5}
+.quiet-snippet-toolbar button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:5px 9px;border-radius:5px;background:#ffffff0d;color:#f4f3f5;font:500 12px/18px Geist,Arial,sans-serif;transition:background .15s ease}
+.quiet-snippet-toolbar button:hover{background:#ffffff1a}
+.quiet-snippet pre{margin:0;padding:16px 18px 20px;max-height:220px;overflow:auto;white-space:pre-wrap;word-break:normal;overflow-wrap:anywhere;font:12px/21px ui-monospace,SFMono-Regular,monospace;tab-size:2;scrollbar-width:thin;scrollbar-color:#716978 transparent}
+.quiet-snippet pre.is-prose{font:13px/22px Geist,Arial,sans-serif}
+.quiet-mcp-hint{margin:12px 0 0;font-size:12px;line-height:19px;color:#716978}
+.quiet-mcp-hint code{font-size:11px;color:#524b5a}
+.quiet-copy-feedback{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.quiet-copy-feedback.is-error{position:static;width:auto;height:auto;clip-path:none;margin:10px 0 0;font-size:12px;line-height:19px;color:#9f341e}
+.quiet-mcp-tools{margin-top:24px;border-top:1px solid var(--map-border)}
+.quiet-mcp-tools summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:12px 0;list-style:none;cursor:pointer;font-size:13px;line-height:20px;font-weight:500;color:#37313f}
+.quiet-mcp-tools summary::-webkit-details-marker{display:none}
+.quiet-mcp-tools summary span{display:flex;align-items:center;gap:10px}
+.quiet-mcp-tools summary small{font-size:12px;font-weight:400;color:#716978}
+.quiet-mcp-tools summary>svg{color:#716978;transition:transform .15s ease}
+.quiet-mcp-tools[open] summary>svg{transform:rotate(180deg)}
+.quiet-tools{list-style:none;margin:0;padding:0 0 8px}
+.quiet-tools li{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:10px 0;border-top:1px solid #f0eef2}
+.quiet-tools code{min-width:0;font:12px/20px ui-monospace,SFMono-Regular,monospace;color:#524b5a;overflow-wrap:anywhere}
+.quiet-tools span{flex-shrink:0;font-size:12px;line-height:20px;color:#716978}
+.quiet-mcp-panel :is(a,summary,pre):focus-visible{outline:2px solid #8656ed;outline-offset:3px;border-radius:4px}
+.quiet-snippet pre:focus-visible{outline-offset:-4px}
+.quiet-mcp-panel ::selection{background:#e8def8;color:#2b173e}
 .quiet-map-only:not(.quiet-venue) .quiet-intensity{bottom:50px}
-@media(max-width:600px){.quiet-map-only:not(.quiet-venue) .quiet-intensity{bottom:64px}}
-
-.quiet-exchange-detail{font-size:12px;line-height:1.6;color:#635c6b;margin:0 0 12px}
-.quiet-mcp-state[data-available="true"]>span{background:#35804b}
-.quiet-mcp-panel{max-height:calc(100dvh - 105px);overflow:auto}
+@media(max-width:600px){
+ .quiet-mcp-overlay{padding:12px;align-items:center}
+ .quiet-mcp-panel{width:100%;max-height:calc(100dvh - 24px);border-radius:14px}
+ .quiet-mcp-heading{padding:20px 20px 16px}
+ .quiet-mcp-body{padding:22px 20px 6px}
+ .quiet-mcp-intro{grid-template-columns:1fr;gap:14px;padding-bottom:22px}
+ .quiet-mcp-intro h2{font-size:25px}
+ .quiet-exchange-detail{grid-column:auto;grid-row:auto}
+ .quiet-mcp-phone{min-height:44px;font-size:13px;margin-top:2px}
+ .quiet-mcp-phone svg:last-child{margin-left:2px}
+ .quiet-mcp-notice{gap:6px;align-items:flex-start;flex-direction:column;padding:12px 14px;margin-bottom:20px}
+ .quiet-mcp-notice button{min-height:32px}
+ .quiet-field{padding-left:10px}.quiet-field input{font-size:11px}
+ .quiet-tabs{justify-content:space-between;gap:12px}.quiet-tabs button{font-size:12px}
+ .quiet-snippet pre{max-height:240px;padding:14px}
+ .quiet-tools li{flex-direction:column;gap:2px}
+ .quiet-mcp-tools{margin-top:20px}
+ .quiet-map-only:not(.quiet-venue) .quiet-intensity{bottom:64px}
+}
 
 /* Real evidence only: missing readings stay neutral. */
 .quiet-map-only{background:#f0f0f1}

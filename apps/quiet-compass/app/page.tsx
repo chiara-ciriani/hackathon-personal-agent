@@ -1,6 +1,6 @@
 'use client';
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {Building2,Check,Compass,Copy,Layers,Plug,Users,Minus,Plus,RefreshCw,RotateCcw,X} from 'lucide-react';
+import {ArrowUpRight,Building2,Check,ChevronDown,Compass,Copy,Layers,Plug,Smartphone,Users,Minus,Plus,RefreshCw,RotateCcw,X} from 'lucide-react';
 import type {PointFeature as Feature,PointCollection} from '../lib/map-types';
 import type {StyleSpecification,GeoJSONSource,Map as GLMap} from 'maplibre-gl';
 import {connectionGuide,sharedTools} from '../lib/mcp-exchange.mjs';
@@ -88,6 +88,7 @@ export default function CityMap(){
  const [layersOpen,setLayersOpen]=useState(false);
  const [selection,setSelection]=useState<Properties|null>(null),[hist,setHist]=useState(false),[mcp,setMcp]=useState(false);
  const [connection,setConnection]=useState<McpConnection>({state:'checking',endpoint:null}),[copied,setCopied]=useState<string|null>(null),[tab,setTab]=useState<'code'|'app'|'json'|'prompt'>('code');
+ const [connectionCheck,setConnectionCheck]=useState(0),[copyError,setCopyError]=useState(false);
  const MCP_URL=connection.endpoint||'https://YOUR-SERVER/mcp/shared';
  const guide=connectionGuide(connection.endpoint);
  const snippets:Record<'code'|'app'|'json'|'prompt',{label:string;text:string}>={
@@ -113,11 +114,11 @@ export default function CityMap(){
  useEffect(()=>{void refresh();return()=>request.current?.abort()},[refresh]);
  useEffect(()=>{
   if(!mcp)return;
-  const controller=new AbortController();setConnection({state:'checking',endpoint:null});
+  const controller=new AbortController();
   fetch('/api/mcp/status',{cache:'no-store',signal:controller.signal}).then(async r=>{if(!r.ok)throw new Error();return r.json() as Promise<McpConnection>})
    .then(v=>{if(!controller.signal.aborted)setConnection(v)}).catch(()=>{if(!controller.signal.aborted)setConnection({state:'unavailable',endpoint:null})});
   return()=>controller.abort();
- },[mcp]);
+ },[mcp,connectionCheck]);
  useEffect(()=>{
   let disposed=false;
   const startFallback=async()=>{
@@ -164,19 +165,20 @@ export default function CityMap(){
  },[mcp]);
  useEffect(()=>{
   if(!mcp)return;closeButton.current?.focus();
-  const key=(e:KeyboardEvent)=>{if(e.key!=='Tab')return;const controls=dialog.current?.querySelectorAll<HTMLElement>('button,a[href],input,textarea,[tabindex="0"]');if(!controls?.length)return;const first=controls[0],last=controls[controls.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}};
+  const key=(e:KeyboardEvent)=>{if(e.key!=='Tab')return;const controls=Array.from(dialog.current?.querySelectorAll<HTMLElement>('button,a[href],input,textarea,summary,[tabindex="0"]')||[]).filter(el=>el.tabIndex>=0&&!el.matches(':disabled')&&el.getClientRects().length>0);if(!controls.length)return;const first=controls[0],last=controls[controls.length-1];if(!dialog.current?.contains(document.activeElement)){e.preventDefault();(e.shiftKey?last:first).focus()}else if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}};
   document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key);
  },[mcp]);
  const entries=data?.device.features||[];
  const count=data?['device','measured','sfoEvents','crowd'].reduce((sum,key)=>sum+data[key as LayerKey].features.length,0):0;
+ function openMcp(){setConnection({state:'checking',endpoint:null});setCopied(null);setCopyError(false);setMcp(true)}
  function reset(){map.current?.flyTo({...home,duration:1000});setSelection(null)}
- async function copyText(key:string,text:string){try{await navigator.clipboard.writeText(text);setCopied(key);setTimeout(()=>setCopied(c=>c===key?null:c),1800)}catch{setCopied(null)}}
+ async function copyText(key:string,text:string){setCopyError(false);try{await navigator.clipboard.writeText(text);setCopied(key);setTimeout(()=>setCopied(c=>c===key?null:c),1800)}catch{setCopied(null);setCopyError(true)}}
  return <main className="quiet-map-only">
   <div className="quiet-map-canvas" ref={container}/>
   {!ready&&!failed&&<div className="quiet-loading" role="status" aria-label="Loading map"><span/></div>}
   {failed&&!ready&&<div className="quiet-map-error" role="status">The map could not be loaded.<button onClick={()=>window.location.reload()} aria-label="Try again"><RotateCcw size={18}/></button></div>}
   <button className="quiet-home quiet-icon" onClick={reset} title="Reset San Francisco view" aria-label="Reset San Francisco view"><Compass size={25} strokeWidth={1.4}/></button>
-  <button className="quiet-mcp" ref={mcpButton} onClick={()=>{setMcp(true);setCopied(null)}} aria-haspopup="dialog"><Plug size={14}/>MCP</button>
+  <button className="quiet-mcp" ref={mcpButton} onClick={openMcp} aria-haspopup="dialog"><Plug size={14}/>MCP</button>
   {selection&&<aside className={'quiet-card '+(measured(selection)?'':'is-unmeasured')} aria-live="polite">
    <button className="quiet-icon quiet-card-close" aria-label="Close place details" onClick={()=>setSelection(null)}><X size={16}/></button>
    <strong>{selection.label||selection.name||'Location'}</strong>
@@ -192,7 +194,7 @@ export default function CityMap(){
   <button className="quiet-history-btn quiet-icon" aria-label="Open agent contributions" title="Agent contributions" aria-expanded={hist} onClick={()=>setHist(v=>!v)}><Users size={18}/></button>
   {hist&&<aside className="quiet-history" aria-label="Agent contributions">
    <div className="quiet-history-head"><strong>Contributions</strong><button className="quiet-icon" aria-label="Close contributions" onClick={()=>setHist(false)}><X size={16}/></button></div>
-   {entries.length?<ul>{entries.map((f,i)=><li key={i}><span>{f.properties.label}</span><code>{measurementText(f.properties)}</code><time>{f.properties.observedOn}</time></li>)}</ul>:<div className="quiet-history-empty"><strong>{loading?'Checking contributions…':'No contributions available'}</strong><p>{dataError?'Could not reach the data service.':data?deviceLabels[data.deviceState]:'Waiting for the data service.'}</p><button className="quiet-share" onClick={()=>{setHist(false);setMcp(true)}}>Connect your agent</button></div>}
+   {entries.length?<ul>{entries.map((f,i)=><li key={i}><span>{f.properties.label}</span><code>{measurementText(f.properties)}</code><time>{f.properties.observedOn}</time></li>)}</ul>:<div className="quiet-history-empty"><strong>{loading?'Checking contributions…':'No contributions available'}</strong><p>{dataError?'Could not reach the data service.':data?deviceLabels[data.deviceState]:'Waiting for the data service.'}</p><button className="quiet-share" onClick={()=>{setHist(false);openMcp()}}>Connect your agent</button></div>}
   </aside>}
   <div className="quiet-map-controls"><button className="quiet-icon" title="Refresh real data" aria-label="Refresh real data" disabled={loading} onClick={()=>void refresh()}><RefreshCw size={18}/></button><button className="quiet-icon" aria-label="Zoom in" onClick={()=>map.current?.zoomIn()}><Plus size={20}/></button><button className="quiet-icon" aria-label="Zoom out" onClick={()=>map.current?.zoomOut()}><Minus size={20}/></button></div>
   <section className="quiet-layers" aria-label="Map layers">
@@ -205,18 +207,38 @@ export default function CityMap(){
    <div className="quiet-legend-context"><em><i className="measurement-key"/>Measured here</em><em><i/>Not measured</em></div>
   </div>
   {mcp&&<div className="quiet-mcp-overlay" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><div className="quiet-mcp-panel" ref={dialog} role="dialog" aria-modal="true" aria-labelledby="mcp-title" onClick={e=>e.stopPropagation()}>
-   <div className="quiet-mcp-heading"><strong id="mcp-title">MCP</strong><button ref={closeButton} className="quiet-icon" aria-label="Close MCP" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><X size={18}/></button></div>
-   <div className="quiet-mcp-state" role="status" data-available={connection.state==='available'}><span/>{connectionLabels[connection.state]||'Server unavailable'}</div>
-   <p className="quiet-mcp-lead">Contribute once. Ask for 15 minutes.</p>
-   <a className="quiet-share" href="/measure">Measure with your phone ↗</a>
-   <p className="quiet-exchange-detail">With your permission, an agent shares a recent sound summary and receives 15 minutes of access to the shared map. Repeating the same summary does not renew access.</p>
-   {connection.state!=='available'&&<p className="quiet-exchange-detail">The shared connection needs server setup. Reopen this panel to check again.</p>}
-   <label className="quiet-mcp-label" htmlFor="mcp-url">Server URL</label>
-   <div className="quiet-field"><input id="mcp-url" readOnly value={MCP_URL} onFocus={e=>e.currentTarget.select()}/><button className="quiet-icon" aria-label={copied==='url'?'URL copied':'Copy server URL'} title="Copy" onClick={()=>copyText('url',MCP_URL)}>{copied==='url'?<Check size={16}/>:<Copy size={16}/>}</button></div>
-   <div className="quiet-tabs" role="tablist" aria-label="How to connect">{(Object.keys(snippets) as (keyof typeof snippets)[]).map(k=><button key={k} role="tab" aria-selected={tab===k} className={tab===k?'is-active':''} onClick={()=>setTab(k)}>{snippets[k].label}</button>)}</div>
-   <div className="quiet-snippet"><pre tabIndex={0}>{snippets[tab].text}</pre><button className="quiet-share" onClick={()=>copyText('snippet',snippets[tab].text)}>{copied==='snippet'?<><Check size={14}/>Copied</>:'Copy'}</button></div>
-   <p className="quiet-mcp-hint">Replace YOUR_SHARED_TOKEN with the server&apos;s shared access key. Keep the personal agent&apos;s key private.</p>
-   <ul className="quiet-tools">{sharedTools.map(t=><li key={t.name}><code>{t.name}</code><span>{t.purpose}</span></li>)}</ul>
+   <header className="quiet-mcp-heading">
+    <div><h1 id="mcp-title"><Plug size={18} aria-hidden="true"/>MCP connection</h1><div className="quiet-mcp-state" role="status" data-state={connection.state}><span/>{connectionLabels[connection.state]||'Server unavailable'}</div></div>
+    <button ref={closeButton} className="quiet-icon" aria-label="Close MCP" onClick={()=>{setMcp(false);mcpButton.current?.focus()}}><X size={20}/></button>
+   </header>
+   <div className="quiet-mcp-body">
+    <section className="quiet-mcp-intro" aria-labelledby="mcp-intro-title">
+     <h2 id="mcp-intro-title">Contribute once.<br/>Ask for 15 minutes.</h2>
+     <p className="quiet-exchange-detail">With your permission, an agent shares a recent sound summary and receives 15 minutes of access to the shared map. Repeating the same summary does not renew access.</p>
+     <a className="quiet-mcp-phone" href="/measure"><Smartphone size={17} aria-hidden="true"/>Measure with your phone<ArrowUpRight size={16} aria-hidden="true"/></a>
+    </section>
+    {connection.state!=='available'&&<div className="quiet-mcp-notice" aria-busy={connection.state==='checking'}>
+     <p>{connection.state==='checking'?'Checking the shared connection…':'The shared connection needs server setup. Check again after updating your server.'}</p>
+     <button disabled={connection.state==='checking'} onClick={()=>{dialog.current?.querySelector<HTMLInputElement>('#mcp-url')?.focus();setConnection({state:'checking',endpoint:null});setConnectionCheck(v=>v+1)}}><RefreshCw size={14} aria-hidden="true"/>{connection.state==='checking'?'Checking…':'Check again'}</button>
+    </div>}
+    <section className="quiet-mcp-setup" aria-label="Agent configuration">
+     <label className="quiet-mcp-label" htmlFor="mcp-url">Server URL{!connection.endpoint&&<span>Example address</span>}</label>
+     <div className="quiet-field"><input id="mcp-url" readOnly value={MCP_URL} onFocus={e=>e.currentTarget.select()}/><button className="quiet-icon" aria-label={copied==='url'?'URL copied':'Copy server URL'} title="Copy server URL" onClick={()=>copyText('url',MCP_URL)}>{copied==='url'?<Check size={16}/>:<Copy size={16}/>}</button></div>
+     <div className="quiet-tabs" role="tablist" aria-label="How to connect">{(Object.keys(snippets) as (keyof typeof snippets)[]).map(k=><button key={k} id={'mcp-tab-'+k} role="tab" aria-selected={tab===k} aria-controls="mcp-config" tabIndex={tab===k?0:-1} className={tab===k?'is-active':''} onClick={()=>{setTab(k);setCopied(null);setCopyError(false)}} onKeyDown={e=>{
+      const keys=Object.keys(snippets) as (keyof typeof snippets)[];
+      const index=keys.indexOf(k);
+      const next=e.key==='ArrowRight'?keys[(index+1)%keys.length]:e.key==='ArrowLeft'?keys[(index+keys.length-1)%keys.length]:e.key==='Home'?keys[0]:e.key==='End'?keys[keys.length-1]:null;
+      if(next){e.preventDefault();setTab(next);setCopied(null);setCopyError(false);document.getElementById('mcp-tab-'+next)?.focus()}
+     }}>{snippets[k].label}</button>)}</div>
+     <div id="mcp-config" role="tabpanel" aria-labelledby={'mcp-tab-'+tab} className="quiet-snippet">
+      <div className="quiet-snippet-toolbar"><span>{tab==='code'?'Terminal command':tab==='app'?'Connector settings':tab==='json'?'MCP configuration':'Agent instructions'}</span><button onClick={()=>copyText('snippet',snippets[tab].text)} aria-label={'Copy '+snippets[tab].label}>{copied==='snippet'?<Check size={14}/>:<Copy size={14}/>}<span>{copied==='snippet'?'Copied':'Copy'}</span></button></div>
+      <pre key={tab} tabIndex={0} className={tab==='prompt'?'is-prose':undefined} aria-label={snippets[tab].label+' content'}>{snippets[tab].text}</pre>
+     </div>
+     <p className="quiet-mcp-hint">Replace <code>YOUR_SHARED_TOKEN</code> with the server&apos;s shared access key. Keep the personal agent&apos;s key private.</p>
+     <p className={copyError?'quiet-copy-feedback is-error':'quiet-copy-feedback'} role="status">{copyError?'Could not copy. Select the text and copy it manually.':copied?(copied==='url'?'Server URL copied.':'Copied to clipboard.'):''}</p>
+    </section>
+    <details className="quiet-mcp-tools"><summary><span>Available tools <small>{sharedTools.length}</small></span><ChevronDown size={16} aria-hidden="true"/></summary><ul className="quiet-tools">{sharedTools.map(t=><li key={t.name}><code>{t.name}</code><span>{t.purpose}</span></li>)}</ul></details>
+   </div>
   </div></div>}
  </main>;
 }
