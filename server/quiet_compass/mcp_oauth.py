@@ -35,7 +35,7 @@ DOT_SCOPE = "quiet-compass:shared"
 ACCESS_SECONDS = 3600
 REFRESH_SECONDS = 30 * 24 * 3600
 CODE_SECONDS = 300
-REQUEST_SECONDS = 600
+REQUEST_SECONDS = 3600
 
 
 def _fingerprint(value: str) -> str:
