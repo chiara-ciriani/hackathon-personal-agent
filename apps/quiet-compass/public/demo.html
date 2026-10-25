@@ -103,14 +103,11 @@ h2{font-size:52px;line-height:1.08;font-weight:600;letter-spacing:-.03em}
 .who i{width:40px;height:1px;background:var(--v300)}
 
 /* 6 · loop */
-.loop{position:relative;display:grid;grid-template-columns:repeat(5,1fr);gap:18px;margin-top:70px}
-.loop .track{position:absolute;left:44px;right:calc((100% - 72px)/5 - 44px);top:44px;height:2px;background:var(--line)}
-.loop .fill{position:absolute;left:44px;top:44px;height:2px;background:var(--v600);width:0;transition:width .9s var(--ease)}
-.step{position:relative;text-align:left}
+.loop{display:grid;grid-template-columns:repeat(3,1fr);gap:60px;margin-top:110px}
+.step{position:relative;text-align:center;display:flex;flex-direction:column;align-items:center}
 .dot{width:88px;height:88px;border-radius:50%;background:#fff;border:2px solid var(--line);display:grid;place-items:center;font:600 22px 'Geist Mono',monospace;color:var(--faint);transition:all .6s var(--ease);position:relative;z-index:1}
 .step.in .dot{border-color:var(--v600);background:var(--v600);color:#fff;box-shadow:0 0 0 10px var(--v50)}
 .step h3{margin-top:26px;font-size:24px;font-weight:600;letter-spacing:-.02em}
-.step p{margin-top:8px;font-size:16px;line-height:1.45;color:var(--mut)}
 .step[data-f]{opacity:.35;transform:none}
 .step[data-f].in{opacity:1}
 
@@ -262,12 +259,9 @@ h2{font-size:52px;line-height:1.08;font-weight:600;letter-spacing:-.03em}
   <div class="eyebrow">How it works</div>
   <h2 style="margin-top:18px;max-width:1000px">Measure. Share. Decide.</h2>
   <div class="loop">
-    <div class="track"></div><div class="fill" id="loopfill"></div>
-    <div class="step" data-f="1"><div class="dot">01</div><h3>Measure</h3><p>30 seconds on the phone. Levels only, never audio.</p></div>
-    <div class="step" data-f="2"><div class="dot">02</div><h3>Share</h3><p>Opt-in. A small summary joins the shared map.</p></div>
-    <div class="step" data-f="3"><div class="dot">03</div><h3>Ask</h3><p>Any agent queries the map over MCP.</p></div>
-    <div class="step" data-f="4"><div class="dot">04</div><h3>Recommend</h3><p>With evidence and the age of every reading.</p></div>
-    <div class="step" data-f="5"><div class="dot">05</div><h3>Re-check</h3><p>A fresh reading on arrival. Plans change if the place did.</p></div>
+    <div class="step" data-f="1"><div class="dot">01</div><h3>Measure</h3></div>
+    <div class="step" data-f="2"><div class="dot">02</div><h3>Share</h3></div>
+    <div class="step" data-f="3"><div class="dot">03</div><h3>Decide</h3></div>
   </div>
 </section>
 
@@ -344,8 +338,7 @@ function type(e,instant){
 
 // per-slide behaviour
 const hooks={
-  hook:f=>{wave.chaos=f>=1?1:0},
-  loop:f=>{document.getElementById('loopfill').style.width=f<=1?'0':`calc(((100% - 72px)/5 + 18px) * ${f-1})`}
+  hook:f=>{wave.chaos=f>=1?1:0}
 };
 
 // waveform (slide 2)
