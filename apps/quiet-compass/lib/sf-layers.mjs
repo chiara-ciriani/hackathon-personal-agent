@@ -15,7 +15,7 @@ export const CAVEATS={
  streetWork:'Public Works permit for excavation, boring, street or sewer work, valid today. Permits often span weeks or months, so work may not be happening right now: a proxy for possible daytime construction noise, not a level.',
  sfoEvents:'Aircraft noise exceedance events at an SFO monitor (max level in dBA per event, last 365 days). Only events above that monitor\'s own threshold are published, so this is the loud events, not the typical level. Measured at the monitor, published monthly; read it with its date. The portal declares no license for this dataset.',
  park:'Unmeasured candidate from a city inventory. Nobody has measured its sound; parks and play areas can be busy and loud at times.',
- cad:'Closed police dispatches classified NOISE NUISANCE at this published (masked) intersection, last 30 days: complaints, not measurements.',
+ cad:'Closed police dispatches classified NOISE NUISANCE at this published (masked) intersection, last 24 hours: complaints, not measurements. The city publishes closed calls about a day late, so the newest may be missing.',
  crowd:'Crowdsourced NoiseCapture phone measurements, mostly uncalibrated (several dB of error), 2017-2025, where volunteers walked; not live. Contains information from the NoiseCapture / Noise-Planet community, ODbL 1.0.',
  sfo:'Daily CNEL (A-weighted dB, 24 h) at an SFO community noise monitor, published monthly. Measured at the monitor, not at your spot, and not live.',
 };
@@ -55,6 +55,8 @@ export function parseEntertainment(row){
  return c&&name?feature(c,{evidence:'proxy',kind:'Entertainment permit',label:name,detail:row.license_type||'',caveat:CAVEATS.entertainment,dataset:DATASETS.entertainment}):null;
 }
 const localDate=d=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles'}).format(d);
+// SF local timestamp (Socrata floating time), e.g. 2026-10-23T17:00:00.
+const sfLocal=d=>new Date(d.toLocaleString('en-US',{timeZone:'America/Los_Angeles'})).toLocaleString('sv-SE').replace(' ','T');
 export function parseNightNoise(row,now){
  const c=fromPoint(row),status=String(row.nnp||'').trim().toUpperCase();
  const start=String(row.start_date||'').slice(0,10),end=String(row.end_date||'').slice(0,10);
@@ -113,14 +115,14 @@ export function sfoEventMonitors(monitors,events,windowDays=365){
   return feature(coords.get(id),{evidence:'measured',kind:'SFO exceedance events',label:`SFO noise monitor ${id}`,count:v.length,maxDb:Math.round(Math.max(...v)*10)/10,medianDb:Math.round(median(v)*10)/10,observedOn:on,detail:`${v.length} events in the last ${windowDays} days; latest ${on}`,caveat:CAVEATS.sfoEvents,dataset:DATASETS.sfoEvents})});
 }
 /** NOISE NUISANCE dispatches counted per published (masked) intersection; sensitive and duplicate rows are dropped. */
-export function cadNoiseAreas(rows,windowDays=30){
+export function cadNoiseAreas(rows,windowHours=24){
  const seen=new Set(),groups=new Map();
  for(const r of rows){if(r.sensitive_call===true)continue;
   const cad=String(r.cad_number||''),c=fromPoint({point:r.intersection_point});
   if(!c||(cad&&seen.has(cad)))continue;seen.add(cad);
   const k=c.map(v=>v.toFixed(5)).join(',');(groups.get(k)||groups.set(k,{c,items:[]}).get(k)).items.push([String(r.received_datetime||'').slice(0,10),String(r.intersection_name||'').trim()])}
  return [...groups.values()].map(({c,items})=>{const last=items.map(i=>i[0]).sort().at(-1);
-  return feature(c,{evidence:'proxy',kind:'Noise-nuisance calls',label:(items.find(i=>i[1])?.[1]||'Intersection').replace(/\\/g,'/'),count:items.length,observedOn:last,detail:`${items.length} calls in the last ${windowDays} days (masked intersection); latest ${last}`,caveat:CAVEATS.cad,dataset:DATASETS.cad})});
+  return feature(c,{evidence:'proxy',kind:'Noise-nuisance calls',label:(items.find(i=>i[1])?.[1]||'Intersection').replace(/\\/g,'/'),count:items.length,observedOn:last,detail:`${items.length} calls in the last ${windowHours} hours (masked intersection); latest ${last}`,caveat:CAVEATS.cad,dataset:DATASETS.cad})});
 }
 /** Cells produced offline by server/quiet_compass/noisecapture.py (ODbL). Cells without numbers are skipped. */
 export function noisecaptureCells(collection){
@@ -156,7 +158,7 @@ export async function loadSfLayers(fetchFn=(url)=>fetch(url,{cache:'no-store',si
  const today=localDate(now),tomorrow=localDate(new Date(now.getTime()+86400000));
  const utc=now.toISOString().slice(0,19);
  const since=new Date(now.getTime()-120*86400000).toISOString().slice(0,10);
- const eventsSince=localDate(new Date(now.getTime()-365*86400000)),cadSince=localDate(new Date(now.getTime()-30*86400000));
+ const eventsSince=localDate(new Date(now.getTime()-365*86400000)),cadSince=sfLocal(new Date(now.getTime()-24*3600000));
  /** @type {string[]} */const partial=[];
  const jobs={
   candidates:async()=>{
@@ -189,7 +191,7 @@ export async function loadSfLayers(fetchFn=(url)=>fetch(url,{cache:'no-store',si
    const events=await rows(fetchFn,'sfoEvents',{$select:'location_id,max_date_time,max_level',$where:`location_id in(${ids.map(i=>`'${i}'`).join(',')}) AND max_date_time >= '${eventsSince}T00:00:00'`,$order:'max_date_time DESC',$limit:'5000'});
    return collection(sfoEventMonitors(monitors,events));
   },
-  cad:async()=>collection(cadNoiseAreas(await rows(fetchFn,'cad',{$select:'cad_number,received_datetime,intersection_name,intersection_point,sensitive_call',$where:`call_type_final_desc='NOISE NUISANCE' AND intersection_point IS NOT NULL AND received_datetime >= '${cadSince}T00:00:00'`,$limit:'5000'})))
+  cad:async()=>collection(cadNoiseAreas(await rows(fetchFn,'cad',{$select:'cad_number,received_datetime,intersection_name,intersection_point,sensitive_call',$where:`call_type_final_desc='NOISE NUISANCE' AND intersection_point IS NOT NULL AND received_datetime >= '${cadSince}'`,$limit:'5000'})))
   ,
   crowd:async()=>{
    const r=await fetchFn(NOISECAPTURE_URL);

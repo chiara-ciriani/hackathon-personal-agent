@@ -18,7 +18,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp_types import ToolAnnotations
 from pydantic import BaseModel, SerializerFunctionWrapHandler, model_serializer
 
-from . import scoring
+from . import scoring, sound_field
 from .city import CityDataError, CityNoiseLayer
 from .contracts import Feedback, Goal, Observation, Place, Session, format_utc
 from .db import Store, utc_now
@@ -240,6 +240,77 @@ def _xz(position: Any) -> tuple[float, float] | None:
 
 def _features(o: Observation) -> scoring.Features:
     return scoring.Features(o.level_dbfs_rel, o.spread_db, o.peaks_per_min, o.speech_share)
+
+
+class XZ(BaseModel):
+    x: float
+    z: float
+
+
+class FieldCellOut(BaseModel):
+    x: float
+    z: float
+    level_db: float | None
+    confidence: float
+
+
+class FieldSampleOut(BaseModel):
+    x: float
+    z: float
+    level_db: float
+    age_min: float
+
+
+class FieldPlaceOut(BaseModel):
+    id: str
+    label: str
+    x: float
+    z: float
+
+
+class QuietSpotOut(BaseModel):
+    x: float
+    z: float
+    level_db: float
+    confidence: float
+    age_min: float
+    distance_m: float | None
+
+
+class SoundFieldOut(BaseModel):
+    """Full grid for drawing; unknown cells keep level_db null so they are never drawn as quiet."""
+
+    session_id: str | None = None
+    generated_at: str
+    cell_m: float | None = None
+    origin: XZ | None = None
+    cols: int = 0
+    rows: int = 0
+    level_range_db: tuple[float, float] | None = None
+    cells: list[FieldCellOut] = []
+    samples: list[FieldSampleOut] = []
+    path: list[XZ] = []
+    places: list[FieldPlaceOut] = []
+    user: XZ | None = None
+    quiet_spots: list[QuietSpotOut] = []
+    message: str | None = None
+
+
+class SoundMapResult(Lean):
+    measured_spots: int = 0
+    coverage_m2: float | None = None
+    level_range_db: tuple[float, float] | None = None
+    quiet_spots: list[QuietSpotOut] | None = None
+    note: str | None = None
+    message: str | None = None
+
+
+NO_POSITIONS = "No positioned measurements yet. Walk the space with AR tracking on, or mark places."
+FIELD_NOTE = (
+    "Levels are relative dBFS from this phone (higher = louder, never dB or dBA). Each spot blends nearby "
+    "readings, newer ones weigh more. Areas more than 3 m from any reading are unknown, not quiet. "
+    "x/z are metres on the floor of the phone's AR session; distance_m is from the user's last position."
+)
 
 
 class Service:
@@ -540,6 +611,79 @@ class Service:
         return FeedbackResult(stored=True, message=f"Saved: {place.label} was {verdict} for {goal}.")
 
 
+    # -- sound field -----------------------------------------------------------------------
+
+    def sound_field(self, session: Session) -> SoundFieldOut:
+        """Blend every positioned observation of the session into a floor-plane grid.
+
+        An observation without its own position borrows its crumb's, then its place's.
+        """
+        now = self.clock()
+        crumbs = self.store.crumbs(session.id)
+        places = self.store.places(session.id)
+        crumb_xz = {c.id: (c.position.x, c.position.z) for c in crumbs}
+        place_xz = {p.id: _xz(p.position) for p in places}
+        samples = []
+        for o in self.store.observations(session.id):
+            xz = _xz(o.position) or crumb_xz.get(o.crumb_id) or place_xz.get(o.place_id)
+            if xz is not None:
+                samples.append(sound_field.Sample(xz[0], xz[1], o.level_dbfs_rel, _minutes(now - o.t)))
+        path = list(crumb_xz.values())
+        user = path[-1] if path else (samples[-1].x, samples[-1].z) if samples else None
+        out = SoundFieldOut(
+            session_id=str(session.id),
+            generated_at=format_utc(now),
+            samples=[FieldSampleOut(x=s.x, z=s.z, level_db=s.level_db, age_min=s.age_min) for s in samples],
+            path=[XZ(x=x, z=z) for x, z in path],
+            places=[
+                FieldPlaceOut(id=str(p.id), label=p.label, x=p.position.x, z=p.position.z)
+                for p in places if p.position is not None
+            ],
+            user=XZ(x=user[0], z=user[1]) if user else None,
+        )
+        field = sound_field.build_field(samples, path, user)
+        if field is None:
+            out.message = NO_POSITIONS
+            return out
+        out.cell_m = field.cell_m
+        out.origin = XZ(x=field.origin_x, z=field.origin_z)
+        out.cols, out.rows = field.cols, field.rows
+        out.level_range_db = field.level_range_db
+        out.cells = [
+            FieldCellOut(
+                x=round(c.x, 2), z=round(c.z, 2),
+                level_db=round(c.level_db, 1) if c.level_db is not None else None,
+                confidence=round(c.confidence, 2),
+            )
+            for c in field.cells
+        ]
+        out.quiet_spots = [_spot_out(s) for s in field.quiet_spots]
+        return out
+
+    def get_sound_map(self) -> SoundMapResult:
+        session = self.active_session()
+        if session is None:
+            return SoundMapResult(message=NO_SESSION)
+        field = self.sound_field(session)
+        if field.message:
+            return SoundMapResult(message=field.message)
+        known = sum(1 for c in field.cells if c.level_db is not None)
+        return SoundMapResult(
+            measured_spots=len(field.samples),
+            coverage_m2=round(known * (field.cell_m or 0) ** 2, 1),
+            level_range_db=field.level_range_db,
+            quiet_spots=field.quiet_spots,
+            note=FIELD_NOTE,
+        )
+
+
+def _spot_out(s: sound_field.QuietSpot) -> QuietSpotOut:
+    return QuietSpotOut(
+        x=round(s.x, 2), z=round(s.z, 2), level_db=round(s.level_db, 1), confidence=round(s.confidence, 2),
+        age_min=round(s.age_min, 1), distance_m=round(s.distance_m, 1) if s.distance_m is not None else None,
+    )
+
+
 # --- MCP wiring -------------------------------------------------------------------------
 
 
@@ -633,6 +777,19 @@ def build_mcp(
         what the user said; do not infer it."""
         return service.record_feedback(place_id, goal, verdict, feel)
 
+    @mcp.tool(annotations=ToolAnnotations(title="Sound map of the space", readOnlyHint=True, openWorldHint=False))
+    def quiet_get_sound_map() -> SoundMapResult:
+        """Where in the space it was quieter, from every reading the phone took while walking.
+
+        Returns up to 3 quiet spots (x/z in metres on the floor of the phone's AR session,
+        relative level, confidence 0-1, age in minutes, distance from the user's last
+        position), how many readings exist and how much floor they cover. Use it to say
+        things like "the quieter area is about 6 m from you, measured 3 min ago". Areas
+        nobody walked are unknown, never quiet. Prefer quiet_find_space to pick a marked
+        place the user can be guided to; this map shows where to look between them.
+        """
+        return service.get_sound_map()
+
     if city is not None:
 
         @mcp.tool(
@@ -688,7 +845,7 @@ def build_mcp(
             quote observed_on; only events above that monitor's threshold are published, so
             it is not the typical level; the dataset has no declared license).
             cad_noise_calls: NOISE NUISANCE police dispatches per masked intersection, last
-            30 days (evidence=proxy, count): complaints, not levels.
+            24 hours (evidence=proxy, count; published about a day late): complaints, not levels.
             noisecapture: ~100 m cells of crowdsourced, mostly uncalibrated phone
             measurements 2017-2025 (evidence=measured_crowdsourced, quality=
             measured_crowdsourced_uncalibrated; median_level_db is the median 5-minute

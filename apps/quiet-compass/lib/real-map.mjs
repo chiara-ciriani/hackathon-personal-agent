@@ -54,9 +54,13 @@ export function noiseReports(rows) {
 }
 
 /** @param {(url:string, options?:any)=>Promise<any>} [fetcher] */
-export async function loadNoiseReports(fetcher = fetch) {
+export async function loadNoiseReports(fetcher = fetch, now = new Date()) {
+  // Last 30 days (about 1,500 reports), matching the police-call window, so the density field is not one day's noise.
+  const since = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10);
   const query = new URLSearchParams({
-    '$where':"service_name in ('Noise','Noise Report')", '$order':'requested_datetime DESC', '$limit':'100',
+    '$select':'service_subtype,neighborhoods_sffind_boundaries,requested_datetime,lat,long',
+    '$where':`service_name in ('Noise','Noise Report') AND requested_datetime >= '${since}T00:00:00' AND lat IS NOT NULL`,
+    '$order':'requested_datetime DESC', '$limit':'3000',
   });
   const response = await fetcher(`https://data.sf.gov/resource/vw6y-z8j6.json?${query}`, {cache:'no-store',signal:AbortSignal.timeout(12000)});
   if (!response.ok) throw new Error('311 unavailable');

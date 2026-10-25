@@ -21,7 +21,9 @@ from .api import build_routes, healthz
 from .auth import BearerAuth
 from .city import CityNoiseLayer
 from .db import Store
+from .field_api import build_field_routes
 from .mcp_server import Service, build_mcp
+from .phone_bridge import PhoneBridge, build_phone_routes, register_phone_tools
 from .settings import Settings
 from .sf_layers import SfLayers
 from .shared_access import SHARED_INSTRUCTIONS
@@ -65,12 +67,16 @@ def create_app(
     if layers is None and settings.city_layer_enabled:
         layers = SfLayers(settings.socrata_app_token)
     wearables = WearableService(store, settings, wearable_transport)
-    mcp = build_mcp(Service(store, settings, clock=store.clock), city, layers, wearables)
+    service = Service(store, settings, clock=store.clock)
+    mcp = build_mcp(service, city, layers, wearables)
     shared = SharedLayer(SharedStore(store.path, clock=store.clock), settings, clock=store.clock)
     shared.store.migrate_shared()
     register_shared_tools(mcp, shared)
     shared_mcp = MCPServer("quiet-compass-shared", instructions=SHARED_INSTRUCTIONS)
     register_shared_tools(shared_mcp, shared)
+    phone = PhoneBridge(shared, settings.phone_page_url)
+    register_phone_tools(mcp, phone)
+    register_phone_tools(shared_mcp, phone)
     security = TransportSecuritySettings(
         enable_dns_rebinding_protection=not settings.any_host_allowed,
         allowed_hosts=settings.mcp_hosts,
@@ -111,7 +117,9 @@ def create_app(
         *build_routes(store, settings.api_token),
         *build_wearable_routes(wearables, settings.api_token),
         *build_shared_routes(shared, settings),
+        *build_phone_routes(phone),
         Route("/mcp/shared", ExactMount(shared_endpoint), methods=["GET", "POST", "DELETE"]),
+        *build_field_routes(service, settings),
         Route(path, ExactMount(endpoint), methods=["GET", "POST", "DELETE"]),
     ]
     if settings.mcp_path_secret:

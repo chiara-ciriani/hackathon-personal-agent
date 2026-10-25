@@ -90,7 +90,9 @@ def build_shared_routes(layer: SharedLayer, settings: Settings) -> list[BaseRout
         return JSONResponse({
             "protocol": "contribution-window-v1", "access_window_seconds": 900,
             "shared_endpoint_enabled": bool(settings.shared_api_token), "mcp_path": "/mcp/shared",
-            "tools": ["submit_observation", "query_sound_map", "find_suitable_places"],
+            "tools": ["connect_phone", "request_phone_measurement", "phone_measurement_status",
+                      "send_phone_recommendation", "submit_observation", "query_sound_map", "find_suitable_places"],
+            "phone_measurement": {"protocol": "phone-bridge-v1", "session_seconds": 900, "duration_seconds": 30},
         }, headers={"Cache-Control": "no-store"})
 
     cors = Middleware(

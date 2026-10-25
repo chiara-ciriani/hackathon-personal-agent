@@ -1,12 +1,13 @@
 # Team status: who is doing what
 
-Last updated: October 24, 2026, 16:00 PT. Update this file whenever you start or finish something, so two people don't build the same thing.
+Last updated: October 24, 2026, 16:45 PT. Update this file whenever you start or finish something, so two people don't build the same thing.
 
 ## In progress right now
 
 | Area | Who | What | Files |
 | --- | --- | --- | --- |
 | Background capture and noise alerts | Ana | Plan written; check with Ana before touching it | `docs/BACKGROUND_CAPTURE_AND_NOISE_ALERTS.md` |
+| Room sound map from phone readings | Alex | Branch `feat/sound-field`: server `sound_field.py` (0.5 m grid from positioned readings; unwalked = unknown), `GET /v1/sessions/{id}/sound_field`, opt-in `GET /v1/venue/sound_field`, MCP `quiet_get_sound_map`; web helper `lib/sound-field.mjs` (not wired into /venue yet); standalone `ios-walk/` app (ARKit walk map, record/replay/export, radar, source locate; untested on device) and `tools/walk_map.py`. Not merged. | `server/quiet_compass/{sound_field,field_api}.py`, `ios-walk/**`, `tools/walk_map.py` |
 | Web map and venue view | Ana and Martin | Map-first redesign, DataSF layers, `/venue` 3D view | `apps/quiet-compass/**` |
 
 ## Ready for main
@@ -19,6 +20,8 @@ Last updated: October 24, 2026, 16:00 PT. Update this file whenever you start or
 
 | Area | Status | Where |
 | --- | --- | --- |
+| Walk app + automatic phone mode | Alex’s latest `feat/sound-field` integrated alongside `ios/` and `/measure`, including the simple Quiet Map screen and automatic local mapping. Native unsigned build and math checks pass; physical phone/Dot verification pending. Exporter corrected for native elapsed-second timestamps. | `ios-walk/`, `tools/walk_map.py`, `docs/AGENT_PHONE_LOOP.md` |
+| Agent-controlled phone page | `/measure`, scoped phone sessions, four MCP tools, automatic contributions and advice displayed on the phone. Software tests; real phone/Dot verification pending. | `docs/AGENT_PHONE_LOOP.md` |
 | Contracts | Phone ↔ server schema, HTTP API and MCP tool reference | `contracts/` |
 | Server: personal memory | Ingest API, the `quiet_*` MCP tools, scoring, guidance; tests pass | `server/quiet_compass/{api,db,scoring,mcp_server}.py` |
 | Server: shared sound layer | `query_sound_map`, `find_suitable_places`, `submit_observation`; `POST /v1/contributions`, `PUT /v1/areas/{id}`, public `GET /v1/map/aggregates`; release threshold, ~100 m cells, 5-minute buckets, 24 h retention | `server/quiet_compass/shared_*.py` |

@@ -23,6 +23,7 @@ Every request carries `Authorization: Bearer $QC_API_TOKEN`. Bodies are JSON.
 | `POST /v1/feedback` | `FeedbackBatch` | `200 IngestResult` |
 | `GET /v1/sessions/{session_id}/guidance` | none | `200 Guidance`, or `204` when nothing is active |
 | `POST /v1/sessions/{session_id}/guidance/status` | `GuidanceStatusUpdate` | `200 Guidance` |
+| `GET /v1/sessions/{session_id}/sound_field` | none | `200` floor-plane grid of the session's readings (see "Sound field"), `404` unknown session |
 | `GET /healthz` | none | `200 {"ok": true}` (no auth) |
 
 The phone polls guidance every 2 s while the map screen is open, and every 10 s otherwise.
@@ -37,8 +38,20 @@ These are served at `/mcp` (Streamable HTTP, stateless, JSON responses).
 | `quiet_find_space(goal, duration_minutes, return_by, needs?)` | Up to 3 ranked places with evidence, or `{no_fit, closest, relax}` | read-only |
 | `quiet_start_guidance(place_id, reason?)` | Upserts the active guidance row the phone polls | idempotent, not destructive |
 | `quiet_record_feedback(place_id, goal, verdict, feel?)` | Stores an explicit rating | not destructive |
+| `quiet_get_sound_map()` | Up to 3 quiet spots on the walked floor (x/z, relative level, confidence, age, distance), readings count and covered area | read-only |
 | `quiet_city_noise_reports(lat, lon, radius_m, hours)` | Optional: SF 311 noise report counts by subtype | read-only, open world |
 | `quiet_sf_layers(lat, lon, radius_m?, include?, include_references?)` | Optional (same flag as above): real SF layers near a point, each labelled with an `EvidenceLabel` | read-only, open world |
+
+## Sound field
+
+`server/quiet_compass/sound_field.py` turns every positioned reading of a session into a grid of
+0.5 m cells on the AR floor plane (x/z metres). A reading without its own position borrows its
+crumb's, then its place's. Each cell blends nearby readings with a Gaussian weight on distance
+(σ 1.5 m) times exp(−age/20 min), so newer readings win; `confidence = 1 − exp(−Σw)`. Cells
+more than 3 m from every reading have `level_db: null` (unknown, never quiet). Quiet spots are
+the quietest cells within 1 m of a real reading. `GET /v1/venue/sound_field` serves the active
+session's grid to the venue page without a token only when `QC_PUBLIC_VENUE_FIELD=1` (it reveals
+where the user walked); otherwise it answers 404.
 
 The MCP tools act on the **active session**: the one named by `QC_ACTIVE_SESSION_ID` if set, otherwise the most recently updated session.
 
@@ -53,7 +66,7 @@ Enabled with `QC_CITY_LAYER_ENABLED=1`, together with the 311 tool. Result shape
 | `proxy` | `night_noise_permits` | Night noise permits `e7pr-36bt` (today or tomorrow in SF time; DENIED, WITHDRAWN, PENDING and end dates after 2100 are dropped) | Temporary noise; not a level |
 | `proxy` | `street_closures` | Temporary street closures `8x25-yybr` (status Permitted and in effect now) | Event or traffic change; not a level |
 | `proxy` | `street_work_permits` | Active street-use permits `x8nh-xzn6` (types Excavation, ExcStreet, Boring, StrtImprov, SideSewer; valid today in SF time; NightNoise left out because `e7pr-36bt` covers it) | Possible daytime construction noise; permits span weeks, so work may not be happening now; not a level |
-| `proxy` | `cad_noise_calls` | Law enforcement dispatched calls, closed `2zdj-bwza` (`call_type_final_desc = 'NOISE NUISANCE'`, last 30 days, `intersection_point` exactly as published, `sensitive_call` rows and duplicate `cad_number` dropped) | Counts of complaints per masked intersection (`count`, `observed_on` = latest call); not measurements and they depend on who calls |
+| `proxy` | `cad_noise_calls` | Law enforcement dispatched calls, closed `2zdj-bwza` (`call_type_final_desc = 'NOISE NUISANCE'`, last 24 hours (closed calls publish about a day late), `intersection_point` exactly as published, `sensitive_call` rows and duplicate `cad_number` dropped) | Counts of complaints per masked intersection (`count`, `observed_on` = latest call); not measurements and they depend on who calls |
 | `measured` | `sfo_cnel` | SFO aircraft noise climates `qxw2-ncq3` (`location = 'San Francisco'`, 6 monitors) | Daily CNEL in A-weighted dB at the monitor, published monthly (so weeks old), not at the point |
 | `measured` | `sfo_events` | SFO noise exceedance events `tiju-qyvs` (30 `location_id` monitors; only the 6 with `location = 'San Francisco'` in `qxw2-ncq3` are placed, joined by `location_id`; `max_level` is text and parsed; last 365 days) | Per monitor: `count`, `median_level_db`, `max_level_db` (dBA) and `observed_on` (latest event). Only events above that monitor's day/night threshold are published, so it describes loud aircraft events, not typical noise. Monitors without events in the window are omitted. **The portal declares no license** for this dataset (checked 2026-10-24). Data ended 2026-08-31 at check time |
 | `measured_crowdsourced` | `noisecapture` | NoiseCapture / Noise-Planet dump, `https://data.noise-planet.org/dump/United States.zip` (ODbL; county files `United States_California_San Francisco.{points,tracks}.geojson`), aggregated offline by `server/quiet_compass/noisecapture.py` into `server/quiet_compass/data/noisecapture_sf_cells.json` | ~100 m cells, `quality: "measured_crowdsourced_uncalibrated"`, `median_level_db` (median 5-minute LAeq), `laeq_db` (energy mean), `count` (5-minute windows). Filters: GPS accuracy <= 15 m, 30-120 dB, track `gain_calibration` within +-15 dB, >= 5 s per window, cells need >= 3 tracks and >= 5 windows. Sparse (20 cells), 2017-2025, not live. Attribute NoiseCapture / Noise-Planet (ODbL) |

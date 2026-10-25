@@ -51,6 +51,7 @@ class Settings:
     socrata_app_token: str | None = None
     city_layer_enabled: bool = False
     mcp_path_secret: str | None = None
+    phone_page_url: str = "https://quiet-compass-navy.vercel.app/measure"
     public_url: str | None = None
     encryption_key: str | None = field(default=None, repr=False)
     oura_client_id: str | None = None
@@ -59,6 +60,7 @@ class Settings:
     contribution_retention_hours: float = 24.0
     map_allowed_origins: tuple[str, ...] = ("*",)
     shared_api_token: str | None = field(default=None, repr=False)
+    public_venue_field: bool = False
 
     def __post_init__(self) -> None:
         if not self.api_token:
@@ -72,6 +74,11 @@ class Settings:
                 not url.netloc or url.username or url.password or url.query or url.fragment or url.path not in {"", "/"}
             ):
                 raise SettingsError("QC_PUBLIC_URL must be an HTTPS origin (HTTP localhost is allowed for development)")
+        page = urlsplit(self.phone_page_url)
+        local_page = page.scheme == "http" and page.hostname in {"localhost", "127.0.0.1", "::1"}
+        if ((page.scheme != "https" and not local_page)
+                or not page.netloc or page.username or page.password or page.query or page.fragment):
+            raise SettingsError("QC_PHONE_PAGE_URL must be an HTTPS page URL (localhost HTTP allowed)")
         if self.active_session_id is not None:
             try:
                 normalized = str(uuid.UUID(self.active_session_id))
@@ -99,6 +106,7 @@ class Settings:
             hosts = (*hosts, render_host)
         return cls(
             api_token=(env.get("QC_API_TOKEN") or "").strip(),
+            phone_page_url=env.get("QC_PHONE_PAGE_URL") or "https://quiet-compass-navy.vercel.app/measure",
             db_path=Path(env.get("QC_DB_PATH") or "./data/quiet_compass.db"),
             allowed_hosts=hosts,
             active_session_id=_optional(env.get("QC_ACTIVE_SESSION_ID")),
@@ -113,6 +121,7 @@ class Settings:
             contribution_retention_hours=_number(env.get("QC_CONTRIBUTION_RETENTION_HOURS"), 24.0, float),
             map_allowed_origins=_csv(env.get("QC_MAP_ALLOWED_ORIGINS")) or ("*",),
             shared_api_token=_optional(env.get("QC_SHARED_API_TOKEN")),
+            public_venue_field=_flag(env.get("QC_PUBLIC_VENUE_FIELD")),
         )
 
     @property
