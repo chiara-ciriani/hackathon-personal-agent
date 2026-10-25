@@ -90,6 +90,8 @@ def build_shared_routes(layer: SharedLayer, settings: Settings) -> list[BaseRout
         return JSONResponse({
             "protocol": "contribution-window-v1", "access_window_seconds": 900,
             "shared_endpoint_enabled": bool(settings.shared_api_token), "mcp_path": "/mcp/shared",
+            "dot_mcp_enabled": bool(settings.shared_api_token and settings.public_url),
+            "dot_mcp_path": "/mcp/dot",
             "tools": ["connect_phone", "request_phone_measurement", "phone_measurement_status",
                       "send_phone_recommendation", "submit_observation", "query_sound_map", "find_suitable_places"],
             "phone_measurement": {"protocol": "phone-bridge-v1", "session_seconds": 900, "duration_seconds": 30,

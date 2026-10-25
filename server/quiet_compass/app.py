@@ -10,9 +10,13 @@ import contextlib
 from collections.abc import AsyncIterator
 
 import httpx2 as httpx
+from mcp.server.auth.middleware.auth_context import AuthContextMiddleware
+from mcp.server.auth.middleware.bearer_auth import BearerAuthBackend, RequireAuthMiddleware
+from mcp.server.auth.routes import build_resource_metadata_url
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
+from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.responses import Response
 from starlette.routing import BaseRoute, Mount, Route
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -22,6 +26,7 @@ from .auth import BearerAuth
 from .city import CityNoiseLayer
 from .db import Store
 from .field_api import build_field_routes
+from .mcp_oauth import DOT_SCOPE, DotOAuthProvider, build_dot_oauth_routes
 from .mcp_server import Service, build_mcp
 from .phone_bridge import PhoneBridge, build_phone_routes, register_phone_tools
 from .settings import Settings
@@ -99,6 +104,27 @@ def create_app(
         BearerAuth(shared_asgi, settings.shared_api_token) if settings.shared_api_token
         else Response("Shared agent access is not configured", status_code=503)
     )
+    dot_oauth: DotOAuthProvider | None = None
+    dot_endpoint: ASGIApp | None = None
+    if settings.shared_api_token and settings.public_url:
+        issuer = settings.public_url.rstrip("/")
+        resource = f"{issuer}/mcp/dot"
+        dot_oauth = DotOAuthProvider(
+            settings.db_path,
+            issuer=issuer,
+            resource=resource,
+            credentials=(settings.shared_api_token,),
+        )
+        metadata_url = build_resource_metadata_url(resource)
+        authorized = RequireAuthMiddleware(
+            ExactMount(shared_asgi),
+            required_scopes=[DOT_SCOPE],
+            resource_metadata_url=metadata_url,
+        )
+        dot_endpoint = AuthenticationMiddleware(
+            AuthContextMiddleware(authorized),
+            backend=BearerAuthBackend(dot_oauth, resource_server_url=resource),
+        )
 
     @contextlib.asynccontextmanager
     async def lifespan(_: Starlette) -> AsyncIterator[None]:
@@ -122,6 +148,11 @@ def create_app(
         *build_field_routes(service, settings),
         Route(path, ExactMount(endpoint), methods=["GET", "POST", "DELETE"]),
     ]
+    if dot_oauth and dot_endpoint and settings.public_url:
+        issuer = settings.public_url.rstrip("/")
+        resource = f"{issuer}/mcp/dot"
+        routes.extend(build_dot_oauth_routes(dot_oauth, issuer, resource))
+        routes.append(Route("/mcp/dot", ExactMount(dot_endpoint), methods=["GET", "POST", "DELETE"]))
     if settings.mcp_path_secret:
         # The bare /mcp must not be reachable without the secret.
         routes.append(Mount("/mcp", app=Response(status_code=404)))

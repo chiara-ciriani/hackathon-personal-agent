@@ -140,3 +140,7 @@ separate from the person's private session memory.
 - External agents must use `/mcp/shared` with the separate shared credential.
   The owner's `/mcp` includes private tools and must never be distributed to them.
   Private context reads do not require a shared contribution.
+- ChatGPT Dot should connect through `/mcp/dot` with OAuth. On the hosted Quiet
+  Compass consent page, validate the rotated shared access key; never send the
+  owner's `QC_API_TOKEN` to ChatGPT. Dot can measure location only after the
+  person approves it on their phone.

@@ -17,7 +17,7 @@ test('connection requires configured URL and the exchange protocol', async()=>{
   assert.equal(options.headers,undefined);
   return Response.json({...capabilities,private_field:'must not reach browser'});
  });
- assert.deepEqual(status,{state:'available',endpoint:'https://api.example/mcp/shared'});
+ assert.deepEqual(status,{state:'available',endpoint:'https://api.example/mcp/shared',dotEndpoint:'https://api.example/mcp/dot',dotReady:false});
 });
 test('disabled, old and offline servers never appear available',async()=>{
  for(const [data,state] of [[{...capabilities,shared_endpoint_enabled:false},'disabled'], [{...capabilities,access_window_seconds:60},'incompatible'], [{status:'ok'},'incompatible']]) {
@@ -37,4 +37,10 @@ test('setup exposes only shared tools and placeholder credential',()=>{
 test('phone availability requires the deployed phone protocol', async()=>{
  const result=await exchangeStatus('https://api.example',async()=>Response.json({...capabilities,phone_measurement:{protocol:'phone-bridge-v1'}}));
  assert.equal(result.phoneReady,true);
+});
+
+test('Dot is ready only when the server advertises OAuth at the Dot endpoint',async()=>{
+ const result=await exchangeStatus('https://api.example',async()=>Response.json({...capabilities,dot_mcp_enabled:true,dot_mcp_path:'/mcp/dot'}));
+ assert.equal(result.dotReady,true);
+ assert.equal(result.dotEndpoint,'https://api.example/mcp/dot');
 });

@@ -29,26 +29,29 @@ export function connectionGuide(endpoint) {
 
 /** Public capability check only. Never proxy readings or credentials to the browser. */
 export async function exchangeStatus(origin, fetcher = fetch) {
-  if (!origin) return {state: 'not_configured', endpoint: null};
+  if (!origin) return {state: 'not_configured', endpoint: null, dotEndpoint: null, dotReady: false};
   try {
     const base = new URL(origin);
     const local = ['localhost', '127.0.0.1', '[::1]'].includes(base.hostname);
     if ((base.protocol !== 'https:' && !(local && base.protocol === 'http:')) ||
         base.username || base.password || base.search || base.hash || base.pathname !== '/') {
-      return {state: 'invalid_config', endpoint: null};
+      return {state: 'invalid_config', endpoint: null, dotEndpoint: null, dotReady: false};
     }
+    const dotEndpoint = `${base.origin}/mcp/dot`;
     const response = await fetcher(`${base.origin}/v1/exchange/status`, {
       cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(5000),
     });
-    if (response.status === 404) return {state: 'incompatible', endpoint: null};
-    if (!response.ok) return {state: 'unavailable', endpoint: null};
+    if (response.status === 404) return {state: 'incompatible', endpoint: null, dotEndpoint, dotReady: false};
+    if (!response.ok) return {state: 'unavailable', endpoint: null, dotEndpoint, dotReady: false};
     const data = await response.json();
     if (data.protocol !== 'contribution-window-v1' || data.access_window_seconds !== 900 ||
         data.mcp_path !== '/mcp/shared' || !Array.isArray(data.tools) ||
-        sharedTools.some(tool => !data.tools.includes(tool.name))) return {state: 'incompatible', endpoint: null};
-    if (data.shared_endpoint_enabled !== true) return {state: 'disabled', endpoint: null};
-    return {state: 'available', endpoint: `${base.origin}/mcp/shared`, ...(data.phone_measurement?.protocol === 'phone-bridge-v1' ? {phoneReady: true, nativeReady: data.phone_measurement?.native_protocol === 'phone-walk-v1'} : {})};
+        sharedTools.some(tool => !data.tools.includes(tool.name))) return {state: 'incompatible', endpoint: null, dotEndpoint, dotReady: false};
+    if (data.shared_endpoint_enabled !== true) return {state: 'disabled', endpoint: null, dotEndpoint, dotReady: false};
+    return {state: 'available', endpoint: `${base.origin}/mcp/shared`, dotEndpoint,
+      dotReady: data.dot_mcp_enabled === true && data.dot_mcp_path === '/mcp/dot',
+      ...(data.phone_measurement?.protocol === 'phone-bridge-v1' ? {phoneReady: true, nativeReady: data.phone_measurement?.native_protocol === 'phone-walk-v1'} : {})};
   } catch {
-    return {state: 'unavailable', endpoint: null};
+    return {state: 'unavailable', endpoint: null, dotEndpoint: null, dotReady: false};
   }
 }

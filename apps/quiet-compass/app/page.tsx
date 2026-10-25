@@ -24,7 +24,7 @@ const layerRows:{key:LayerKey;label:string;tag:string;swatch:string;mapIds:strin
 type Properties={label?:string;name?:string;id?:string;evidence?:string;kind?:string;detail?:string;caveat?:string;observedOn?:string;dataset?:string;dbfs?:number;cnel?:number;medianDb?:number;maxDb?:number;count?:number;captureProfile?:string};
 type PointFeature=Feature<Properties>;
 type MapData=Record<LayerKey,PointCollection<Properties>>&{failed:string[];fetchedAt:string;deviceState:string};
-type McpConnection={state:string;endpoint:string|null};
+type McpConnection={state:string;endpoint:string|null;dotEndpoint?:string|null;dotReady?:boolean};
 const connectionLabels:Record<string,string>={checking:'Checking server…',available:'Shared MCP available',not_configured:'Server setup needed',invalid_config:'Check server address',unavailable:'Server unavailable',disabled:'Shared access setup needed',incompatible:'Server update needed'};
 const deviceLabels:Record<string,string>={available:'Phone measurements are on the map',empty:'No one has shared a phone measurement in the last 24 hours',access_required:'Share a measurement of your own to see other people’s',invalid_config:"Phone measurements aren't set up on the server yet",unavailable:"Couldn't load phone measurements right now"};
 const home={center:[-122.44,37.768] as [number,number],zoom:12.6,pitch:48,bearing:-12};
@@ -85,11 +85,14 @@ export default function CityMap(){
  const [shown,setShown]=useState<Record<LayerKey,boolean>>({device:true,measured:true,sfoEvents:true,proxies:true,cad:true,candidates:true,reports:true});
  const [layersOpen,setLayersOpen]=useState(false);
  const [selection,setSelection]=useState<Properties|null>(null),[hist,setHist]=useState(false),[mcp,setMcp]=useState(false);
- const [connection,setConnection]=useState<McpConnection>({state:'checking',endpoint:null}),[copied,setCopied]=useState<string|null>(null),[tab,setTab]=useState<'code'|'app'|'json'|'prompt'>('code');
+ const [connection,setConnection]=useState<McpConnection>({state:'checking',endpoint:null,dotEndpoint:null,dotReady:false}),[copied,setCopied]=useState<string|null>(null),[tab,setTab]=useState<'dot'|'code'|'app'|'json'|'prompt'>('dot');
  const [connectionCheck,setConnectionCheck]=useState(0),[copyError,setCopyError]=useState(false);
  const MCP_URL=connection.endpoint||'https://YOUR-SERVER/mcp/shared';
+ const DOT_URL=connection.dotEndpoint||'https://quiet-compass-server.onrender.com/mcp/dot';
+ const displayedUrl=tab==='dot'?DOT_URL:MCP_URL;
  const guide=connectionGuide(connection.endpoint);
- const snippets:Record<'code'|'app'|'json'|'prompt',{label:string;text:string}>={
+ const snippets:Record<'dot'|'code'|'app'|'json'|'prompt',{label:string;text:string}>={
+  dot:{label:'ChatGPT Dot',text:'Name: Quiet Compass\nDescription: Use my phone to measure sound, find a calmer nearby place, and recommend whether I should move.\nServer URL: '+DOT_URL+'\nAuthentication: OAuth\n\nChoose OAuth when adding the custom MCP server. On the Quiet Compass sign-in page, enter the rotated shared server access key. Do not paste the private owner key into ChatGPT.'},
   code:{label:'Claude Code',text:'claude mcp add --transport http quiet-compass-shared '+MCP_URL+' --header "Authorization: Bearer YOUR_SHARED_TOKEN"'},
   app:{label:'Claude app',text:'Settings > Connectors > Add custom connector\nName: Quiet Compass Shared\nURL: '+MCP_URL+'\nHeader: Authorization: Bearer YOUR_SHARED_TOKEN'},
   json:{label:'JSON',text:JSON.stringify({mcpServers:{'quiet-compass-shared':{url:MCP_URL,headers:{Authorization:'Bearer YOUR_SHARED_TOKEN'}}}},null,2)},
@@ -218,13 +221,13 @@ export default function CityMap(){
      <p className="quiet-exchange-detail">With your permission, an agent shares a recent sound summary and receives 15 minutes of access to the shared map. Repeating the same summary does not renew access.</p>
      <a className="quiet-mcp-phone" href="/measure"><Smartphone size={17} aria-hidden="true"/>Measure with your phone<ArrowUpRight size={16} aria-hidden="true"/></a>
     </section>
-    {connection.state!=='available'&&<div className="quiet-mcp-notice" aria-busy={connection.state==='checking'}>
-     <p>{connection.state==='checking'?'Checking the shared connection…':'The shared connection needs server setup. Check again after updating your server.'}</p>
+    {(connection.state!=='available'||(tab==='dot'&&!connection.dotReady))&&<div className="quiet-mcp-notice" aria-busy={connection.state==='checking'}>
+     <p>{connection.state==='checking'?'Checking the shared connection…':connection.state==='available'?'ChatGPT Dot sign-in needs the latest server update.': 'The shared connection needs server setup. Check again after updating your server.'}</p>
      <button disabled={connection.state==='checking'} onClick={()=>{dialog.current?.querySelector<HTMLInputElement>('#mcp-url')?.focus();setConnection({state:'checking',endpoint:null});setConnectionCheck(v=>v+1)}}><RefreshCw size={14} aria-hidden="true"/>{connection.state==='checking'?'Checking…':'Check again'}</button>
     </div>}
     <section className="quiet-mcp-setup" aria-label="Agent configuration">
-     <label className="quiet-mcp-label" htmlFor="mcp-url">Server URL{!connection.endpoint&&<span>Example address</span>}</label>
-     <div className="quiet-field"><input id="mcp-url" readOnly value={MCP_URL} onFocus={e=>e.currentTarget.select()}/><button className="quiet-icon" aria-label={copied==='url'?'URL copied':'Copy server URL'} title="Copy server URL" onClick={()=>copyText('url',MCP_URL)}>{copied==='url'?<Check size={16}/>:<Copy size={16}/>}</button></div>
+     <label className="quiet-mcp-label" htmlFor="mcp-url">Server URL{tab==='dot'&&!connection.dotReady&&<span>Server update needed</span>}</label>
+     <div className="quiet-field"><input id="mcp-url" readOnly value={displayedUrl} onFocus={e=>e.currentTarget.select()}/><button className="quiet-icon" aria-label={copied==='url'?'URL copied':'Copy server URL'} title="Copy server URL" onClick={()=>copyText('url',displayedUrl)}>{copied==='url'?<Check size={16}/>:<Copy size={16}/>}</button></div>
      <div className="quiet-tabs" role="tablist" aria-label="How to connect">{(Object.keys(snippets) as (keyof typeof snippets)[]).map(k=><button key={k} id={'mcp-tab-'+k} role="tab" aria-selected={tab===k} aria-controls="mcp-config" tabIndex={tab===k?0:-1} className={tab===k?'is-active':''} onClick={()=>{setTab(k);setCopied(null);setCopyError(false)}} onKeyDown={e=>{
       const keys=Object.keys(snippets) as (keyof typeof snippets)[];
       const index=keys.indexOf(k);
@@ -232,10 +235,10 @@ export default function CityMap(){
       if(next){e.preventDefault();setTab(next);setCopied(null);setCopyError(false);document.getElementById('mcp-tab-'+next)?.focus()}
      }}>{snippets[k].label}</button>)}</div>
      <div id="mcp-config" role="tabpanel" aria-labelledby={'mcp-tab-'+tab} className="quiet-snippet">
-      <div className="quiet-snippet-toolbar"><span>{tab==='code'?'Terminal command':tab==='app'?'Connector settings':tab==='json'?'MCP configuration':'Agent instructions'}</span><button onClick={()=>copyText('snippet',snippets[tab].text)} aria-label={'Copy '+snippets[tab].label}>{copied==='snippet'?<Check size={14}/>:<Copy size={14}/>}<span>{copied==='snippet'?'Copied':'Copy'}</span></button></div>
+      <div className="quiet-snippet-toolbar"><span>{tab==='dot'?'ChatGPT setup':tab==='code'?'Terminal command':tab==='app'?'Connector settings':tab==='json'?'MCP configuration':'Agent instructions'}</span><button onClick={()=>copyText('snippet',snippets[tab].text)} aria-label={'Copy '+snippets[tab].label}>{copied==='snippet'?<Check size={14}/>:<Copy size={14}/>}<span>{copied==='snippet'?'Copied':'Copy'}</span></button></div>
       <pre key={tab} tabIndex={0} className={tab==='prompt'?'is-prose':undefined} aria-label={snippets[tab].label+' content'}>{snippets[tab].text}</pre>
      </div>
-     <p className="quiet-mcp-hint">Replace <code>YOUR_SHARED_TOKEN</code> with the server&apos;s shared access key. Keep the personal agent&apos;s key private.</p>
+     <p className="quiet-mcp-hint">{tab==='dot'?'Choose OAuth in ChatGPT. Enter the shared access key only on the Quiet Compass authorization page.':<>For other MCP clients, replace <code>YOUR_SHARED_TOKEN</code> with the shared access key. Never use the private owner key.</>}</p>
      <p className={copyError?'quiet-copy-feedback is-error':'quiet-copy-feedback'} role="status">{copyError?'Could not copy. Select the text and copy it manually.':copied?(copied==='url'?'Server URL copied.':'Copied to clipboard.'):''}</p>
     </section>
     <details className="quiet-mcp-tools"><summary><span>Available tools <small>{sharedTools.length}</small></span><ChevronDown size={16} aria-hidden="true"/></summary><ul className="quiet-tools">{sharedTools.map(t=><li key={t.name}><code>{t.name}</code><span>{t.purpose}</span></li>)}</ul></details>

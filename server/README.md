@@ -154,6 +154,13 @@ health, session memory or guidance. It returns 503 until configured. Keep the
 owner connector at `/mcp` for the personal agent. Its shared queries also require
 a receipt; private `quiet_*` tools do not.
 
+**ChatGPT Dot setup.** Use `https://YOUR-SERVER/mcp/dot` and choose OAuth in the
+custom MCP server form. Dot uses dynamic client registration and a server-hosted
+consent page. Enter the rotated `QC_SHARED_API_TOKEN` only on that Quiet Compass
+page; never enter `QC_API_TOKEN` into ChatGPT. OAuth tokens are scoped to shared
+tools, expire, can be revoked, and are stored by hash. This endpoint is enabled
+when both shared access and the public server URL are configured.
+
 **Web setup.** Set `QC_SERVER_URL=https://YOUR-SERVER` in the web app's server
 runtime. The current default is `https://quiet-compass-server.onrender.com`; override it
 for another installation. The MCP panel checks public capability metadata and shows the connector
