@@ -111,4 +111,14 @@ This policy changes the previously public shared read; existing clients must mig
 
 The web map's MCP panel (`apps/quiet-compass/app/page.tsx`) shows an earlier proposal of these tools with different inputs (`bounds`, `zone_id`, `acoustic_summary`). The tool names match; the parameters above are the implemented ones.
 
+The web map can read the same released shared aggregates through `GET /v1/map/view`.
+This fixed San Francisco view covers 5 km around 37.77, -122.43 and the last 24 hours.
+It accepts a valid contribution receipt as its bearer capability and includes only real-device
+cohorts. The existing release threshold still applies. Browser measurement completion passes
+this capability through the web relay into a Secure, HttpOnly, SameSite=Strict cookie scoped
+to `/api/map`. The browser map receives GeoJSON, never the receipt or an account API key.
+The server checks the original 15-minute expiry on every read; retries do not renew it.
+Disconnecting phone sensors does not revoke an already-earned contribution receipt.
+Private native room walks are excluded. Direct REST and MCP queries keep their existing auth.
+
 Both shared query tools take `access_receipt` (the value from submission). Missing, invalid or expired receipts return an MCP tool error containing `contribution_required`. Private tools and independent external city data are unaffected. Device provenance is caller-asserted, not hardware-attested.

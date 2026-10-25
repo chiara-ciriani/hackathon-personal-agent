@@ -86,6 +86,22 @@ def build_shared_routes(layer: SharedLayer, settings: Settings) -> list[BaseRout
         )
         return model_response(result)
 
+    async def get_map_view(request: Request) -> Response:
+        # A receipt is a short-lived read capability, never an owner or shared API key.
+        # Fixed SF bounds and window; the full MCP/REST query APIs retain their own auth.
+        header = request.headers.get("authorization", "")
+        receipt = header[7:] if header.startswith("Bearer ") else None
+        try:
+            await run_in_threadpool(require_access, layer.store, receipt)
+        except ContributionRequired as exc:
+            return JSONResponse({"error": "contribution_required", "detail": str(exc)}, status_code=428,
+                                headers={"Cache-Control": "no-store"})
+        result = await run_in_threadpool(layer.sound_map, 37.77, -122.43, 5000, 1440)
+        result.aggregates = [a for a in result.aggregates if a.source == "device" and not a.has_synthetic]
+        response = model_response(result)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
     async def exchange_status(_: Request) -> Response:
         return JSONResponse({
             "protocol": "contribution-window-v1", "access_window_seconds": 900,
@@ -104,6 +120,7 @@ def build_shared_routes(layer: SharedLayer, settings: Settings) -> list[BaseRout
     )
     token = settings.api_token
     return [
+        Route("/v1/map/view", get_map_view, methods=["GET"]),
         Route("/v1/exchange/status", exchange_status, methods=["GET"]),
         Route("/v1/contributions", shared_guarded(post_contribution), methods=["POST"]),
         Route("/v1/areas/{area_id}", guarded(token, put_area), methods=["PUT"]),

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {useEffect, useRef, useState} from 'react';
 import {Button} from '../../components/ui/button';
 import {ArrowLeft, Check, Compass, Link2, Mic, ShieldCheck, Square} from 'lucide-react';
@@ -115,7 +116,7 @@ export default function PhoneMeasurement() {
         }
         if (capture.signal.aborted) return;
         setDelivered(confirmation?.status === 'complete');
-        if (confirmation?.status === 'complete') setMessage('Summary received. Your agent can now use it to check nearby options.');
+        if (confirmation?.status === 'complete') setMessage('Summary shared. You and your agent can view the shared map for 15 minutes.');
         else setMessage('This measurement did not grant access. Your agent can request another attempt.');
         setStage('waiting');
       }
@@ -203,6 +204,7 @@ export default function PhoneMeasurement() {
         {Date.parse(recommendation.expires_at)<=now && <p className="pm-notice">This recommendation needs a fresh measurement.</p>}
       </section>}
       {reading && m && <section className="pm-reading" aria-label="Latest phone measurement">
+        {delivered && <Link className="pm-button pm-primary" href="/">View shared map<ArrowLeft size={14}/></Link>}
         <div className="pm-reading-title"><span className="pm-label">LATEST MEASUREMENT</span><span>{delivered ? 'Received by server' : 'Delivery unconfirmed'}</span></div>
         <dl><div><dt>Level</dt><dd>{m.rms_dbfs.toFixed(1)}<small>dBFS</small></dd></div><div><dt>Variation</dt><dd>{m.frame_level_spread_db.toFixed(1)}<small>dB</small></dd></div><div><dt>Peaks</dt><dd>{m.peaks_per_min.toFixed(1)}<small>/ min</small></dd></div></dl>
         <p className="pm-detail">30 seconds · no clipping · relative, uncalibrated levels</p>

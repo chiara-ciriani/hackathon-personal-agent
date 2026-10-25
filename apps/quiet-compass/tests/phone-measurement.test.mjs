@@ -90,3 +90,12 @@ test('old server and expired phone links are reported honestly', async () => {
     assert.equal(response.status,code===404?503:410);
   }
 });
+
+test('completed sharing puts map access only in an HttpOnly cookie',async()=>{
+ const receipt='r'.repeat(43);
+ const response=await relayPhone(req(),'https://server.example','result',async()=>Response.json({status:'complete',map_access:receipt}));
+ assert.match(response.headers.get('set-cookie'),/qc_map_access=r+; HttpOnly; Secure; SameSite=Strict; Path=\/api\/map; Max-Age=900/);
+ assert.equal((await response.json()).map_access,undefined);
+ const failed=await relayPhone(req(),'https://server.example','result',async()=>Response.json({status:'failed',map_access:receipt}));
+ assert.equal(failed.headers.get('set-cookie'),null);
+});

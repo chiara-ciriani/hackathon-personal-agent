@@ -53,11 +53,14 @@ def test_agent_requests_phone_contributes_and_agent_gets_receipt(client, clock):
     # A second tab must not claim the same job or start another capture.
     assert phone(client, browser, "poll").json()["status"] == "waiting"
     payload = upload(job)
-    assert phone(client, browser, "result", payload).json()["status"] == "complete"
+    completed = phone(client, browser, "result", payload).json()
+    assert completed["status"] == "complete"
     result = status(client, agent)["job"]
     assert result["verification"] == "phone_reported_summary"
     receipt = result["contribution_result"]["access_receipt"]
     assert receipt and result["contribution_result"]["status"] == "withheld"
+    assert completed["map_access"] == receipt
+    assert client.get("/v1/map/view", headers={"Authorization": f"Bearer {receipt}"}).status_code == 200
     assert call(client, "query_sound_map", lat=37.77, lon=-122.42, access_receipt=receipt).get("isError") is not True
     assert phone(client, browser, "result", payload).json()["status"] == "complete"
     assert status(client, agent)["job"]["contribution_result"]["access_receipt"] == receipt
