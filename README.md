@@ -25,7 +25,7 @@ docs/                Implementation plan and product brief
   the walked route, and receives guidance from the connected agent. The existing app stays available.
 - **QC Walk Map (`ios-walk/`):** Alex’s standalone app from `feat/sound-field`, now included
   in `main`. Walk, see the local sound map, save and replay walks, and export summaries.
-  It works without a server; it does not upload to or receive commands from the agent.
+  It works locally without a server, or opens the `/measure` link to accept agent-requested sound analyses and return recommendations after approval.
   Start with [the iPhone setup](ios-walk/START_HERE.md).
 - **Agent mode (`/measure`):** open the link supplied by the connected agent on your phone,
   approve microphone/location/sharing once, and keep the page visible. The agent requests
@@ -34,7 +34,7 @@ docs/                Implementation plan and product brief
 
 The private MCP also includes `quiet_get_sound_map`, which uses positioned observations
 uploaded by the connected Quiet Compass app. Unmeasured floor cells remain unknown.
-QC Walk Map exports stay local; merging its code does not connect that app or Dot automatically.
+Local exports stay local. Agent mode shares private acoustic/spatial summaries after approval. Connecting Dot remains a separate deployment step.
 
 ## Quick start
 

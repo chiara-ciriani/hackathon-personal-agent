@@ -1,6 +1,6 @@
 export const sharedTools = [
   {name: 'connect_phone', purpose: 'Link phone', input: {}, returns: 'Private connection link and phone_session_id; the owner approves sensors on the phone'},
-  {name: 'request_phone_measurement', purpose: 'Measure', input: {phone_session_id: 'from connect_phone'}, returns: 'One 30-second request for the connected phone'},
+  {name: 'request_phone_measurement', purpose: 'Measure', input: {phone_session_id: 'from connect_phone'}, returns: 'Browser: 30-second sound summary. Native mode=walk: 30–180-second private room sound analysis'},
   {name: 'phone_measurement_status', purpose: 'Read result', input: {phone_session_id: 'from connect_phone'}, returns: 'Phone state, actual summary and contribution access receipt'},
   {name: 'send_phone_recommendation', purpose: 'Advise', input: {phone_session_id: 'from connect_phone', message: 'Short recommendation', action: 'move | stay | unknown', area_id: 'measured destination for a move'}, returns: 'Recommendation queued for the connected phone'},
   {name: 'submit_observation', purpose: 'Contribute', input: {
@@ -21,7 +21,7 @@ export function connectionGuide(endpoint) {
     endpoint: endpoint || 'Deploy the server, then use https://YOUR-SERVER/mcp/shared',
     headers: {Authorization: 'Bearer <QC_SHARED_API_TOKEN>'},
     access_window_seconds: 900,
-    workflow: 'To use a phone: call connect_phone and show the user its link. After phone-side approval, call request_phone_measurement and poll phone_measurement_status. Use its receipt with find_suitable_places, then send_phone_recommendation to return advice. For an existing summary: ask for permission to share a real acoustic summary. Submit it with share_consent=true. Use the returned access_receipt for shared queries until access_expires_at. After 15 minutes, contribute a new measurement. Retries never renew access. Never invent measurements.',
+    workflow: 'To use a phone: call connect_phone and show the user its link. After phone-side approval, call request_phone_measurement and poll phone_measurement_status. For an iPhone app connection, use mode=walk and duration_seconds=60, read the returned acoustic analysis and quiet_spots, then send_phone_recommendation with spot_index for a measured room destination. Private walks do not unlock shared queries. For browser measurements, use the receipt with find_suitable_places, then send_phone_recommendation to return advice. For an existing summary: ask for permission to share a real acoustic summary. Submit it with share_consent=true. Use the returned access_receipt for shared queries until access_expires_at. After 15 minutes, contribute a new measurement. Retries never renew access. Never invent measurements.',
     tools: sharedTools,
     excluded: ['raw_audio', 'personal_routes', 'health_data', 'identity'],
   };
@@ -47,7 +47,7 @@ export async function exchangeStatus(origin, fetcher = fetch) {
         data.mcp_path !== '/mcp/shared' || !Array.isArray(data.tools) ||
         sharedTools.some(tool => !data.tools.includes(tool.name))) return {state: 'incompatible', endpoint: null};
     if (data.shared_endpoint_enabled !== true) return {state: 'disabled', endpoint: null};
-    return {state: 'available', endpoint: `${base.origin}/mcp/shared`, ...(data.phone_measurement?.protocol === 'phone-bridge-v1' ? {phoneReady: true} : {})};
+    return {state: 'available', endpoint: `${base.origin}/mcp/shared`, ...(data.phone_measurement?.protocol === 'phone-bridge-v1' ? {phoneReady: true, nativeReady: data.phone_measurement?.native_protocol === 'phone-walk-v1'} : {})};
   } catch {
     return {state: 'unavailable', endpoint: null};
   }

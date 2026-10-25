@@ -93,6 +93,8 @@ nonisolated final class MotionTracker: @unchecked Sendable {
         arOverride.withLock { $0 = attitude.map { ($0, now) } }
     }
 
+    func stop() { manager.stopDeviceMotionUpdates(); setARAttitude(nil) }
+
     func start(onUpdate: @escaping @Sendable (Attitude) -> Void) -> ReferenceKind {
         guard manager.isDeviceMotionAvailable else { return .unavailable }
         let magnetic = CMMotionManager.availableAttitudeReferenceFrames().contains(.xMagneticNorthZVertical)

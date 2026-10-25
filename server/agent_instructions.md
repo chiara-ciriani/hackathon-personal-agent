@@ -3,6 +3,18 @@
 Use these instructions with the authenticated Quiet Compass MCP connector.
 The current service represents one participant and one selected recording session.
 
+## Analyze a room with the linked iPhone app
+
+After `connect_phone`, have the user choose Open iPhone app and approve access there.
+If `phone_measurement_status.client` is `native`, use
+`request_phone_measurement(phone_session_id, mode="walk", duration_seconds=60)`.
+On completion analyze `job.walk.analysis`, `current_level_dbfs` and `quiet_spots`.
+Any sound bearing is experimental FOA, never a verified source label or transcript.
+Send a returned `spot_index` with `send_phone_recommendation` for an evidence-backed move;
+otherwise choose stay/unknown. The app shows the advice and direction. Positions are local
+ARKit metres, not GPS or a traversable route. A native walk grants no shared receipt.
+Never fabricate a contribution or publish the private room map to obtain shared access.
+
 ## Measure with the user's connected phone
 
 For the browser phone loop, call `connect_phone`, show its link to the user to open on

@@ -25,6 +25,7 @@ from starlette.routing import Route
 from .api import ApiError, parse_body
 from .contracts import Contract, Goal, format_utc
 from .db import parse_ts
+from .phone_walk import NativeConsent, WalkResult, analyze_walk
 from .shared_contracts import ContributionUpload
 from .shared_layer import SharedLayer
 
@@ -104,7 +105,7 @@ class PhoneBridge:
             job = body["job"]
             if job and job["state"] in {"pending", "measuring"}:
                 age = (self.store.clock() - parse_ts(job["requested_at"])).total_seconds()
-                if age >= 90:
+                if age >= job.get("duration_seconds", 30) + 60:
                     job.update(state="failed", error="Phone did not finish in time. Request a new measurement.")
             result = operation(body, row["expires_at"])
             conn.execute(f"UPDATE phone_links SET body = ? WHERE {column} = ?", (json.dumps(body), self._hash(token)))
@@ -122,6 +123,8 @@ class PhoneBridge:
             return {
                 "status": "ready" if self._online(body) else "offline" if body["consented"] else "waiting_for_phone",
                 "expires_at": expires,
+                "client": body.get("client", "browser") if body["consented"] else None,
+                "modes": ["walk"] if body.get("client") == "native" else ["sample"],
                 "job": (
                     {k: v for k, v in body["job"].items() if k != "fingerprint"}
                     if not browser and body["job"]
@@ -137,35 +140,59 @@ class PhoneBridge:
             raise PhoneError("Microphone and summary sharing must be approved on the phone", 422)
 
         def approve(body, expires):
-            body.update(consented=True, last_seen=self.store._now())
+            if body["consented"] and body.get("client") == "native":
+                raise PhoneError("This connection belongs to the iPhone app")
+            body.update(consented=True, client="browser", last_seen=self.store._now())
             return {"status": "ready", "expires_at": expires}
 
         return self._update(token, True, approve)
 
-    def request(self, token: str):
+    def native_consent(self, token: str, consent: NativeConsent):
+        if not consent.microphone_consent or not consent.spatial_consent:
+            raise PhoneError("Approve microphone and private room-map sharing on the phone", 422)
+
+        def approve(body, expires):
+            if body["consented"] and body.get("client") != "native":
+                raise PhoneError("This connection belongs to the browser")
+            body.update(consented=True, client="native", last_seen=self.store._now())
+            return {"status": "ready", "expires_at": expires}
+
+        return self._update(token, True, approve)
+
+    def request(self, token: str, mode: str = "sample", duration_seconds: int = 60):
         def create(body, expires):
             if not self._online(body):
                 raise PhoneError("Phone is not connected. Ask the user to open the link and approve access.")
+            expected = "walk" if body.get("client") == "native" else "sample"
+            if mode != expected:
+                raise PhoneError(f"This phone supports mode={expected}; check phone_measurement_status")
+            duration = duration_seconds if mode == "walk" else 30
+            if not 30 <= duration <= 180:
+                raise PhoneError("Walk analysis must last 30 to 180 seconds", 422)
             job = body["job"]
             if job and job["state"] in {"pending", "measuring"}:
                 return {"status": job["state"], "request_id": job["request_id"], "expires_at": expires}
-            if (parse_ts(expires) - self.store.clock()).total_seconds() < 45:
+            if (parse_ts(expires) - self.store.clock()).total_seconds() < duration + 30:
                 raise PhoneError("Not enough connection time left; reconnect the phone")
             body["recommendation"] = None
-            body["job"] = {"request_id": str(uuid4()), "state": "pending", "requested_at": self.store._now()}
+            body["job"] = {"request_id": str(uuid4()), "state": "pending", "requested_at": self.store._now(),
+                           "mode": mode, "duration_seconds": duration}
             return {
                 "status": "pending",
                 "request_id": body["job"]["request_id"],
-                "duration_seconds": 30,
+                "duration_seconds": duration,
+                "mode": mode,
                 "next": "Poll phone_measurement_status after 5 seconds. The phone submits automatically.",
             }
 
         return self._update(token, False, create)
 
-    def poll(self, token: str):
+    def poll(self, token: str, native: bool = False):
         def poll(body, expires):
             if not body["consented"]:
                 raise PhoneError("Approve access on the phone before listening for agent requests", 403)
+            if (body.get("client") == "native") != native:
+                raise PhoneError("Use the connected phone client", 403)
             body["last_seen"] = self.store._now()
             job = body["job"]
             if job and job["state"] == "pending":
@@ -173,7 +200,8 @@ class PhoneBridge:
                 return {
                     "status": "measure",
                     "request_id": job["request_id"],
-                    "duration_seconds": 30,
+                    "duration_seconds": job.get("duration_seconds", 30),
+                    "mode": job.get("mode", "sample"),
                     "expires_at": expires,
                     "recommendation": None,
                 }
@@ -210,7 +238,8 @@ class PhoneBridge:
 
         def validate(body, _):
             job = body["job"]
-            if not body["consented"] or not job or job["request_id"] != str(result.request_id):
+            if (body.get("client") == "native" or not body["consented"]
+                    or not job or job["request_id"] != str(result.request_id)):
                 raise PhoneError("No matching consented measurement request")
             if job["state"] in {"complete", "failed"} and job.get("fingerprint") == fingerprint:
                 return job
@@ -255,6 +284,59 @@ class PhoneBridge:
 
         return self._update(token, True, finish)
 
+    def complete_walk(self, token: str, result: WalkResult):
+        if bool(result.error) == bool(result.walk):
+            raise PhoneError("Send one walk summary or a failure", 422)
+        fingerprint = hashlib.sha256(result.model_dump_json().encode()).hexdigest()
+
+        def finish(body, _):
+            job = body["job"]
+            if (not body["consented"] or body.get("client") != "native" or not job
+                    or job.get("mode") != "walk" or job["request_id"] != str(result.request_id)):
+                raise PhoneError("No matching native walk request")
+            if job["state"] in {"complete", "failed"} and job.get("fingerprint") == fingerprint:
+                return {"status": job["state"]}
+            if job["state"] != "measuring":
+                raise PhoneError("Walk is not active or was already completed")
+            if result.walk:
+                try:
+                    analysis = analyze_walk(result.walk, parse_ts(job["requested_at"]), self.store.clock(),
+                                            job["duration_seconds"])
+                except ValueError as exc:
+                    raise PhoneError(str(exc), 422) from exc
+                job.update(state="complete", walk=analysis, completed_at=self.store._now())
+            else:
+                job.update(state="failed", error="The phone could not analyze this walk. Check tracking and audio.")
+            job["fingerprint"] = fingerprint
+            return {"status": job["state"]}
+
+        return self._update(token, True, finish)
+
+    def recommend_walk(self, token, job, message, action, spot_index, max_walk_minutes, return_by):
+        if (self.store.clock() - parse_ts(job["completed_at"])).total_seconds() > 900:
+            raise PhoneError("Request a fresh walk before recommending")
+        destination = None
+        if action == "move":
+            spot = next((s for s in job["walk"]["quiet_spots"] if s["spot_index"] == spot_index), None)
+            if (not spot or spot["level_db"] > job["walk"]["current_level_dbfs"] - 3
+                    or spot["distance_m"] < 1.5 or spot["distance_m"] / 60 > max_walk_minutes):
+                raise PhoneError("No sufficiently quieter measured spot supports this move; report unknown")
+            if return_by and 2 * spot["distance_m"] > (return_by - self.store.clock()).total_seconds():
+                raise PhoneError("The estimated round trip does not fit the return time")
+            destination = {**spot, "request_id": job["request_id"], "kind": "room", "route": "straight-line"}
+        elif spot_index is not None:
+            raise PhoneError("Only a move may name a spot", 422)
+        recommendation = {"message": message.strip(), "action": action, "destination": destination,
+                          "created_at": self.store._now(), "expires_at": self.status(token)["expires_at"]}
+
+        def publish(body, _):
+            if body["job"]["request_id"] != job["request_id"]:
+                raise PhoneError("A new walk started; reassess before recommending")
+            body["recommendation"] = recommendation
+            return {"status": "queued_for_phone", "recommendation": recommendation}
+
+        return self._update(token, False, publish)
+
     def recommend(
         self,
         token: str,
@@ -264,6 +346,7 @@ class PhoneBridge:
         goal: Goal,
         max_walk_minutes: int,
         return_by: datetime | None,
+        spot_index: int | None = None,
     ):
         if not 1 <= len(message.strip()) <= 600 or action not in {"move", "stay", "unknown"}:
             raise PhoneError("A brief recommendation and valid action are required", 422)
@@ -271,6 +354,12 @@ class PhoneBridge:
             raise PhoneError("Use a valid walk limit and a timezone-aware return time", 422)
         current = self.status(token)
         job = current["job"]
+        if job and job["state"] == "complete" and job.get("mode") == "walk":
+            if area_id is not None:
+                raise PhoneError("Use spot_index for a room destination", 422)
+            return self.recommend_walk(token, job, message, action, spot_index, max_walk_minutes, return_by)
+        if spot_index is not None:
+            raise PhoneError("Room spots require a native walk", 422)
         grant = job.get("contribution_result", {}) if job else {}
         if not job or job["state"] != "complete" or not self.store.has_access(grant.get("access_receipt")):
             raise PhoneError("Get a fresh phone measurement before recommending")
@@ -353,18 +442,24 @@ def register_phone_tools(mcp: MCPServer, bridge: PhoneBridge) -> None:
             title="Measure through the connected phone", readOnlyHint=False, destructiveHint=False, openWorldHint=False
         )
     )
-    def request_phone_measurement(phone_session_id: str) -> dict[str, Any]:
+    def request_phone_measurement(
+        phone_session_id: str, mode: Literal["sample", "walk"] = "sample", duration_seconds: int = 60,
+    ) -> dict[str, Any]:
         """Ask the connected phone to measure 30 seconds. Requires the user's phone consent.
-        The phone computes a coarse summary and contributes automatically under that consent.
+        Use mode=walk for the linked iPhone app: 30–180 seconds of private room mapping and
+        sound analysis, no shared-query receipt. Browser mode=sample computes a 30-second
+        coarse summary and contributes automatically under that consent.
         Poll phone_measurement_status for the result and access_receipt; never invent readings.
         Repeating this call while pending returns the same request.
         """
-        return run(bridge.request, phone_session_id)
+        return run(bridge.request, phone_session_id, mode, duration_seconds)
 
     @mcp.tool(annotations=ToolAnnotations(title="Read the phone's measurement", readOnlyHint=True, openWorldHint=False))
     def phone_measurement_status(phone_session_id: str) -> dict[str, Any]:
         """Read actual phone state/result. A completed job contains contribution_result with
-        access_receipt and access_expires_at for 15 minutes of shared queries. Pending/offline
+        access_receipt and access_expires_at for 15 minutes of shared queries in browser mode.
+        Native mode=walk instead returns private acoustic analysis, measured quiet_spots and
+        an optional experimental sound bearing. It never grants shared access. Pending/offline
         is not success. Poll at most every 5 seconds. No need to resubmit the returned summary.
         """
         return run(bridge.status, phone_session_id)
@@ -385,6 +480,7 @@ def register_phone_tools(mcp: MCPServer, bridge: PhoneBridge) -> None:
         goal: Goal = "rest",
         max_walk_minutes: int = 10,
         return_by: datetime | None = None,
+        spot_index: int | None = None,
     ) -> dict[str, Any]:
         """Display a recommendation on the user's connected phone after measuring and querying
         find_suitable_places. A move must cite a returned area_id with recent real data from the
@@ -392,8 +488,11 @@ def register_phone_tools(mcp: MCPServer, bridge: PhoneBridge) -> None:
         Include the user's return_by deadline if known. If evidence is missing, use action
         unknown and explain the gap, never invent a quieter destination. This does not start
         navigation or schedule background monitoring; the user decides whether to move.
+        For a native walk, use a returned quiet_spots spot_index instead of area_id; it must
+        be at least 3 dB quieter than the last reading. Room maps stay private.
         """
-        return run(bridge.recommend, phone_session_id, message, action, area_id, goal, max_walk_minutes, return_by)
+        return run(bridge.recommend, phone_session_id, message, action, area_id, goal,
+                   max_walk_minutes, return_by, spot_index)
 
 
 def build_phone_routes(bridge: PhoneBridge) -> list[Route]:
@@ -406,6 +505,14 @@ def build_phone_routes(bridge: PhoneBridge) -> list[Route]:
             action = request.path_params["action"]
             if action == "status":
                 data = await run_in_threadpool(bridge.status, token, True)
+            elif action == "native-consent":
+                consent = await parse_body(request, NativeConsent)
+                data = await run_in_threadpool(bridge.native_consent, token, consent)
+            elif action == "native-poll":
+                data = await run_in_threadpool(bridge.poll, token, True)
+            elif action == "native-result":
+                result = await parse_body(request, WalkResult)
+                data = await run_in_threadpool(bridge.complete_walk, token, result)
             elif action == "consent":
                 consent = await parse_body(request, Consent)
                 data = await run_in_threadpool(bridge.consent, token, consent)

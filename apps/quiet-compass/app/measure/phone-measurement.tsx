@@ -5,10 +5,10 @@ import {Button} from '../../components/ui/button';
 import {ArrowLeft, Check, Compass, Link2, Mic, ShieldCheck, Square} from 'lucide-react';
 import {connectPhoneSensors, type PhoneSensor, type Reading} from '../../lib/browser-measurement';
 
-type Stage = 'unlinked' | 'checking' | 'ready' | 'connecting' | 'waiting' | 'measuring' | 'sending' | 'disconnected';
+type Stage = 'unlinked' | 'checking' | 'ready' | 'connecting' | 'waiting' | 'measuring' | 'sending' | 'disconnected' | 'native';
 type Recommendation = {message: string; action: 'move' | 'stay' | 'unknown'; expires_at: string; destination: {name: string | null; lat: number; lon: number; walk_minutes: number; age_minutes: number} | null};
-type PhoneReply = {status: string; error?: string; expires_at?: string; request_id?: string; duration_seconds?: number; recommendation?: Recommendation};
-const agentInstruction = 'Connect my phone with Quiet Compass using connect_phone and give me the link. After I approve access, use request_phone_measurement and wait for phone_measurement_status. Use the access_receipt to find options for my goal, walking limit and return time. Send your recommendation in English with send_phone_recommendation. If comparable data is missing, say so; never invent a quieter place.';
+type PhoneReply = {status: string; client?: 'native' | 'browser'; error?: string; expires_at?: string; request_id?: string; duration_seconds?: number; recommendation?: Recommendation};
+const agentInstruction = 'Connect my phone with Quiet Compass using connect_phone and give me the link. I want to open the iPhone app from that link for room mapping. After I approve access, check phone_measurement_status. If client is native, call request_phone_measurement with mode=walk and duration_seconds=60. Read the acoustic analysis and quiet_spots, then use send_phone_recommendation with spot_index to recommend a measured quieter spot. The app displays the advice and direction. If I choose the browser, use mode=sample and wait for phone_measurement_status. Use the access_receipt to find options for my goal, walking limit and return time. Send your recommendation in English with send_phone_recommendation. If comparable data is missing, say so; never invent a quieter place.';
 
 export default function PhoneMeasurement() {
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
@@ -158,7 +158,7 @@ export default function PhoneMeasurement() {
   const labels: Record<Stage, string> = {
     unlinked: 'Not linked', checking: 'Checking link', ready: 'Ready to connect',
     connecting: 'Waiting for permission', waiting: 'Connected', measuring: 'Measuring',
-    sending: 'Sending summary', disconnected: 'Disconnected',
+    sending: 'Sending summary', disconnected: 'Disconnected', native: 'Continue in the iPhone app',
   };
   const m = reading?.contribution.measurement;
   return <main className="phone-measure" lang="en">
@@ -167,7 +167,7 @@ export default function PhoneMeasurement() {
       <a className="pm-back" href="/"><ArrowLeft size={14}/>Map</a>
     </header>
     <div className="pm-content">
-      <div className="pm-intro"><h1>Connect your phone.</h1><p>Your agent measures the sound around you and helps you decide where to go.</p></div>
+      <div className="pm-intro"><h1>Connect your phone.</h1><p>Link once. Your agent analyzes the sound, finds measured quieter spots and sends advice back.</p></div>
       <section className="pm-panel" aria-label="Phone connection">
         <div className="pm-status"><span className={active ? 'pm-dot is-active' : 'pm-dot'}/><span>{labels[stage]}</span>{active && <small>{remaining} min left</small>}</div>
         <div className="pm-dial" aria-hidden="true">
@@ -178,9 +178,17 @@ export default function PhoneMeasurement() {
           </div>
         </div>
         <div className="pm-sr-only" role="progressbar" aria-label="Measurement progress in seconds" aria-valuemin={0} aria-valuemax={30} aria-valuenow={Math.floor(seconds)}/>
-        <p className="pm-hint" role="status">{stage === 'unlinked' ? 'Open the connection link from your agent on this phone.' : stage === 'checking' ? 'Checking your private connection link…' : stage === 'ready' ? 'Allow your agent to request 30-second measurements.' : stage === 'connecting' ? 'Allow microphone and location access in your browser.' : stage === 'measuring' ? 'Requested by your agent. Keep your phone still and this page open.' : stage === 'sending' ? 'Sending the summary directly to your agent.' : stage === 'waiting' ? 'Ready for your agent. Keep this page open and your phone unlocked.' : 'Ask your agent for a new connection link.'}</p>
+        <p className="pm-hint" role="status">{stage === 'unlinked' ? 'Open the connection link from your agent on this phone.' : stage === 'checking' ? 'Checking your private connection link…' : stage === 'ready' ? 'Allow your agent to request 30-second measurements.' : stage === 'connecting' ? 'Allow microphone and location access in your browser.' : stage === 'measuring' ? 'Requested by your agent. Keep your phone still and this page open.' : stage === 'sending' ? 'Sending the summary directly to your agent.' : stage === 'waiting' ? 'Ready for your agent. Keep this page open and your phone unlocked.' : stage === 'native' ? 'Approve the connection in QC Walk Map. Your agent can then analyze the room and send advice there.' : 'Ask your agent for a new connection link.'}</p>
+        {(stage === 'ready' || stage === 'native') && <div className="pm-native">
+          <span className="pm-label">ROOM MAP + SOUND ANALYSIS</span>
+          <p>Use QC Walk Map for a measured room map, sound analysis and directions from your agent.</p>
+          <a className="pm-button pm-primary" href={'quietcompass-walk://connect#pair=' + token.current} onClick={()=>setStage('native')}>Open iPhone app<Compass size={15}/></a>
+          <p className="pm-detail">Requires the updated QC Walk Map app installed on your iPhone. Approve access in the app; no audio or camera images are sent.</p>
+          {stage === 'native' && <Button className="pm-button pm-secondary" onClick={()=>setStage('ready')}>Use browser instead</Button>}
+        </div>}
+        {stage === 'ready' && <p className="pm-label">OR MEASURE SOUND IN YOUR BROWSER</p>}
         {stage === 'ready' && <label className="pm-consent"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/><span>Allow measurements and automatic sharing of sound summaries, approximate area and time with Quiet Compass for up to 15 minutes.</span></label>}
-        {stage === 'ready' && <Button className="pm-button pm-primary" onClick={connect} disabled={!consent}>Connect phone</Button>}
+        {stage === 'ready' && <Button className="pm-button pm-primary" onClick={connect} disabled={!consent}>Connect browser</Button>}
         {(active || stage === 'connecting') && <Button className="pm-button pm-secondary" onClick={()=>stop()}><Square size={13}/>Disconnect</Button>}
         {(stage === 'unlinked' || stage === 'disconnected') && <Button className="pm-button pm-primary" onClick={copySetup}>Copy connection request<Link2 size={14}/></Button>}
         {stage === 'unlinked' && serverReady === false && <p className="pm-notice">Server update needed before phones can connect.</p>}
@@ -199,7 +207,7 @@ export default function PhoneMeasurement() {
         <dl><div><dt>Level</dt><dd>{m.rms_dbfs.toFixed(1)}<small>dBFS</small></dd></div><div><dt>Variation</dt><dd>{m.frame_level_spread_db.toFixed(1)}<small>dB</small></dd></div><div><dt>Peaks</dt><dd>{m.peaks_per_min.toFixed(1)}<small>/ min</small></dd></div></dl>
         <p className="pm-detail">30 seconds · no clipping · relative, uncalibrated levels</p>
       </section>}
-      <details className="pm-how"><summary>How it works</summary><ol><li>Your agent creates a private link. You approve access on your phone once.</li><li>The agent requests a measurement. Your phone sends a sound summary, approximate area and time automatically.</li><li>The agent checks nearby options and sends a recommendation here. Missing data stays unknown.</li></ol><p>Quiet Compass must be connected to your agent. This page does not install that connection.</p></details>
+      <details className="pm-how"><summary>How it works</summary><ol><li>Your agent creates a private link. Open the iPhone app for room mapping, or choose browser sound measurements. Approve access once.</li><li>The agent requests an analysis. The app returns private acoustic levels and a room map. The browser shares a coarse sound summary.</li><li>The agent sends a recommendation to the connected app or browser. The app shows a direction only to a measured spot; missing data stays unknown.</li></ol><p>Quiet Compass must be connected to your agent. This page does not install that connection.</p></details>
     </div>
   </main>;
 }

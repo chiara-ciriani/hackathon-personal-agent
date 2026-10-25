@@ -25,3 +25,7 @@ Integrado `origin/main` en `codex/mcp-panel-polish` hasta `ceda23f` (merge `50cf
 | `git diff --check` | PASS. |
 
 La conexión real de la vista local devolvió «Server unavailable». Las pruebas de interfaz con respuestas simuladas no prueban la disponibilidad del servidor ni una medición física. No se alteraron contratos, credenciales ni protocolos MCP.
+
+## Integración en main
+
+Por indicación del usuario, el trabajo se dejó en `main` y se combinó con `origin/main` hasta `3104755`, manteniendo el nuevo panel, la carga progresiva del mapa y los datos de lugares. Después de resolver los conflictos: compilación PASS, 47 pruebas PASS, ESLint de `app/page.tsx` PASS y `git diff --check` PASS. La actualización de main también resuelve el error de lint previo descrito arriba. Los cambios locales pendientes de iOS y archivos ajenos se conservaron sin agregarlos al commit.

@@ -4,9 +4,11 @@ import UIKit
 struct ContentView: View {
     @State private var model = CompassModel()
     @State private var showAdvanced = false
+    @State private var agent = AgentLink()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        QuietMapView(model: model, showAdvanced: $showAdvanced)
+        QuietMapView(model: model, agent: agent, showAdvanced: $showAdvanced)
             .sheet(isPresented: $showAdvanced) {
                 NavigationStack {
                     AdvancedView(model: model)
@@ -14,9 +16,11 @@ struct ContentView: View {
                 }
             }
             .task {
+                try? await Task.sleep(for: .milliseconds(200))
+                guard !agent.hasLink, !Task.isCancelled else { return }
                 await model.start()
                 // Mapping starts on its own: open the app and walk.
-                if !model.isRecording { model.startWalk() }
+                if !agent.hasLink && model.stream.sessionRunning && !Task.isCancelled { model.startWalk() }
             }
             .task(id: model.autoLog) {
                 while model.autoLog, !Task.isCancelled {
@@ -27,6 +31,13 @@ struct ContentView: View {
             .onChange(of: model.settings) { model.settingsChanged() }
             .onChange(of: model.threshold) { model.settingsChanged() }
             .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+            .onOpenURL { url in showAdvanced = false; agent.receive(url, model: model) }
+            .onChange(of: scenePhase) {
+                if scenePhase == .background {
+                    if agent.hasLink { agent.disconnect(model: model) } else { model.stopSensors() }
+                    UIApplication.shared.isIdleTimerDisabled = false
+                } else if scenePhase == .active { UIApplication.shared.isIdleTimerDisabled = true }
+            }
     }
 }
 

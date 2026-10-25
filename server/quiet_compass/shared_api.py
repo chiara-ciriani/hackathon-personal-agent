@@ -92,7 +92,8 @@ def build_shared_routes(layer: SharedLayer, settings: Settings) -> list[BaseRout
             "shared_endpoint_enabled": bool(settings.shared_api_token), "mcp_path": "/mcp/shared",
             "tools": ["connect_phone", "request_phone_measurement", "phone_measurement_status",
                       "send_phone_recommendation", "submit_observation", "query_sound_map", "find_suitable_places"],
-            "phone_measurement": {"protocol": "phone-bridge-v1", "session_seconds": 900, "duration_seconds": 30},
+            "phone_measurement": {"protocol": "phone-bridge-v1", "session_seconds": 900, "duration_seconds": 30,
+                                  "native_protocol": "phone-walk-v1"},
         }, headers={"Cache-Control": "no-store"})
 
     cors = Middleware(

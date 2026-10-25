@@ -1,4 +1,4 @@
-const ACTIONS = new Set(['status', 'consent', 'poll', 'result', 'disconnect']);
+const ACTIONS = new Set(['status', 'consent', 'poll', 'result', 'disconnect', 'native-consent', 'native-poll', 'native-result']);
 
 // Browser capability only, never a shared or owner API key. Fixed upstream routes.
 // No credentials in URLs, no public server credential, no persistent browser storage.
@@ -24,7 +24,7 @@ export async function relayPhone(request, origin, action, fetcher = fetch) {
       const {value, done} = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > 8192) { await reader.cancel(); return reply({error: 'Summary exceeds the size limit.'}, 413); }
+      if (size > (action === 'native-result' ? 32768 : 8192)) { await reader.cancel(); return reply({error: 'Summary exceeds the size limit.'}, 413); }
       chunks.push(value);
     }
     const bytes = new Uint8Array(size); let offset = 0;
@@ -43,7 +43,8 @@ export async function relayPhone(request, origin, action, fetcher = fetch) {
     if (!['ready', 'offline', 'waiting_for_phone', 'measure', 'waiting', 'complete', 'failed', 'disconnected'].includes(result.status)) throw new Error();
     // Only phone-facing fields; never expose agent-side results or capabilities here.
     return reply({status: result.status, expires_at: result.expires_at,
-      ...(action === 'poll' && result.recommendation ? {recommendation: result.recommendation} : {}),
-      ...(action === 'poll' && result.status === 'measure' ? {request_id: result.request_id, duration_seconds: result.duration_seconds} : {})}, 200);
+      ...(action === 'status' ? {client: result.client} : {}),
+      ...(['poll', 'native-poll'].includes(action) && result.recommendation ? {recommendation: result.recommendation} : {}),
+      ...(['poll', 'native-poll'].includes(action) && result.status === 'measure' ? {request_id: result.request_id, duration_seconds: result.duration_seconds, mode: result.mode} : {})}, 200);
   } catch { return reply({error: 'Server unavailable. Your phone will disconnect and turn off the microphone.'}, 502); }
 }

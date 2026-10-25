@@ -76,6 +76,14 @@ nonisolated final class AudioCapture: NSObject, AVCaptureAudioDataOutputSampleBu
     }
 
     /// Restart after an interruption (e.g. if starting ARKit's camera stopped this session).
+    func stop() {
+        queue.async {
+            self.session.stopRunning()
+            self.observers.forEach { NotificationCenter.default.removeObserver($0) }
+            self.observers.removeAll()
+        }
+    }
+
     func restart() {
         queue.async {
             if !self.session.isRunning { self.session.startRunning() }

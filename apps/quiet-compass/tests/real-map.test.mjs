@@ -52,3 +52,10 @@ test('311 errors remain errors, not empty successful readings',async()=>{
  await assert.rejects(loadNoiseReports(async()=>({ok:false,status:503})));
  await assert.rejects(loadNoiseReports(async()=>({ok:true,json:async()=>({error:'bad'})})));
 });
+
+test('311 loader rejects old and future observations even if the source returns them',async()=>{
+ const rows=['2026-10-23','2026-08-01','2026-12-01'].map(date=>({lat:'37.77',long:'-122.43',requested_datetime:date+'T12:00:00'}));
+ const r=await loadNoiseReports(async()=>({ok:true,json:async()=>rows}),now);
+ assert.equal(r.features.length,1);
+ assert.equal(r.features[0].properties.observedOn,'2026-10-23T12:00:00');
+});

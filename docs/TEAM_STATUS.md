@@ -21,6 +21,7 @@ Last updated: October 24, 2026, 16:45 PT. Update this file whenever you start or
 | Area | Status | Where |
 | --- | --- | --- |
 | Walk app + automatic phone mode | Alex’s latest `feat/sound-field` integrated alongside `ios/` and `/measure`, including the simple Quiet Map screen and automatic local mapping. Native unsigned build and math checks pass; physical phone/Dot verification pending. Exporter corrected for native elapsed-second timestamps. | `ios-walk/`, `tools/walk_map.py`, `docs/AGENT_PHONE_LOOP.md` |
+| Native app linked to the agent | `/measure` opens QC Walk Map; scoped consent, agent-requested room analysis, private acoustic statistics, measured spot advice and direction. Xcode build and protocol tests pass; physical phone/Dot pending. | `ios-walk/Agent*`, `server/quiet_compass/phone_walk.py` |
 | Agent-controlled phone page | `/measure`, scoped phone sessions, four MCP tools, automatic contributions and advice displayed on the phone. Software tests; real phone/Dot verification pending. | `docs/AGENT_PHONE_LOOP.md` |
 | Contracts | Phone ↔ server schema, HTTP API and MCP tool reference | `contracts/` |
 | Server: personal memory | Ingest API, the `quiet_*` MCP tools, scoring, guidance; tests pass | `server/quiet_compass/{api,db,scoring,mcp_server}.py` |

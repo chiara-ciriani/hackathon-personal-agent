@@ -20,12 +20,16 @@ targets:
           - "*.zip"
           - "project.yml"
           - "SelfCheck/**"
+          - "AgentCheck/**"
           - "Generated/**"
           - "QuietCompassWalk.xcodeproj/**"
     info:
       path: Generated/Info.plist
       properties:
         CFBundleDisplayName: QC Walk Map
+        CFBundleURLTypes:
+          - CFBundleURLName: com.hackathon.quietcompass.walk.agent
+            CFBundleURLSchemes: [quietcompass-walk]
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiredDeviceCapabilities: [arkit]
