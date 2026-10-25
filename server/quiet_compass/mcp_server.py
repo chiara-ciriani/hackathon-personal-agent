@@ -845,7 +845,7 @@ def build_mcp(
             quote observed_on; only events above that monitor's threshold are published, so
             it is not the typical level; the dataset has no declared license).
             cad_noise_calls: NOISE NUISANCE police dispatches per masked intersection, last
-            30 days (evidence=proxy, count): complaints, not levels.
+            24 hours (evidence=proxy, count; published about a day late): complaints, not levels.
             noisecapture: ~100 m cells of crowdsourced, mostly uncalibrated phone
             measurements 2017-2025 (evidence=measured_crowdsourced, quality=
             measured_crowdsourced_uncalibrated; median_level_db is the median 5-minute

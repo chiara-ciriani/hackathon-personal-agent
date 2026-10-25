@@ -151,7 +151,7 @@
 .quiet-card-bar{margin-top:12px}
 .quiet-note{font-size:11px;letter-spacing:0;background:none;color:#737373}
 .quiet-intensity em{font-size:12px;color:#404040}
-.quiet-layers li em{font-size:11px}
+.quiet-layers li span{font-size:13px;color:#171717}.quiet-layers li em{font-size:12px;line-height:16px;color:#5f5f66}
 .quiet-history li{grid-template-columns:1fr auto auto;align-items:center;gap:0 14px;padding:11px 0}
 .quiet-history li span{font-size:13px;color:#171717;display:block}
 .quiet-history li b{font-weight:500;font-size:12px;color:#525252;text-transform:capitalize;display:flex;align-items:center;gap:6px}

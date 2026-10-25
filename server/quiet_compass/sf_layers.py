@@ -90,7 +90,8 @@ CAVEATS: dict[str, str] = {
     ),
     "cad_noise_calls": (
         "Count of closed police dispatches classified NOISE NUISANCE at this published (masked) intersection "
-        "over the last 30 days: complaints, not measurements, and they depend on who calls"
+        "over the last 24 hours: complaints, not measurements, and they depend on who calls. Closed calls are "
+        "published about a day late, so the newest may be missing"
     ),
     "noisecapture": (
         "Crowdsourced phone measurements from NoiseCapture volunteers, mostly uncalibrated (several dB of error), "
@@ -118,7 +119,7 @@ CACHE_TTL = {
     "noisecapture": timedelta(hours=24),
 }
 SFO_EVENTS_LOOKBACK_DAYS = 365
-CAD_LOOKBACK_DAYS = 30
+CAD_LOOKBACK_HOURS = 24
 SFO_LOOKBACK_DAYS = 120
 SFO_MAX_DISTANCE_M = 5000
 SFO_MAX_MONITORS = 2
@@ -398,7 +399,7 @@ def sfo_event_monitors(
     return out
 
 
-def cad_noise_areas(rows: Iterable[dict[str, Any]], window_days: int) -> list[LayerPoint]:
+def cad_noise_areas(rows: Iterable[dict[str, Any]], window_hours: int) -> list[LayerPoint]:
     """Counts of NOISE NUISANCE dispatches per published (masked) intersection point.
 
     Uses the intersection exactly as published; calls flagged ``sensitive_call`` and duplicates by
@@ -424,7 +425,7 @@ def cad_noise_areas(rows: Iterable[dict[str, Any]], window_days: int) -> list[La
         out.append(LayerPoint(
             "cad_noise_calls", "noise_nuisance_calls", name.replace("\\", "/"), lat, lon, "proxy",
             CAVEATS["cad_noise_calls"], DATASETS["cad"],
-            detail=f"{len(items)} calls in the last {window_days} days (masked intersection); latest {last}",
+            detail=f"{len(items)} calls in the last {window_hours} hours (masked intersection); latest {last}",
             observed_on=last or None, count=len(items),
         ))
     return out
@@ -563,7 +564,7 @@ class SfLayers:
             })
             return sfo_event_monitors(monitors, events, SFO_EVENTS_LOOKBACK_DAYS)
         if layer == "cad_noise_calls":
-            since_local = (today_local - timedelta(days=CAD_LOOKBACK_DAYS)).isoformat(timespec="seconds")
+            since_local = (today_local - timedelta(hours=CAD_LOOKBACK_HOURS)).isoformat(timespec="seconds")
             rows = self._get("cad", {
                 "$select": "cad_number,received_datetime,intersection_name,intersection_point,sensitive_call",
                 "$where": (
@@ -572,7 +573,7 @@ class SfLayers:
                 ),
                 "$limit": "5000",
             })
-            return cad_noise_areas(rows, CAD_LOOKBACK_DAYS)
+            return cad_noise_areas(rows, CAD_LOOKBACK_HOURS)
         if layer == "noisecapture":
             try:
                 collection = json.loads(Path(self._noisecapture_path).read_text(encoding="utf-8"))  # type: ignore[arg-type]
