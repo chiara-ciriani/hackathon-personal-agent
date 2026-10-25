@@ -25,6 +25,7 @@ The default **Quiet Map** screen starts mapping after permission prompts, shows 
 | `AudioCapture.swift` | Audio-only `AVCaptureSession` that requests FOA. Converts buffers to per-channel Float (interleaved or not; Float32, Int16 or Int32) and describes the format and layout tag |
 | `DOA.swift` | Pseudo-intensity DOA: vDSP FFT, 200–4000 Hz band, confidence, smoothing over about 0.5 s, channel-order and axis assumptions |
 | `Motion.swift` | CoreMotion attitude (magnetic north if available) and rotation from device frame to world frame. While ARKit runs, its camera orientation replaces CoreMotion's |
+| `EdgeGlow.swift` | Screen-edge glow toward the target (left, right, behind, or the whole border breathing when you face it); the Quiet Map shows it when the spot you stand on is loud, or when the agent advised a move |
 | `ModeViews.swift` | Radar dial, Locate screen and plot, Walk-map screen and field map |
 | `ARTracker.swift` | Optional ARKit world tracking (`.gravityAndHeading`), with no rendering. It runs only while Locate mode is on or a walk is recording. It publishes the camera x/z about every 0.5 s while tracking is normal, plus the orientation used for the DOA |
 | `SourceMap.swift` | Pure maths: radar sectors with forgetting, least-squares ray intersection with uncertainty, ARKit-to-world axis mapping |
