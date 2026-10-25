@@ -93,9 +93,27 @@ def test_native_location_is_private_optional_and_coarsened(client, clock):
     clock.now += timedelta(seconds=30)
     response = phone(client, token, "native-result", result)
     assert response.status_code == 200, response.text
-    location = status(client, agent)["job"]["walk"]["location"]
+    private_job = status(client, agent)["job"]
+    location = private_job["walk"]["location"]
     assert location == {"lat": 37.775, "lon": -122.419, "precision": "approximately_100m"}
-    assert "contribution_result" not in status(client, agent)["job"]
+    assert "contribution_result" not in private_job
+
+    phone(client, token, "disconnect")
+    agent, token = connect(client)
+    assert phone(client, token, "native-consent", {
+        **NATIVE, "location_consent": True, "share_consent": True,
+    }).status_code == 200
+    job = request_walk(client, agent)["structuredContent"]["request_id"]
+    phone(client, token, "native-poll")
+    result = payload(job, clock, {"lat": 37.774912, "lon": -122.419486})
+    clock.now += timedelta(seconds=30)
+    assert phone(client, token, "native-result", result).status_code == 200
+    shared_job = status(client, agent)["job"]
+    assert shared_job["walk"]["location"] == location
+    receipt = shared_job["contribution_result"]["access_receipt"]
+    assert receipt
+    assert call(client, "query_sound_map", lat=37.775, lon=-122.419,
+                access_receipt=receipt)["isError"] is not True
 
 
 def test_native_rejects_replay_audio_clipping_and_stale_or_limited_samples(client, clock):

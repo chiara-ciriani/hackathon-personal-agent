@@ -120,7 +120,8 @@ def test_receipt_survives_restart_and_expires(tmp_path):
 
 
 def test_shared_endpoint_is_isolated(tmp_path, clock):
-    settings = Settings(api_token=TOKEN, shared_api_token=SHARED_TOKEN, db_path=tmp_path / "isolated.db")
+    settings = Settings(api_token=TOKEN, shared_api_token=SHARED_TOKEN, city_layer_enabled=True,
+                        db_path=tmp_path / "isolated.db")
     with TestClient(create_app(settings, Store(settings.db_path, clock=clock)), base_url="http://localhost") as client:
         headers = {**HEADERS, **SHARED_AUTH}
         init = rpc(client, "initialize", {"protocolVersion": "2025-06-18", "capabilities": {},
@@ -128,7 +129,8 @@ def test_shared_endpoint_is_isolated(tmp_path, clock):
         assert "15 minutes" in init.json()["result"]["instructions"]
         listed = rpc(client, "tools/list", headers=headers, path="/mcp/shared")
         expected = SHARED_TOOLS | {"connect_phone", "request_phone_measurement",
-                                   "phone_measurement_status", "send_phone_recommendation"}
+                                   "phone_measurement_status", "send_phone_recommendation",
+                                   "quiet_city_noise_reports", "quiet_sf_layers"}
         assert {tool["name"] for tool in listed.json()["result"]["tools"]} == expected
         result = rpc(client, "tools/call", {"name": "submit_observation", "arguments": {
             **contribution(), "share_consent": True}}, headers=headers, path="/mcp/shared").json()["result"]

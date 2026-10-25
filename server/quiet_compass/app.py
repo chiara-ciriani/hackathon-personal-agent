@@ -27,7 +27,7 @@ from .city import CityNoiseLayer
 from .db import Store
 from .field_api import build_field_routes
 from .mcp_oauth import DOT_SCOPE, DotOAuthProvider, build_dot_oauth_routes
-from .mcp_server import Service, build_mcp
+from .mcp_server import Service, build_mcp, register_geo_context_tools
 from .phone_bridge import PhoneBridge, build_phone_routes, register_phone_tools
 from .settings import Settings
 from .sf_layers import SfLayers
@@ -79,6 +79,7 @@ def create_app(
     register_shared_tools(mcp, shared)
     shared_mcp = MCPServer("quiet-compass-shared", instructions=SHARED_INSTRUCTIONS)
     register_shared_tools(shared_mcp, shared)
+    register_geo_context_tools(shared_mcp, city, layers)
     phone = PhoneBridge(shared, settings.phone_page_url)
     register_phone_tools(mcp, phone)
     register_phone_tools(shared_mcp, phone)

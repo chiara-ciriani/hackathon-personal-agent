@@ -59,6 +59,7 @@ nonisolated struct AgentNativeConsent: Encodable, Sendable {
     let microphoneConsent: Bool
     let spatialConsent: Bool
     let locationConsent: Bool
+    let shareConsent: Bool
 }
 nonisolated struct AgentWalkResult: Encodable, Sendable {
     let requestId: String

@@ -37,15 +37,23 @@ INSTRUCTIONS = (
     "measured at places in this venue. Call quiet_get_context before recommending, always "
     "state how old a measurement is, and use the measured level, variability and quieter "
     "spots to tailor advice to the user's stated goal. If phone_measurement_status includes "
-    "an owner's location, it is approximate private context: use it to query nearby SF layers "
-    "or reports when useful, but do not publish it. Clearly distinguish measured sound from "
+    "an owner's location, it is approximate context: use it to query nearby SF layers or reports "
+    "when useful. Without the owner's explicit sharing consent, keep it private; with consent, "
+    "use the returned access_receipt for community sound queries. Clearly distinguish measured sound from "
     "historical reports and proxy layers; never promise a quiet route unless actual route-level "
     "measurements support it. A high sound reading is not a stress or health diagnosis. "
     "Only repeat measurements or send proactive alerts after the user explicitly asks for "
-    "monitoring; stop when the phone disconnects, and avoid repeated alerts for the same event. "
+    "monitoring while this Dot session is active. Continue only until their requested end time "
+    "or connection expiry; compare readings only when capture_profile matches. Alert in this "
+    "Dot conversation when measurements show a nearby alternative at least 3 dB quieter, and "
+    "avoid repeat alerts for the same event. MCP cannot wake a closed Dot chat or monitor after "
+    "the phone app disconnects. "
+    "Deliver findings and recommendations directly in this Dot conversation. The "
+    "send_phone_recommendation tool only mirrors advice to the connected phone; call it only "
+    "if the user asks for that extra phone display. "
     "Never call an unmeasured place quiet, and call quiet_start_guidance only after the user agrees. "
     "Shared query_sound_map and find_suitable_places "
-    "require access_receipt from a consented submit_observation, valid for 15 minutes. Never "
+    "require an access_receipt from a consented contribution, valid for 15 minutes. Never "
     "invent a measurement or share private health/routes to obtain access."
 )
 
@@ -233,6 +241,58 @@ class SfLayersResult(Lean):
     references: list[ReferenceOut] | None = None
     reference_note: str | None = None
     note: str
+
+
+def register_geo_context_tools(mcp: MCPServer, city: CityNoiseLayer | None, layers: SfLayers | None) -> None:
+    """Expose public geographic context without exposing personal session or wearable tools."""
+    if city is not None:
+        @mcp.tool(annotations=ToolAnnotations(title="SF 311 noise reports", readOnlyHint=True, openWorldHint=True))
+        def quiet_city_noise_reports(
+            lat: float, lon: float, radius_m: int = 200, hours: int = 48
+        ) -> CityResult:
+            """Nearby San Francisco 311 noise complaints. Complaints are not measurements;
+            zero reports does not mean a place is quiet. radius_m 50-2000, hours 1-168."""
+            if not (37.6 <= lat <= 37.85 and -122.55 <= lon <= -122.35):
+                raise ToolError("lat/lon must be inside San Francisco.")
+            if not (50 <= radius_m <= 2000 and 1 <= hours <= 168):
+                raise ToolError("Use radius_m between 50 and 2000 and hours between 1 and 168.")
+            try:
+                s = city.nearby(lat, lon, radius_m, hours)
+            except CityDataError as exc:
+                raise ToolError(f"DataSF is unavailable right now ({exc}). Try again later.") from exc
+            return CityResult(
+                lat=s.lat, lon=s.lon, radius_m=s.radius_m, hours=s.hours, total_reports=s.total,
+                by_subtype=s.by_subtype, newest_report_min_ago=s.newest_age_min, caveat=s.caveat,
+            )
+
+    if layers is not None:
+        @mcp.tool(annotations=ToolAnnotations(title="SF sound context layers", readOnlyHint=True, openWorldHint=True))
+        def quiet_sf_layers(
+            lat: float,
+            lon: float,
+            radius_m: int = 600,
+            include: list[LayerName] | None = None,
+            include_references: bool = False,
+        ) -> SfLayersResult:
+            """Nearby San Francisco parks, public places, noise proxies and monitoring context.
+            Evidence labels distinguish measured sensors, crowdsourced data, unmeasured candidates
+            and proxies. Never describe a candidate or proxy as a current sound measurement.
+            """
+            if not (37.6 <= lat <= 37.85 and -122.55 <= lon <= -122.3):
+                raise ToolError("lat/lon must be inside San Francisco.")
+            if not 50 <= radius_m <= 2000:
+                raise ToolError("Use radius_m between 50 and 2000.")
+            chosen = list(dict.fromkeys(include)) if include else list(ALL_LAYERS)
+            s = layers.around(lat, lon, radius_m, chosen)
+            return SfLayersResult(
+                lat=s.lat, lon=s.lon, radius_m=s.radius_m,
+                layers={name: [LayerPointOut(**p.__dict__) for p in pts] for name, pts in s.points.items()},
+                unavailable=s.unavailable or None,
+                references=[ReferenceOut(**r.__dict__) for r in REFERENCE_LEVELS] if include_references else None,
+                reference_note=REFERENCE_NOTE if include_references else None,
+                note=("Only sfo_cnel and sfo_events are sensor measurements; noisecapture is crowdsourced "
+                      "and uncalibrated. Missing data is unknown, not quiet."),
+            )
 
 
 # --- service ----------------------------------------------------------------------------

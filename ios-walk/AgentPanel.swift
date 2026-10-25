@@ -10,9 +10,9 @@ struct AgentPanel: View {
                 .font(.headline)
             Text(agent.message).font(.subheadline).foregroundStyle(.secondary)
             if !agent.connected && !agent.connecting {
-                Text("Share room sound readings and, if you allow location, an approximate location with your paired agent for personal recommendations. No audio or camera images are sent; location is not added to the community map. Leaving the app disconnects it.")
+                Text("Your agent uses sound readings and, if allowed, your approximate location to personalize advice. With location access, a coarse sound summary and location are also shared to unlock nearby community readings for 15 minutes. No audio or camera images are sent. Monitoring stops when you leave the app.")
                     .font(.footnote).foregroundStyle(.secondary)
-                Button("Allow agent analysis") { agent.connect(model: model) }
+                Button("Allow agent and share readings") { agent.connect(model: model) }
                     .buttonStyle(.borderedProminent).tint(.purple)
             }
             if agent.connecting { ProgressView("Connecting…") }

@@ -19,6 +19,7 @@ class NativeConsent(Contract):
     microphone_consent: bool
     spatial_consent: bool
     location_consent: bool = False
+    share_consent: bool = False
 
 
 class ApproximateLocation(Contract):
@@ -83,5 +84,6 @@ def analyze_walk(walk: WalkCapture, requested_at: datetime, now: datetime, durat
         "note": "Private ARKit room map; relative uncalibrated dBFS, not dBA. Unknown cells are not quiet. "
                 "Distances/directions are straight-line, not obstacle-free routes. "
                 "Any sound bearing is experimental FOA, not verified source identification. "
-                "No audio, images, speech transcript or shared-query access receipt.",
+                "No audio, images or speech transcript. A separate explicit sharing consent is required "
+                "before any coarse numeric summary and location are added to the shared map.",
     }

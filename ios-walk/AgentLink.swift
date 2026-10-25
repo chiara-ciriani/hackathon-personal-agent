@@ -15,6 +15,7 @@ final class AgentLink {
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private let client = AgentClient()
     @ObservationIgnored private let location = AgentLocation()
+    @ObservationIgnored private var captureProfileID = UUID().uuidString
     @ObservationIgnored private var generation = 0
 
     func receive(_ url: URL, model: CompassModel) {
@@ -24,6 +25,7 @@ final class AgentLink {
         }
         disconnect(model: model)
         token = next; hasLink = true; advice = nil; lastRequestId = nil
+        captureProfileID = UUID().uuidString
         message = "Allow your agent to analyze sound, your private room map, and approximate location for up to 15 minutes."
     }
 
@@ -44,7 +46,8 @@ final class AgentLink {
                 guard model.stream.sessionRunning else { throw AgentConnectionError("The microphone could not start.") }
                 try Task.checkCancellation()
                 let approval = try AgentClient.encode(AgentNativeConsent(
-                    microphoneConsent: true, spatialConsent: true, locationConsent: locationConsent))
+                    microphoneConsent: true, spatialConsent: true, locationConsent: locationConsent,
+                    shareConsent: true))
                 let ready = try await client.call("native-consent", token: token, body: approval)
                 guard let stamp = ready.expiresAt, let expires = AgentProtocol.date(stamp), expires > Date() else {
                     throw AgentConnectionError("This connection expired.")
@@ -66,7 +69,7 @@ final class AgentLink {
                         try Task.checkCancellation()
                         model.beginAgentWalk()
                         let rate = model.stream.sampleRate, channels = model.stream.channelCount
-                        let profile = "ios-walk-v1:\(UUID().uuidString):\(Int(rate)):\(channels)"
+                        let profile = "ios-walk-v1:\(captureProfileID):\(Int(rate)):\(channels)"
                         let start = Date()
                         while Date().timeIntervalSince(start) < Double(duration) {
                             try await Task.sleep(for: .seconds(2))

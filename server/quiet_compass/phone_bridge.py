@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import secrets
 from datetime import datetime, timedelta
 from typing import Any, Literal
@@ -26,8 +27,8 @@ from .api import ApiError, parse_body
 from .contracts import Contract, Goal, format_utc
 from .db import parse_ts
 from .phone_walk import NativeConsent, WalkResult, analyze_walk
-from .shared_contracts import ContributionUpload
-from .shared_layer import SharedLayer
+from .shared_contracts import ContributionQuality, ContributionUpload, SharedContribution, SharedMeasurement
+from .shared_layer import SharedLayer, cell_id
 
 PHONE_TOOLS = {"connect_phone", "request_phone_measurement", "phone_measurement_status", "send_phone_recommendation"}
 SESSION_SECONDS = 900
@@ -155,6 +156,7 @@ class PhoneBridge:
             if body["consented"] and body.get("client") != "native":
                 raise PhoneError("This connection belongs to the browser")
             body.update(consented=True, client="native", location_consented=consent.location_consent,
+                        share_consent=consent.share_consent,
                         last_seen=self.store._now())
             return {"status": "ready", "expires_at": expires}
 
@@ -299,7 +301,9 @@ class PhoneBridge:
                     or job.get("mode") != "walk" or job["request_id"] != str(result.request_id)):
                 raise PhoneError("No matching native walk request")
             if job["state"] in {"complete", "failed"} and job.get("fingerprint") == fingerprint:
-                return {"status": job["state"]}
+                return {"status": job["state"], "already_complete": True,
+                        "duration_seconds": job.get("duration_seconds", 30),
+                        "share_consent": bool(body.get("share_consent"))}
             if job["state"] != "measuring":
                 raise PhoneError("Walk is not active or was already completed")
             if result.walk:
@@ -314,9 +318,46 @@ class PhoneBridge:
             else:
                 job.update(state="failed", error="The phone could not analyze this walk. Check tracking and audio.")
             job["fingerprint"] = fingerprint
-            return {"status": job["state"]}
+            return {"status": job["state"], "already_complete": False,
+                    "duration_seconds": job.get("duration_seconds", 30),
+                    "share_consent": bool(body.get("share_consent"))}
 
-        return self._update(token, True, finish)
+        completed = self._update(token, True, finish)
+        if (completed["status"] == "complete" and completed["share_consent"]
+                and result.walk and result.walk.location):
+            # Submit outside the phone-link transaction; retries reuse this request ID.
+            walk = result.walk
+            samples = walk.samples
+            levels = sorted(sample.level_dbfs for sample in samples)
+            rms_dbfs = round(10 * math.log10(sum(10 ** (level / 10) for level in levels) / len(levels)), 2)
+            variation_db = round(levels[round((len(levels) - 1) * .9)]
+                                 - levels[round((len(levels) - 1) * .1)], 2)
+            point = walk.location
+            contribution = SharedContribution(
+                id=result.request_id,
+                schema_version="0.1",
+                area_id=cell_id(round(point.lat, 3), round(point.lon, 3)),
+                lat=point.lat,
+                lon=point.lon,
+                time_bucket=walk.started_at,
+                duration_seconds=float(completed["duration_seconds"]),
+                measurement=SharedMeasurement(
+                    kind="relative_uncalibrated", rms_dbfs=rms_dbfs,
+                    frame_level_spread_db=variation_db, calibrated=False,
+                ),
+                quality=ContributionQuality(capture_profile=walk.capture_profile, clipping_detected=False),
+                source="device",
+            )
+            accepted = self.layer.submit_shared(contribution, share_consent=True)
+
+            def attach_contribution(body, _):
+                job = body.get("job")
+                if job and job.get("fingerprint") == fingerprint:
+                    job["contribution_result"] = accepted.model_dump(mode="json")
+                return {"status": job["state"] if job else "complete"}
+
+            self._update(token, True, attach_contribution)
+        return {"status": completed["status"]}
 
     def recommend_walk(self, token, job, message, action, spot_index, max_walk_minutes, return_by):
         if (self.store.clock() - parse_ts(job["completed_at"])).total_seconds() > 900:
@@ -452,9 +493,10 @@ def register_phone_tools(mcp: MCPServer, bridge: PhoneBridge) -> None:
         phone_session_id: str, mode: Literal["sample", "walk"] = "sample", duration_seconds: int = 60,
     ) -> dict[str, Any]:
         """Ask the connected phone to measure 30 seconds. Requires the user's phone consent.
-        Use mode=walk for the linked iPhone app: 30–180 seconds of private room mapping and
-        sound analysis, no shared-query receipt. Browser mode=sample computes a 30-second
-        coarse summary and contributes automatically under that consent.
+        Use mode=walk for the linked iPhone app: 30–180 seconds of room mapping and sound
+        analysis. With explicit sharing consent and location, it contributes a coarse summary
+        and returns an access_receipt valid for 15 minutes. Browser mode=sample computes a
+        30-second coarse summary and contributes automatically under that consent.
         Poll phone_measurement_status for the result and access_receipt; never invent readings.
         Repeating this call while pending returns the same request.
         """
@@ -464,11 +506,12 @@ def register_phone_tools(mcp: MCPServer, bridge: PhoneBridge) -> None:
     def phone_measurement_status(phone_session_id: str) -> dict[str, Any]:
         """Read actual phone state/result. A completed job contains contribution_result with
         access_receipt and access_expires_at for 15 minutes of shared queries in browser mode.
-        Native mode=walk instead returns private acoustic analysis, measured quiet_spots and
-        an optional experimental sound bearing. If the owner allowed location, it also returns
-        a private location rounded to approximately 100 m. Use it only to personalize this
-        owner's advice and nearby context queries; null means location was unavailable. Never
-        submit this location to the shared map. Native mode never grants shared access.
+        Native mode=walk returns acoustic analysis and measured quiet_spots. With location and
+        sharing consent, its coarse numeric summary also contributes to the shared map and returns
+        a 15-minute access_receipt. Without sharing consent, its approximate location stays private
+        to this owner and no receipt is issued. Use the receipt to query nearby shared sound data.
+        Location is rounded to approximately 100 m. Null means unavailable. The experimental
+        sound bearing is not verified source identification.
         Pending/offline is not success. Poll at most every 5 seconds. No need to resubmit the
         returned summary.
         """
@@ -492,8 +535,9 @@ def register_phone_tools(mcp: MCPServer, bridge: PhoneBridge) -> None:
         return_by: datetime | None = None,
         spot_index: int | None = None,
     ) -> dict[str, Any]:
-        """Display a recommendation on the user's connected phone after measuring and querying
-        find_suitable_places. A move must cite a returned area_id with recent real data from the
+        """Mirror a recommendation to the connected phone only when the owner asks for it.
+        Normally, answer directly in the current Dot conversation; this tool does not write
+        into that conversation. When used, a move must cite a returned area_id with recent real data from the
         SAME capture_profile and a level at least 3 dB lower than the current phone reading.
         Include the user's return_by deadline if known. If evidence is missing, use action
         unknown and explain the gap, never invent a quieter destination. This does not start
