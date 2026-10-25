@@ -21,12 +21,16 @@ targets:
           - "project.yml"
           - "SelfCheck/**"
           - "AgentCheck/**"
+          - "CommunityCheck/**"
           - "Generated/**"
           - "QuietCompassWalk.xcodeproj/**"
     info:
       path: Generated/Info.plist
       properties:
         CFBundleDisplayName: QC Walk Map
+        CFBundleShortVersionString: "1.1"
+        CFBundleVersion: "2"
+        NSLocationWhenInUseUsageDescription: Your approximate location places a sound summary on the community map only when you choose Measure and share.
         CFBundleURLTypes:
           - CFBundleURLName: com.hackathon.quietcompass.walk.agent
             CFBundleURLSchemes: [quietcompass-walk]

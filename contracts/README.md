@@ -122,3 +122,20 @@ Disconnecting phone sensors does not revoke an already-earned contribution recei
 Private native room walks are excluded. Direct REST and MCP queries keep their existing auth.
 
 Both shared query tools take `access_receipt` (the value from submission). Missing, invalid or expired receipts return an MCP tool error containing `contribution_required`. Private tools and independent external city data are unaffected. Device provenance is caller-asserted, not hardware-attested.
+
+### Standalone community capture
+
+QC Walk Map 1.1 build 2 can submit a consented 30-second sound summary without an agent
+link through `POST /api/community`, relayed to `POST /v1/community/contributions`.
+This intentionally public ingestion route accepts only the existing contribution
+schema, real-device provenance, an unclipped measurement, a `qc-community-v1:` capture
+profile and coordinates in San Francisco. Inputs are limited to 8 KiB and 30 requests
+per upstream peer per hour per server process. Device provenance remains caller-asserted.
+The existing validation, coordinate rounding, retention, deduplication and minimum
+release policy apply. There is no audio or room-map upload.
+
+The receipt returned on submission can open `/map-access#receipt=...`. That page removes
+the fragment immediately, then activates a Secure HttpOnly cookie through
+`POST /api/map/access` after validating the receipt against the backend. An expired
+receipt cannot be renewed this way. Web maps check shared readings every 30 seconds
+while visible; independent DataSF layers do not reload on that timer.

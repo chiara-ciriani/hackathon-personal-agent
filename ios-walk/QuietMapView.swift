@@ -5,6 +5,9 @@ struct QuietMapView: View {
     @Bindable var model: CompassModel
     @Bindable var agent: AgentLink
     @Binding var showAdvanced: Bool
+    @State private var community = CommunityShare()
+    @State private var confirmShare = false
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ScrollView { VStack(spacing: 14) {
@@ -12,7 +15,24 @@ struct QuietMapView: View {
                 Text("Quiet Map").font(.title.bold())
                 Spacer()
                 Button("Advanced", systemImage: "slider.horizontal.3") { showAdvanced = true }
-                    .labelStyle(.iconOnly).font(.title2).disabled(agent.hasLink)
+                    .labelStyle(.iconOnly).font(.title2).disabled(agent.hasLink || community.sharing)
+            }
+            if !agent.hasLink {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Community sound map").font(.headline)
+                    Text("Share a 30-second sound summary and an approximate location with other map users. No audio, room map or route is uploaded.").font(.footnote).foregroundStyle(.secondary)
+                    if community.sharing {
+                        ProgressView()
+                        Text(community.secondsLeft > 0 ? "\(community.secondsLeft) seconds left" : "Preparing to share…")
+                        Button("Cancel sharing") { community.cancel() }
+                    } else {
+                        Button("Measure and share", systemImage: "waveform.badge.plus") { confirmShare = true }
+                            .buttonStyle(.borderedProminent)
+                    }
+                    if !community.message.isEmpty { Text(community.message).font(.footnote) }
+                    if let url = community.mapURL { Link("Open community map", destination: url) }
+                }.padding().frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.purple.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
             }
             FieldMapView(field: model.field, path: model.mapPath, user: model.mapUser)
             if agent.hasLink { AgentPanel(agent: agent, model: model) } else { guidance }
@@ -29,12 +49,20 @@ struct QuietMapView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(model.isRecording ? .gray : .green)
+            .disabled(community.sharing)
             Text(statusLine)
                 .font(.caption)
                 .foregroundStyle(model.isRecording && !model.ar.isNormal ? Color.orange : Color.secondary)
             Spacer(minLength: 0)
         }
         .padding() }
+        .confirmationDialog("Share with the community map?", isPresented: $confirmShare, titleVisibility: .visible) {
+            Button("Measure and share") { community.share(model: model) }
+        } message: {
+            Text("Your microphone measures for 30 seconds. Only a relative sound level and location rounded to about 100 m are shared. Other contributors may see the summary. Your room map pauses during capture.")
+        }
+        .onChange(of: scenePhase) { if scenePhase == .background { community.cancel() } }
+        .onDisappear { community.cancel() }
         .overlay { EdgeGlow(turn: glowTurn) }
         .sensoryFeedback(.impact(weight: .light), trigger: glowTurn.map(EdgeGlow.side)) { _, side in side == .ahead }
     }
