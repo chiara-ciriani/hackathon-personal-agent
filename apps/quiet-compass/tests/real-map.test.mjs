@@ -54,11 +54,16 @@ test('311 errors remain errors, not empty successful readings',async()=>{
  await assert.rejects(loadNoiseReports(async()=>({ok:true,json:async()=>({error:'bad'})})));
 });
 
-test('311 loader rejects old and future observations even if the source returns them',async()=>{
- const rows=['2026-10-23','2026-08-01','2026-12-01'].map(date=>({lat:'37.77',long:'-122.43',requested_datetime:date+'T12:00:00'}));
- const r=await loadNoiseReports(async()=>({ok:true,json:async()=>rows}),now);
- assert.equal(r.features.length,1);
- assert.equal(r.features[0].properties.observedOn,'2026-10-23T12:00:00');
+test('311 loader queries and keeps only the last 24 hours in San Francisco local time',async()=>{
+ const stamps=['2026-10-23T15:59:59','2026-10-23T16:00:00','2026-10-24T15:59:59','2026-10-24T16:00:01'];
+ const rows=stamps.map(requested_datetime=>({lat:'37.77',long:'-122.43',requested_datetime}));
+ const r=await loadNoiseReports(async url=>{
+  const where=new URL(url).searchParams.get('$where');
+  assert.match(where,/requested_datetime >= '2026-10-23T16:00:00'/);
+  assert.match(where,/requested_datetime <= '2026-10-24T16:00:00'/);
+  return {ok:true,json:async()=>rows};
+ },now);
+ assert.deepEqual(r.features.map(f=>f.properties.observedOn),stamps.slice(1,3));
 });
 
 test('map does not contact the backend without a contribution capability',async()=>{

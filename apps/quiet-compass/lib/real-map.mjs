@@ -60,19 +60,22 @@ export function noiseReports(rows) {
 
 /** @param {(url:string, options?:any)=>Promise<any>} [fetcher] */
 export async function loadNoiseReports(fetcher = fetch, now = new Date()) {
-  // Last 30 days (about 1,500 reports), so the density field shows recent complaints.
-  const since = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10);
+  // DataSF timestamps use San Francisco local time without a timezone suffix.
+  const localStamp=date=>{
+    const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(date).map(p=>[p.type,p.value]));
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}`;
+  };
+  const since=localStamp(new Date(now.getTime()-24*3600000)),until=localStamp(now);
   const query = new URLSearchParams({
     '$select':'service_subtype,neighborhoods_sffind_boundaries,requested_datetime,lat,long',
-    '$where':`service_name in ('Noise','Noise Report') AND requested_datetime >= '${since}T00:00:00' AND lat IS NOT NULL`,
+    '$where':`service_name in ('Noise','Noise Report') AND requested_datetime >= '${since}' AND requested_datetime <= '${until}' AND lat IS NOT NULL`,
     '$order':'requested_datetime DESC', '$limit':'3000',
   });
   const response = await fetcher(`https://data.sf.gov/resource/vw6y-z8j6.json?${query}`, {cache:'no-store',signal:AbortSignal.timeout(12000)});
   if (!response.ok) throw new Error('311 unavailable');
   const body=await response.json();
   if(!Array.isArray(body))throw new Error('Invalid 311 reports');
-  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles'}).format(now);
-  return noiseReports(body.filter(r=>String(r.requested_datetime||'').slice(0,10)>=since&&String(r.requested_datetime||'').slice(0,10)<=today));
+  return noiseReports(body.filter(r=>{const when=String(r.requested_datetime||'').slice(0,19);return when>=since&&when<=until}));
 }
 
 export function measurementText(p) {
