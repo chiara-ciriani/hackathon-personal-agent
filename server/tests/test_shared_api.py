@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -129,3 +130,31 @@ def test_responses_match_json_schema(client: TestClient) -> None:
     area = client.put("/v1/areas/zone-a", json={"name": "A", "lat": LAT, "lon": LON, "kind": "indoor_zone"},
                       headers=AUTH)
     check("Area", area.json())
+
+
+def test_map_view_reads_same_released_device_data_as_mcp(client: TestClient) -> None:
+    first = post(client, contribution()).json()
+    receipt = first["access_receipt"]
+    headers = {"Authorization": f"Bearer {receipt}"}
+    assert client.get("/v1/map/view").status_code == 428
+    assert client.get("/v1/map/view", headers=AUTH).status_code == 428
+    assert client.get("/v1/map/view", headers=headers).json()["aggregates"] == []
+    post(client, contribution(rms=-44))
+    view = client.get("/v1/map/view", headers=headers)
+    tool = call(client, "query_sound_map", lat=37.77, lon=-122.43, radius_m=5000,
+                since_minutes=1440, access_receipt=receipt)["structuredContent"]
+    assert view.status_code == 200
+    assert view.headers["cache-control"] == "no-store"
+    assert view.json()["aggregates"] == tool["aggregates"]
+    assert len(view.json()["aggregates"]) == 1
+    client.app_clock.now += timedelta(minutes=15)
+    assert client.get("/v1/map/view", headers=headers).status_code == 428
+
+
+def test_map_view_excludes_simulated_cohorts(client: TestClient) -> None:
+    receipt = post(client, contribution()).json()["access_receipt"]
+    for rms in (-50, -48):
+        post(client, contribution(rms=rms, source="simulated"))
+    response = client.get("/v1/map/view", headers={"Authorization": f"Bearer {receipt}"})
+    assert response.status_code == 200
+    assert response.json()["aggregates"] == []

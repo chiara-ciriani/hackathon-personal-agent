@@ -13,7 +13,7 @@ import './map.css';
 
 type LayerKey='device'|'measured'|'sfoEvents'|'proxies'|'cad'|'candidates'|'reports';
 const layerRows:{key:LayerKey;label:string;tag:string;swatch:string;mapIds:string[];hint:string}[]=[
- {key:'device',label:'Phone measurements',tag:'Shared in the last 24 hours',swatch:'measured',mapIds:['device-readings'],hint:'Sound levels people measured with this app and chose to share.'},
+ {key:'device',label:'Shared phone measurements',tag:'Shared in the last 24 hours',swatch:'measured',mapIds:['device-readings'],hint:'Recent geolocated contributions from the MCP shared map. Share a phone measurement to unlock 15 minutes of access.'},
  {key:'measured',label:'Airport noise monitors',tag:'Readings from the last 30 days',swatch:'measured',mapIds:['measured-sfo'],hint:'Permanent SFO microphones. Daily average at the monitor, published about a month late.'},
  {key:'sfoEvents',label:'Loud planes',tag:'Over the noise limit, last 30 days',swatch:'events',mapIds:['measured-sfo-events'],hint:'Only planes louder than the monitor limit are counted, so this shows the loudest moments.'},
  {key:'candidates',label:'Possible quiet spots',tag:'Parks, plazas and libraries',swatch:'candidate',mapIds:['candidate-places'],hint:'Places that might be calm. Nobody has measured them, so check before you go.'},

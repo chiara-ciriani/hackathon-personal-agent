@@ -42,9 +42,13 @@ export async function relayPhone(request, origin, action, fetcher = fetch) {
     const result = await response.json();
     if (!['ready', 'offline', 'waiting_for_phone', 'measure', 'waiting', 'complete', 'failed', 'disconnected'].includes(result.status)) throw new Error();
     // Only phone-facing fields; never expose agent-side results or capabilities here.
-    return reply({status: result.status, expires_at: result.expires_at,
+    const output = reply({status: result.status, expires_at: result.expires_at,
       ...(action === 'status' ? {client: result.client} : {}),
       ...(['poll', 'native-poll'].includes(action) && result.recommendation ? {recommendation: result.recommendation} : {}),
       ...(['poll', 'native-poll'].includes(action) && result.status === 'measure' ? {request_id: result.request_id, duration_seconds: result.duration_seconds, mode: result.mode} : {})}, 200);
+    if (action === 'result' && result.status === 'complete' && /^[A-Za-z0-9_-]{43}$/.test(result.map_access || '')) {
+      output.headers.set('Set-Cookie', `qc_map_access=${result.map_access}; HttpOnly; Secure; SameSite=Strict; Path=/api/map; Max-Age=900`);
+    }
+    return output;
   } catch { return reply({error: 'Server unavailable. Your phone will disconnect and turn off the microphone.'}, 502); }
 }

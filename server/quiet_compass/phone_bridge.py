@@ -252,7 +252,10 @@ class PhoneBridge:
 
         previous = self._update(token, True, validate)
         if previous:
-            return {"status": previous["state"]}
+            return {
+                "status": previous["state"],
+                "map_access": previous.get("contribution_result", {}).get("access_receipt"),
+            }
         if result.error:
             # Never echo arbitrary client-supplied text into the agent's tool context.
             summary = {"state": "failed", "error": "The phone could not measure. Ask the user to check it."}
@@ -280,7 +283,7 @@ class PhoneBridge:
             if not job or job["request_id"] != str(result.request_id):
                 raise PhoneError("Measurement no longer active")
             job.update(summary)
-            return {"status": job["state"]}
+            return {"status": job["state"], "map_access": job.get("contribution_result", {}).get("access_receipt")}
 
         return self._update(token, True, finish)
 

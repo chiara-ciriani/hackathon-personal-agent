@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {deviceReadings,loadDeviceReadings,noiseReports,loadNoiseReports,measurementText} from '../lib/real-map.mjs';
+const receipt='r'.repeat(43);
 const now=new Date('2026-10-24T23:00:00Z');
 const row={area_id:'sf:1',area_name:'Recorded place',lat:37.77,lon:-122.43,time_bucket:'2026-10-24T22:55:00Z',capture_profile:'phone-A',n:2,measurement_kind:'relative_uncalibrated',median_rms_dbfs:-35,source:'device',has_synthetic:false};
 test('device observations retain their actual value, date and profile',()=>{
@@ -24,24 +25,24 @@ test('missing data has no measurement and zero remains a real value',()=>{
 });
 test('access failures and unavailable servers return empty gray coverage',async()=>{
  for(const status of [401,403,428,500]){
-  const r=await loadDeviceReadings(undefined,async()=>({status,ok:false}),now);
+  const r=await loadDeviceReadings(undefined,async()=>({status,ok:false}),now,receipt);
   assert.equal(r.state,status===500?'unavailable':'access_required');assert.equal(r.data.features.length,0);
  }
- assert.equal((await loadDeviceReadings(undefined,async()=>{throw Error()},now)).state,'unavailable');
+ assert.equal((await loadDeviceReadings(undefined,async()=>{throw Error()},now,receipt)).state,'unavailable');
 });
 test('empty or malformed server payload never becomes fake contributions',async()=>{
- assert.equal((await loadDeviceReadings(undefined,async()=>({ok:true,json:async()=>({aggregates:[]})}),now)).state,'empty');
- assert.equal((await loadDeviceReadings(undefined,async()=>({ok:true,json:async()=>({bad:true})}),now)).state,'unavailable');
+ assert.equal((await loadDeviceReadings(undefined,async()=>({ok:true,json:async()=>({aggregates:[]})}),now,receipt)).state,'empty');
+ assert.equal((await loadDeviceReadings(undefined,async()=>({ok:true,json:async()=>({bad:true})}),now,receipt)).state,'unavailable');
 });
-test('public device request does not attach owner credentials',async()=>{
+test('map request uses only its expiring receipt',async()=>{
  const result=await loadDeviceReadings(undefined,async(url,options)=>{
-  assert.match(url,/radius_m=5000/);assert.equal(options.headers,undefined);assert.equal(options.redirect,'error');
+  assert.match(url,/\/v1\/map\/view$/);assert.equal(options.headers.Authorization,'Bearer '+receipt);assert.equal(options.redirect,'error');
   return {ok:true,json:async()=>({aggregates:[row]})};
- },now);
+ },now,receipt);
  assert.equal(result.state,'available');
 });
 test('invalid upstream URL is rejected before any request',async()=>{
- for(const url of ['http://example.com','https://name:secret@example.com','https://example.com/path'])assert.equal((await loadDeviceReadings(url,()=>{throw Error('must not run')})).state,'invalid_config');
+ for(const url of ['http://example.com','https://name:secret@example.com','https://example.com/path'])assert.equal((await loadDeviceReadings(url,()=>{throw Error('must not run')},now,receipt)).state,'invalid_config');
 });
 test('real complaints retain report provenance and the source time unchanged',()=>{
  const rows=[{lat:'37.77',long:'-122.43',requested_datetime:'2026-10-24T14:00:00',service_subtype:'Loud_Music'},{lat:'',long:'',requested_datetime:'x'}];
@@ -58,4 +59,9 @@ test('311 loader rejects old and future observations even if the source returns 
  const r=await loadNoiseReports(async()=>({ok:true,json:async()=>rows}),now);
  assert.equal(r.features.length,1);
  assert.equal(r.features[0].properties.observedOn,'2026-10-23T12:00:00');
+});
+
+test('map does not contact the backend without a contribution capability',async()=>{
+ const r=await loadDeviceReadings(undefined,()=>{throw Error('must not fetch')},now);
+ assert.equal(r.state,'access_required');
 });

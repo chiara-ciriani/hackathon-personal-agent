@@ -23,16 +23,19 @@ export function deviceReadings(body, now = new Date()) {
   })};
 }
 
-export async function loadDeviceReadings(origin = DEFAULT_SERVER, fetcher = fetch, now = new Date()) {
+/** @param {string|null} [accessReceipt] */
+export async function loadDeviceReadings(origin = DEFAULT_SERVER, fetcher = fetch, now = new Date(), accessReceipt = null) {
   const empty = state => ({state, data:emptyCollection()});
+  if (!accessReceipt || !/^[A-Za-z0-9_-]{43}$/.test(accessReceipt)) return empty('access_required');
   try {
     const base = new URL(origin);
     if (base.protocol !== 'https:' || base.username || base.password || base.pathname !== '/' || base.search || base.hash) return empty('invalid_config');
-    // Public read only. Never use the owner's credential to bypass contribution access.
-    const response = await fetcher(`${base.origin}/v1/map/aggregates?lat=37.77&lon=-122.43&radius_m=5000&since_minutes=1440`, {
+    // Read the same released aggregates as MCP using the contributor's expiring capability.
+    const response = await fetcher(`${base.origin}/v1/map/view`, {
+      headers:{Authorization:`Bearer ${accessReceipt}`},
       cache:'no-store', redirect:'error', signal:AbortSignal.timeout(12000),
     });
-    if ([401,403,428].includes(response.status)) return empty('access_required');
+    if ([401,403,410,428].includes(response.status)) return empty('access_required');
     if (!response.ok) return empty('unavailable');
     const data = deviceReadings(await response.json(), now);
     return {state:data.features.length ? 'available' : 'empty', data};
