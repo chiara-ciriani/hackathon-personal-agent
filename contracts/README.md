@@ -88,7 +88,7 @@ A separate, coarse layer of consented summaries that other agents and the web ma
 
 Server rules: lat/lon are re-rounded and buckets re-floored; unknown `area_id` with coordinates becomes `cell:<lat>,<lon>`, without coordinates it is rejected; implausible values (`rms_dbfs < -120`, spread `> 60`, duration outside 5-600 s, future or expired buckets) are rejected; at most 3 contributions per area, bucket and capture profile; duplicate ids are idempotent; clipping is stored and counted. A cohort (area, bucket, capture profile) is released only with at least `QC_RELEASE_MIN_CONTRIBUTIONS` contributions (default 2). Capture profiles are never merged. Contributions are deleted after `QC_CONTRIBUTION_RETENTION_HOURS` (default 24).
 
-Shared reads require a contribution receipt. Submit a recent device summary with explicit
+Agent queries and receipt-based reads require a contribution receipt. Submit a recent device summary with explicit
 `share_consent: true` (default false). A plausible, unclipped measurement with a normalized
 bucket from the last 15 minutes returns `access_receipt` and `access_expires_at`, including
 when status is `withheld`. One receipt allows unlimited queries for 15 minutes from first
@@ -111,15 +111,15 @@ This policy changes the previously public shared read; existing clients must mig
 
 The web map's MCP panel (`apps/quiet-compass/app/page.tsx`) shows an earlier proposal of these tools with different inputs (`bounds`, `zone_id`, `acoustic_summary`). The tool names match; the parameters above are the implemented ones.
 
-The web map can read the same released shared aggregates through `GET /v1/map/view`.
+The web map reads released shared aggregates through public `GET /v1/map/public`.
+Anyone can view them without contributing or receiving a temporary access pass.
 This fixed San Francisco view covers 5 km around 37.77, -122.43 and the last 24 hours.
-It accepts a valid contribution receipt as its bearer capability and includes only real-device
-cohorts. The existing release threshold still applies. Browser measurement completion passes
-this capability through the web relay into a Secure, HttpOnly, SameSite=Strict cookie scoped
-to `/api/map`. The browser map receives GeoJSON, never the receipt or an account API key.
-The server checks the original 15-minute expiry on every read; retries do not renew it.
-Disconnecting phone sensors does not revoke an already-earned contribution receipt.
-Private native room walks are excluded. Direct REST and MCP queries keep their existing auth.
+Only real-device cohorts meeting the existing release threshold appear. Private room maps, raw audio, contribution receipts and account credentials are excluded.
+Native walks contribute only a coarse numeric summary with explicit sharing consent and location.
+
+The legacy `GET /v1/map/view` still validates contribution receipts with their original
+15-minute expiry. It remains available for existing phone handoffs. Direct REST and MCP
+queries keep their existing authentication and contribution-receipt requirements.
 
 Both shared query tools take `access_receipt` (the value from submission). Missing, invalid or expired receipts return an MCP tool error containing `contribution_required`. Private tools and independent external city data are unaffected. Device provenance is caller-asserted, not hardware-attested.
 

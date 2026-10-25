@@ -65,7 +65,7 @@ final class CommunityShare: NSObject, @preconcurrency CLLocationManagerDelegate 
                     capture = audio
                     _ = try await audio.start()
                     try Task.checkCancellation()
-                    for remaining in stride(from: 30, through: 1, by: -1) {
+                    for remaining in stride(from: 10, through: 1, by: -1) {
                         secondsLeft = remaining; message = "Measuring sound. Audio stays on your phone."
                         try await Task.sleep(for: .seconds(1))
                     }
@@ -100,7 +100,7 @@ final class CommunityShare: NSObject, @preconcurrency CLLocationManagerDelegate 
                     url.fragment = "receipt=" + receipt; mapURL = url.url
                 }
                 message = status == "accepted"
-                    ? "Shared. Other contributors can see this sound summary on the community map."
+                    ? "Shared. Anyone can see this sound summary on the community map."
                     : "Summary received. It stays hidden until enough matching measurements are shared. You can measure again."
             } catch {
                 message = Task.isCancelled ? "Sharing stopped. Microphone off." : error.localizedDescription

@@ -158,3 +158,30 @@ def test_map_view_excludes_simulated_cohorts(client: TestClient) -> None:
     response = client.get("/v1/map/view", headers={"Authorization": f"Bearer {receipt}"})
     assert response.status_code == 200
     assert response.json()["aggregates"] == []
+
+
+def test_public_map_shows_released_measurements_to_any_visitor(client: TestClient) -> None:
+    first = post(client, contribution())
+    assert first.json()["status"] == "withheld"
+    response = client.get("/v1/map/public")
+    assert response.status_code == 200
+    assert response.json()["aggregates"] == []
+    post(client, contribution(rms=-44))
+    public = client.get("/v1/map/public")
+    assert public.status_code == 200
+    [aggregate] = public.json()["aggregates"]
+    assert aggregate["n"] == 2
+    assert aggregate["source"] == "device"
+    assert "access_receipt" not in public.text
+    # Other viewers still see the released data after the contributor's pass expires.
+    client.app_clock.now += timedelta(minutes=16)
+    assert len(client.get("/v1/map/public").json()["aggregates"]) == 1
+    assert client.get("/v1/map/view").status_code == 428
+    client.app_clock.now += timedelta(hours=25)
+    assert client.get("/v1/map/public").json()["aggregates"] == []
+
+
+def test_public_map_excludes_simulated_measurements(client: TestClient) -> None:
+    for rms in (-50, -48):
+        post(client, contribution(rms=rms, source="simulated"))
+    assert client.get("/v1/map/public").json()["aggregates"] == []

@@ -7,8 +7,8 @@ import {relayPhone} from '../lib/phone-relay.mjs';
 function signal(rate, amplitude = .1) {
   const meter = new AcousticAccumulator(rate);
   // Synthetic mathematical fixture; never sent to a live server.
-  for (let start = 0; start < rate * 30; start += 128) {
-    meter.append(Float32Array.from({length: Math.min(128, rate * 30 - start)},
+  for (let start = 0; start < rate * 10; start += 128) {
+    meter.append(Float32Array.from({length: Math.min(128, rate * 10 - start)},
       (_, i) => amplitude * Math.sin(2 * Math.PI * 1000 * (start + i) / rate)));
   }
   return meter.result();
@@ -17,28 +17,28 @@ test('energy RMS of a 0.1 sine is -23.0103 dBFS at both device sample rates', ()
   for (const rate of [44100, 48000]) {
     const r = signal(rate);
     assert.ok(Math.abs(r.rms_dbfs - (-23.0103)) < .001);
-    assert.equal(r.duration_seconds, 30);
+    assert.equal(r.duration_seconds, 10);
     assert.ok(r.frame_level_spread_db < .02);
     assert.equal(r.peaks_per_min, 0);
     assert.equal(measurementProblem(r), null);
   }
 });
-test('a one-second loud event counts one onset, normalized to two per minute', () => {
+test('a one-second loud event counts one onset, normalized to six per minute', () => {
   const meter = new AcousticAccumulator(8000);
-  for (let second = 0; second < 30; second++) meter.append(new Float32Array(8000).fill(second === 10 ? .2 : .01));
+  for (let second = 0; second < 10; second++) meter.append(new Float32Array(8000).fill(second === 5 ? .2 : .01));
   const result = meter.result();
-  assert.equal(result.peaks_per_min, 2);
-  const expected = 10 * Math.log10((29 * .0001 + .04) / 30);
+  assert.equal(result.peaks_per_min, 6);
+  const expected = 10 * Math.log10((9 * .0001 + .04) / 10);
   assert.ok(Math.abs(result.rms_dbfs - expected) < .001);
 });
 test('missing input, incomplete capture, invalid samples and clipping cannot be shared', () => {
   const meter = new AcousticAccumulator(8000);
   assert.throws(() => meter.result(), /incomplete/);
   assert.throws(() => meter.append([NaN]), /Invalid/);
-  meter.append(new Float32Array(240000));
+  meter.append(new Float32Array(80000));
   assert.match(measurementProblem(meter.result()), /No microphone signal/);
   const clipped = new AcousticAccumulator(8000);
-  clipped.append(new Float32Array(240000).fill(1));
+  clipped.append(new Float32Array(80000).fill(1));
   assert.match(measurementProblem(clipped.result()), /clipping/);
   assert.match(measurementProblem({...signal(8000), frame_level_spread_db: 90}), /Variation/);
 });
@@ -70,7 +70,7 @@ test('phone relay forwards only to the configured phone route and returns no age
     assert.equal(url,'https://server.example/v1/phone/poll');
     assert.equal(options.headers.Authorization,'Bearer '+token);
     assert.equal(options.redirect,'error');
-    return Response.json({status:'measure',request_id:'job',duration_seconds:30,expires_at:'later',agent_token:'never forward'});
+    return Response.json({status:'measure',request_id:'job',duration_seconds:10,expires_at:'later',agent_token:'never forward'});
   });
   assert.equal(response.status,200);
   assert.equal(response.headers.get('cache-control'),'no-store');

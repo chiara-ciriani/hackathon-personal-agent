@@ -6,7 +6,7 @@ from test_shared_layer import LAT, contribution
 
 
 def summary(**changes):
-    body = contribution(duration=30, **changes)
+    body = contribution(duration=10, **changes)
     body["quality"]["capture_profile"] = "qc-community-v1:test-phone:48000:1"
     return {"contract_version": 1, "share_consent": True, "contribution": body}
 
@@ -62,3 +62,9 @@ def test_community_ingestion_is_bounded(client):
     for _ in range(29):
         assert client.post("/v1/community/contributions", json={}).status_code == 422
     assert client.post("/v1/community/contributions", json=summary()).status_code == 429
+
+
+def test_legacy_30_second_community_upload_is_still_accepted(client):
+    body = summary()
+    body["contribution"]["duration_seconds"] = 30
+    assert client.post("/v1/community/contributions", json=body).json()["status"] == "withheld"

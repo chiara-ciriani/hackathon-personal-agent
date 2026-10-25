@@ -1,6 +1,6 @@
 export const sharedTools = [
   {name: 'connect_phone', purpose: 'Link phone', input: {}, returns: 'Private connection link and phone_session_id; the owner approves sensors on the phone'},
-  {name: 'request_phone_measurement', purpose: 'Measure', input: {phone_session_id: 'from connect_phone'}, returns: 'Browser: 30-second sound summary. Native mode=walk: 30–180-second private room sound analysis'},
+  {name: 'request_phone_measurement', purpose: 'Measure', input: {phone_session_id: 'from connect_phone'}, returns: 'Browser: 10-second sound summary. Native mode=walk: 30–180-second private room sound analysis'},
   {name: 'phone_measurement_status', purpose: 'Read result', input: {phone_session_id: 'from connect_phone'}, returns: 'Phone state, actual summary and contribution access receipt'},
   {name: 'send_phone_recommendation', purpose: 'Advise', input: {phone_session_id: 'from connect_phone', message: 'Short recommendation', action: 'move | stay | unknown', area_id: 'measured destination for a move'}, returns: 'Recommendation queued for the connected phone'},
   {name: 'submit_observation', purpose: 'Contribute', input: {

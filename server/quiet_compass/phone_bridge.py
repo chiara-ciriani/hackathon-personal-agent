@@ -169,8 +169,8 @@ class PhoneBridge:
             expected = "walk" if body.get("client") == "native" else "sample"
             if mode != expected:
                 raise PhoneError(f"This phone supports mode={expected}; check phone_measurement_status")
-            duration = duration_seconds if mode == "walk" else 30
-            if not 30 <= duration <= 180:
+            duration = duration_seconds if mode == "walk" else 10
+            if mode == "walk" and not 30 <= duration <= 180:
                 raise PhoneError("Walk analysis must last 30 to 180 seconds", 422)
             job = body["job"]
             if job and job["state"] in {"pending", "measuring"}:
@@ -228,7 +228,7 @@ class PhoneBridge:
                 not result.upload.share_consent
                 or c.source != "device"
                 or str(c.id) != str(result.request_id)
-                or c.duration_seconds != 30
+                or c.duration_seconds not in (10, 30)
                 or not c.quality.capture_profile.startswith("web-v1:")
                 or c.lat is None
                 or c.lon is None
@@ -492,11 +492,11 @@ def register_phone_tools(mcp: MCPServer, bridge: PhoneBridge) -> None:
     def request_phone_measurement(
         phone_session_id: str, mode: Literal["sample", "walk"] = "sample", duration_seconds: int = 60,
     ) -> dict[str, Any]:
-        """Ask the connected phone to measure 30 seconds. Requires the user's phone consent.
+        """Ask the connected browser phone to measure 10 seconds. Requires the user's consent.
         Use mode=walk for the linked iPhone app: 30–180 seconds of room mapping and sound
         analysis. With explicit sharing consent and location, it contributes a coarse summary
         and returns an access_receipt valid for 15 minutes. Browser mode=sample computes a
-        30-second coarse summary and contributes automatically under that consent.
+        10-second coarse summary and contributes automatically under that consent.
         Poll phone_measurement_status for the result and access_receipt; never invent readings.
         Repeating this call while pending returns the same request.
         """

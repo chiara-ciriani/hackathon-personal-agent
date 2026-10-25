@@ -35,7 +35,7 @@ and a real Dot connection remain pending. Loading the page installs neither the 
    automatic sharing of acoustic summaries for this connection (at most 15 minutes).
    The phone gets browser permissions and keeps the audio context alive for iOS.
 3. The agent calls `request_phone_measurement(phone_session_id)`. The phone polls for commands,
-   takes exactly 30 seconds of samples, computes a summary locally, and submits it automatically.
+   takes exactly 10 seconds of samples, computes a summary locally, and submits it automatically.
 4. The agent polls `phone_measurement_status(phone_session_id)` at intervals of at least five
    seconds. A completed job contains the real phone-reported summary and
    `contribution_result.access_receipt` / `access_expires_at`.

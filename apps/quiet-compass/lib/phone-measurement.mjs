@@ -10,7 +10,7 @@ export function coarseLocation(position, now = Date.now()) {
 export function measurementProblem(result) {
   if (!result || ![result.duration_seconds, result.rms_dbfs, result.frame_level_spread_db,
     result.peaks_per_min, result.sample_peak_dbfs, result.frames, result.sample_rate].every(Number.isFinite) ||
-    result.duration_seconds !== 30 || result.frames < 239 || result.sample_rate < 8000 ||
+    result.duration_seconds !== 10 || result.frames < 79 || result.sample_rate < 8000 ||
     result.rms_dbfs > 0 || result.rms_dbfs < -120 || result.frame_level_spread_db < 0 ||
     result.peaks_per_min < 0 || typeof result.clipping_detected !== 'boolean') {
     return 'Incomplete measurement. Try again.';

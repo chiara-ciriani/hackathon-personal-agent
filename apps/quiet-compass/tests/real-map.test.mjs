@@ -66,7 +66,12 @@ test('311 loader queries and keeps only the last 24 hours in San Francisco local
  assert.deepEqual(r.features.map(f=>f.properties.observedOn),stamps.slice(1,3));
 });
 
-test('map does not contact the backend without a contribution capability',async()=>{
- const r=await loadDeviceReadings(undefined,()=>{throw Error('must not fetch')},now);
- assert.equal(r.state,'access_required');
+test('visitors without a contribution pass can see shared measurements',async()=>{
+ const r=await loadDeviceReadings(undefined,async(url,options)=>{
+  assert.match(url,/\/v1\/map\/public$/);
+  assert.equal(options.headers.Authorization,undefined);
+  return {ok:true,json:async()=>({aggregates:[row]})};
+ },now);
+ assert.equal(r.state,'available');
+ assert.equal(r.data.features.length,1);
 });

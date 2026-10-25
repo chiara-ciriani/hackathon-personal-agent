@@ -26,13 +26,14 @@ export function deviceReadings(body, now = new Date()) {
 /** @param {string|null} [accessReceipt] */
 export async function loadDeviceReadings(origin = DEFAULT_SERVER, fetcher = fetch, now = new Date(), accessReceipt = null) {
   const empty = state => ({state, data:emptyCollection()});
-  if (!accessReceipt || !/^[A-Za-z0-9_-]{43}$/.test(accessReceipt)) return empty('access_required');
+  if (accessReceipt !== null && !/^[A-Za-z0-9_-]{43}$/.test(accessReceipt)) return empty('access_required');
   try {
     const base = new URL(origin);
     if (base.protocol !== 'https:' || base.username || base.password || base.pathname !== '/' || base.search || base.hash) return empty('invalid_config');
-    // Read the same released aggregates as MCP using the contributor's expiring capability.
-    const response = await fetcher(`${base.origin}/v1/map/view`, {
-      headers:{Authorization:`Bearer ${accessReceipt}`},
+    // Public visitors see released aggregates. Receipt validation stays available for access links.
+    const path = accessReceipt ? '/v1/map/view' : '/v1/map/public';
+    const response = await fetcher(`${base.origin}${path}`, {
+      headers:accessReceipt ? {Authorization:`Bearer ${accessReceipt}`} : {},
       cache:'no-store', redirect:'error', signal:AbortSignal.timeout(12000),
     });
     if ([401,403,410,428].includes(response.status)) return empty('access_required');

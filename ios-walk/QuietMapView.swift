@@ -20,7 +20,7 @@ struct QuietMapView: View {
             if !agent.hasLink {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Community sound map").font(.headline)
-                    Text("Share a 30-second sound summary and an approximate location with other map users. No audio, room map or route is uploaded.").font(.footnote).foregroundStyle(.secondary)
+                    Text("Share a 10-second sound summary and an approximate location with other map users. No audio, room map or route is uploaded.").font(.footnote).foregroundStyle(.secondary)
                     if community.sharing {
                         ProgressView()
                         Text(community.secondsLeft > 0 ? "\(community.secondsLeft) seconds left" : "Preparing to share…")
@@ -59,7 +59,7 @@ struct QuietMapView: View {
         .confirmationDialog("Share with the community map?", isPresented: $confirmShare, titleVisibility: .visible) {
             Button("Measure and share") { community.share(model: model) }
         } message: {
-            Text("Your microphone measures for 30 seconds. Only a relative sound level and location rounded to about 100 m are shared. Other contributors may see the summary. Your room map pauses during capture.")
+            Text("Your microphone measures for 10 seconds. Only a relative sound level and location rounded to about 100 m are shared. Anyone viewing the community map may see the summary. Your room map pauses during capture.")
         }
         .onChange(of: scenePhase) { if scenePhase == .background { community.cancel() } }
         .onDisappear { community.cancel() }

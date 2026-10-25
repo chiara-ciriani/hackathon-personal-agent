@@ -92,7 +92,7 @@ export default function PhoneMeasurement() {
       const reply = await phone('poll', {}, capture.signal);
       setRecommendation(reply.recommendation || null);
       if (reply.status === 'measure') {
-        if (!reply.request_id || reply.duration_seconds !== 30) throw new Error('The agent requested an invalid measurement.');
+        if (!reply.request_id || reply.duration_seconds !== 10) throw new Error('The agent requested an invalid measurement.');
         setStage('measuring'); setSeconds(0); setLevel(null); setReading(null); setDelivered(false); setRecommendation(null); setMessage('');
         let result: object;
         try {
@@ -100,7 +100,7 @@ export default function PhoneMeasurement() {
             if (mounted.current && !capture.signal.aborted) { setSeconds(s); setLevel(l); }
           });
           if (capture.signal.aborted) return;
-          setReading(value); setSeconds(30);
+          setReading(value); setSeconds(10);
           result = {request_id: reply.request_id, upload: {contract_version: 1, contribution: value.contribution, share_consent: true}};
         } catch (e) {
           if (capture.signal.aborted) return;
@@ -172,14 +172,14 @@ export default function PhoneMeasurement() {
       <section className="pm-panel" aria-label="Phone connection">
         <div className="pm-status"><span className={active ? 'pm-dot is-active' : 'pm-dot'}/><span>{labels[stage]}</span>{active && <small>{remaining} min left</small>}</div>
         <div className="pm-dial" aria-hidden="true">
-          <svg viewBox="0 0 160 160"><circle cx="80" cy="80" r="73" className="pm-ring-track"/><circle cx="80" cy="80" r="73" className="pm-ring-progress" strokeDasharray={459} strokeDashoffset={459*(1-seconds/30)}/></svg>
+          <svg viewBox="0 0 160 160"><circle cx="80" cy="80" r="73" className="pm-ring-track"/><circle cx="80" cy="80" r="73" className="pm-ring-progress" strokeDasharray={459} strokeDashoffset={459*(1-seconds/10)}/></svg>
           <div>{stage === 'measuring' ? <Mic size={24} strokeWidth={1.4}/> : delivered ? <Check size={24}/> : <Link2 size={24} strokeWidth={1.4}/>}
-            <strong>{stage === 'measuring' ? Math.max(0,30-Math.floor(seconds)) + ' s' : stage === 'sending' ? 'Sending' : active ? 'Listening for agent' : 'Phone link'}</strong>
+            <strong>{stage === 'measuring' ? Math.max(0,10-Math.floor(seconds)) + ' s' : stage === 'sending' ? 'Sending' : active ? 'Listening for agent' : 'Phone link'}</strong>
             <span>{stage === 'measuring' && level !== null ? level.toFixed(1)+' dBFS' : active ? 'Microphone enabled' : stage === 'connecting' ? 'Permission pending' : 'Microphone off'}</span>
           </div>
         </div>
-        <div className="pm-sr-only" role="progressbar" aria-label="Measurement progress in seconds" aria-valuemin={0} aria-valuemax={30} aria-valuenow={Math.floor(seconds)}/>
-        <p className="pm-hint" role="status">{stage === 'unlinked' ? 'Open the connection link from your agent on this phone.' : stage === 'checking' ? 'Checking your private connection link…' : stage === 'ready' ? 'Allow your agent to request 30-second measurements.' : stage === 'connecting' ? 'Allow microphone and location access in your browser.' : stage === 'measuring' ? 'Requested by your agent. Keep your phone still and this page open.' : stage === 'sending' ? 'Sending the summary directly to your agent.' : stage === 'waiting' ? 'Ready for your agent. Keep this page open and your phone unlocked.' : stage === 'native' ? 'Approve the connection in QC Walk Map. Your agent can then analyze the room and send advice there.' : 'Ask your agent for a new connection link.'}</p>
+        <div className="pm-sr-only" role="progressbar" aria-label="Measurement progress in seconds" aria-valuemin={0} aria-valuemax={10} aria-valuenow={Math.floor(seconds)}/>
+        <p className="pm-hint" role="status">{stage === 'unlinked' ? 'Open the connection link from your agent on this phone.' : stage === 'checking' ? 'Checking your private connection link…' : stage === 'ready' ? 'Allow your agent to request 10-second measurements.' : stage === 'connecting' ? 'Allow microphone and location access in your browser.' : stage === 'measuring' ? 'Requested by your agent. Keep your phone still and this page open.' : stage === 'sending' ? 'Sending the summary directly to your agent.' : stage === 'waiting' ? 'Ready for your agent. Keep this page open and your phone unlocked.' : stage === 'native' ? 'Approve the connection in QC Walk Map. Your agent can then analyze the room and send advice there.' : 'Ask your agent for a new connection link.'}</p>
         {(stage === 'ready' || stage === 'native') && <div className="pm-native">
           <span className="pm-label">ROOM MAP + SOUND ANALYSIS</span>
           <p>Use QC Walk Map for a measured room map, sound analysis and directions from your agent.</p>
@@ -207,7 +207,7 @@ export default function PhoneMeasurement() {
         {delivered && <Link className="pm-button pm-primary" href="/">View shared map<ArrowLeft size={14}/></Link>}
         <div className="pm-reading-title"><span className="pm-label">LATEST MEASUREMENT</span><span>{delivered ? 'Received by server' : 'Delivery unconfirmed'}</span></div>
         <dl><div><dt>Level</dt><dd>{m.rms_dbfs.toFixed(1)}<small>dBFS</small></dd></div><div><dt>Variation</dt><dd>{m.frame_level_spread_db.toFixed(1)}<small>dB</small></dd></div><div><dt>Peaks</dt><dd>{m.peaks_per_min.toFixed(1)}<small>/ min</small></dd></div></dl>
-        <p className="pm-detail">30 seconds · no clipping · relative, uncalibrated levels</p>
+        <p className="pm-detail">10 seconds · no clipping · relative, uncalibrated levels</p>
       </section>}
       <details className="pm-how"><summary>How it works</summary><ol><li>Your agent creates a private link. Open the iPhone app for room mapping, or choose browser sound measurements. Approve access once.</li><li>The agent requests an analysis. The app returns private acoustic levels and a room map. The browser shares a coarse sound summary.</li><li>The agent sends a recommendation to the connected app or browser. The app shows a direction only to a measured spot; missing data stays unknown.</li></ol><p>Quiet Compass must be connected to your agent. This page does not install that connection.</p></details>
     </div>

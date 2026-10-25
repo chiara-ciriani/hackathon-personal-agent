@@ -22,8 +22,8 @@ function browserFixture(t, {late = false} = {}) {
   }
   class Node {
     constructor(){nodes++;this.port={onmessage:null,close(){},postMessage:()=>queueMicrotask(()=>this.port.onmessage?.({data:{type:'complete',result:{
-      duration_seconds:30,rms_dbfs:-40,frame_level_spread_db:3,peaks_per_min:2,
-      clipping_detected:false,sample_peak_dbfs:-20,frames:240,sample_rate:8000,
+      duration_seconds:10,rms_dbfs:-40,frame_level_spread_db:3,peaks_per_min:2,
+      clipping_detected:false,sample_peak_dbfs:-20,frames:80,sample_rate:8000,
     }}}))}}
     connect(){} disconnect(){}
   }

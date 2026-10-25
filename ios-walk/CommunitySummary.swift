@@ -31,7 +31,7 @@ nonisolated final class CommunityAccumulator: @unchecked Sendable {
     func summary(now: Double) throws -> (rms: Double, spread: Double, rate: Double, channels: Int) {
         try state.withLock { s in
             guard !s.invalid, s.samples > 0, let first = s.first, let last = s.last,
-                  last - first >= 25, now - last < 2 else {
+                  last - first >= 9, now - last < 2 else {
                 throw AgentConnectionError("Capture was interrupted or clipped. Try again in a quieter spot.")
             }
             let rms = 10 * log10(s.energy / Double(s.samples))
@@ -53,7 +53,7 @@ nonisolated enum CommunityPayload {
             "id": id.uuidString, "schema_version": "0.1",
             "area_id": String(format: "cell:%.3f,%.3f", locale: Locale(identifier: "en_US_POSIX"), latitude, longitude),
             "area_name": NSNull(), "lat": latitude, "lon": longitude,
-            "time_bucket": ISO8601DateFormatter().string(from: bucket), "duration_seconds": 30,
+            "time_bucket": ISO8601DateFormatter().string(from: bucket), "duration_seconds": 10,
             "measurement": ["kind": "relative_uncalibrated", "rms_dbfs": rms,
                             "frame_level_spread_db": spread, "peaks_per_min": NSNull(), "calibrated": false],
             "quality": ["capture_profile": profile, "clipping_detected": false], "source": "device",

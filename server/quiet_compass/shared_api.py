@@ -1,7 +1,8 @@
 """REST routes for the shared sound layer (contracts/README.md, "Shared sound layer").
 
 Contributions and reads accept the shared credential or the owner's credential.
-Shared reads also require an unexpired contribution receipt. Area editing stays private.
+Agent reads require an unexpired contribution receipt. The public map shows only released
+device aggregates. Area editing stays private.
 """
 
 from __future__ import annotations
@@ -87,9 +88,10 @@ def build_shared_routes(layer: SharedLayer, settings: Settings) -> list[BaseRout
         c = body.contribution
         if (not body.share_consent or c.source != "device" or c.quality.clipping_detected
                 or c.lat is None or c.lon is None or not 37.6 <= c.lat <= 37.85
-                or not -122.55 <= c.lon <= -122.3 or not 25 <= c.duration_seconds <= 35
+                or not -122.55 <= c.lon <= -122.3
+                or not (9 <= c.duration_seconds <= 11 or 25 <= c.duration_seconds <= 35)
                 or not c.quality.capture_profile.startswith("qc-community-v1:")):
-            return JSONResponse({"error": "Share a consented 30-second, unclipped measurement in San Francisco."},
+            return JSONResponse({"error": "Share a consented 10-second, unclipped measurement in San Francisco."},
                                 status_code=422, headers={"Cache-Control": "no-store"})
         result = await run_in_threadpool(layer.submit_shared, c, True)
         response = model_response(result)
@@ -132,6 +134,10 @@ def build_shared_routes(layer: SharedLayer, settings: Settings) -> list[BaseRout
         except ContributionRequired as exc:
             return JSONResponse({"error": "contribution_required", "detail": str(exc)}, status_code=428,
                                 headers={"Cache-Control": "no-store"})
+        return await get_public_map(request)
+
+    async def get_public_map(_: Request) -> Response:
+        # Consented, released aggregates only. Never private room maps or raw audio.
         result = await run_in_threadpool(layer.sound_map, 37.77, -122.43, 5000, 1440)
         result.aggregates = [a for a in result.aggregates if a.source == "device" and not a.has_synthetic]
         response = model_response(result)
@@ -149,7 +155,7 @@ def build_shared_routes(layer: SharedLayer, settings: Settings) -> list[BaseRout
             ),
             "tools": ["connect_phone", "request_phone_measurement", "phone_measurement_status",
                       "send_phone_recommendation", "submit_observation", "query_sound_map", "find_suitable_places"],
-            "phone_measurement": {"protocol": "phone-bridge-v1", "session_seconds": 900, "duration_seconds": 30,
+            "phone_measurement": {"protocol": "phone-bridge-v1", "session_seconds": 900, "duration_seconds": 10,
                                   "native_protocol": "phone-walk-v1"},
         }, headers={"Cache-Control": "no-store"})
 
@@ -161,6 +167,7 @@ def build_shared_routes(layer: SharedLayer, settings: Settings) -> list[BaseRout
     return [
         Route("/v1/community/contributions", post_community_contribution, methods=["POST"]),
         Route("/v1/map/view", get_map_view, methods=["GET"]),
+        Route("/v1/map/public", get_public_map, methods=["GET"]),
         Route("/v1/exchange/status", exchange_status, methods=["GET"]),
         Route("/v1/contributions", shared_guarded(post_contribution), methods=["POST"]),
         Route("/v1/areas/{area_id}", guarded(token, put_area), methods=["PUT"]),

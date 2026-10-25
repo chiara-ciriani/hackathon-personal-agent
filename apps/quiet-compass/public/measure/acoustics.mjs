@@ -1,6 +1,6 @@
 // Shared by the AudioWorklet and tests. Only numeric summaries leave the processor.
 // 125 ms frames; L10-L90 spread; onsets above the running median + 10 dB.
-export const DURATION_SECONDS = 30;
+export const DURATION_SECONDS = 10;
 const db = power => Math.min(0, 10 * Math.log10(power + 1e-12));
 export function percentile(values, q) {
   if (!values.length) throw new Error('No measured frames');

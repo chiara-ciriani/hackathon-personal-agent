@@ -81,7 +81,7 @@ export async function connectPhoneSensors(signal: AbortSignal, onDisconnect: (re
           const location = coarseLocation(await Promise.race([locate(), interrupted]));
           node = new AudioWorkletNode(context, 'quiet-measurement', {channelCount: 1, channelCountMode: 'explicit', numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1]});
           const completed = new Promise<AcousticResult>((resolve, reject) => {
-            timer = setTimeout(() => reject(new Error('The phone did not finish measuring.')), 45000);
+            timer = setTimeout(() => reject(new Error('The phone did not finish measuring.')), 25000);
             node!.onprocessorerror = () => reject(new Error('The browser interrupted the measurement.'));
             node!.port.onmessage = event => {
               if (!active) return;

@@ -35,7 +35,7 @@ def status(client, agent):
 
 
 def upload(job, **changes):
-    c = contribution(duration=30)
+    c = contribution(duration=10)
     c.update(id=job, **changes)
     c["quality"]["capture_profile"] = "web-v1:test-session:48000:a0e0n0"
     return {"request_id": job, "upload": {"contract_version": 1, "contribution": c, "share_consent": True}}
@@ -47,7 +47,9 @@ def test_agent_requests_phone_contributes_and_agent_gets_receipt(client, clock):
     assert phone(client, browser, "poll").status_code == 403
     assert phone(client, browser, "consent", {**CONSENT, "share_consent": False}).status_code == 422
     assert phone(client, browser, "consent", CONSENT).json()["status"] == "ready"
-    job = request(client, agent)["structuredContent"]["request_id"]
+    requested = request(client, agent)["structuredContent"]
+    assert requested["duration_seconds"] == 10
+    job = requested["request_id"]
     assert request(client, agent)["structuredContent"]["request_id"] == job
     assert phone(client, browser, "poll").json()["request_id"] == job
     # A second tab must not claim the same job or start another capture.
